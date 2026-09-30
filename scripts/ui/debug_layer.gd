@@ -66,6 +66,38 @@ func _draw_debug() -> void:
 			str(b.wall_since_hit), str(b.returnable)]
 		draw_string(font, b.global_position + Vector2(16, -12), txt,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.92))
+	# 鼠标相对瞄准可视化 (玩家1)
+	if match_ref.players.size() > 0:
+		_draw_aim(font, match_ref.players[0])
+
+func _draw_aim(font: Font, p1: PlayerController) -> void:
+	var sch: InputScheme = p1.input_scheme
+	if sch == null or sch.aim_mode != InputScheme.AimMode.MOUSE or not p1.debug_has_aim:
+		return
+	var ball_xy: Vector2 = match_ref.ball.global_position
+	var aim: Vector2 = p1.debug_aim_point
+	# 球 -> aim_point 辅助线
+	draw_line(ball_xy, aim, Color(1.0, 0.45, 0.9, 0.9), 2.0)
+	draw_circle(aim, 9.0, Color(1.0, 0.35, 0.85, 0.25))
+	draw_arc(aim, 9.0, 0.0, TAU, 24, Color(1.0, 0.35, 0.85), 2.0)
+	# 球的 XY 投影
+	draw_circle(ball_xy, 3.0, Color(1.0, 0.45, 0.9))
+	# 锚点 / 当前鼠标
+	var off_len: float = 0.0
+	if sch.is_dragging():
+		var anchor: Vector2 = sch.mouse_anchor()
+		var cur: Vector2 = sch.current_mouse(self)
+		off_len = (cur - anchor).length() * GameConfig.mouse_to_world_scale
+		draw_circle(anchor, 6.0, Color(0.5, 0.85, 1.0, 0.9))
+		draw_line(anchor, cur, Color(0.5, 0.85, 1.0, 0.6), 1.5)
+		draw_circle(cur, 4.0, Color(0.6, 0.95, 1.0))
+	# 角色当前朝向 (绿) 与目标朝向 (品红)
+	var o: Vector2 = p1.global_position
+	draw_line(o, o + Vector2.RIGHT.rotated(p1.rotation) * 90.0, Color(0.4, 1.0, 0.4, 0.85), 2.0)
+	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_target_rotation) * 90.0, Color(1.0, 0.35, 0.85, 0.85), 2.0)
+	var txt := "aim=(%.0f,%.0f) target=%.2f rot=%.2f\ndrag=%s offset=%.0f" % [
+		aim.x, aim.y, p1.debug_target_rotation, p1.rotation, str(sch.is_dragging()), off_len]
+	draw_string(font, o + Vector2(12, 20), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.7, 0.95, 0.95))
 
 func _draw_capsule(c: Vector2, angle: float, hl: float, r: float, color: Color) -> void:
 	var seg: float = hl - r

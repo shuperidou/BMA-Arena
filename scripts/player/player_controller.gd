@@ -16,7 +16,10 @@ var input_scheme: InputScheme = null
 var ball: Ball = null
 
 var hit_points: Array[HitPoint] = []
-var debug_aim_override: float = NAN  ## 测试用：非 NAN 时覆盖鼠标目标角度
+var debug_aim_override: float = NAN  ## 测试用：非 NAN 时覆盖目标角度
+var debug_aim_point: Vector2 = Vector2.ZERO
+var debug_target_rotation: float = 0.0
+var debug_has_aim: bool = false
 var _last_touch_time: float = -10.0
 var _body_color: Color = Color(0.31, 0.82, 0.77)
 
@@ -88,12 +91,30 @@ func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
 		return
 	var accel: float = GameConfig.rotation_acceleration * step
 	if input_scheme.aim_mode == InputScheme.AimMode.MOUSE:
-		var target: float = debug_aim_override if not is_nan(debug_aim_override) \
-			else input_scheme.mouse_aim_angle(self)
-		if is_nan(target):
-			# 鼠标太近或不在鼠标模式：角速度逐渐衰减
-			state.angular_velocity = move_toward(state.angular_velocity, 0.0, GameConfig.rotation_damping * step)
-			return
+		input_scheme.update_mouse(self)
+		var origin: Vector2 = state.transform.origin
+		var target: float
+		if not is_nan(debug_aim_override):
+			# 测试用：直接给目标角度
+			target = debug_aim_override
+			debug_aim_point = origin + Vector2.RIGHT.rotated(target) * 100.0
+			debug_has_aim = true
+		else:
+			# 默认朝球 (只用球的 XY 投影，忽略高度 Z)
+			var ball_xy: Vector2 = ball.global_position if ball != null else origin + Vector2(0.0, -100.0)
+			var aim_point: Vector2 = ball_xy
+			if input_scheme.is_dragging():
+				var off: Vector2 = input_scheme.mouse_world_offset(self).limit_length(GameConfig.max_aim_offset)
+				aim_point = ball_xy + off
+			debug_aim_point = aim_point
+			var d: Vector2 = aim_point - origin
+			if d.length() > 1.0:
+				target = d.angle()
+				debug_has_aim = true
+			else:
+				target = state.transform.get_rotation()
+				debug_has_aim = false
+		debug_target_rotation = target
 		var err: float = wrapf(target - state.transform.get_rotation(), -PI, PI)
 		var desired_w: float = clampf(err * GameConfig.rotation_gain,
 			-GameConfig.max_angular_velocity, GameConfig.max_angular_velocity)
