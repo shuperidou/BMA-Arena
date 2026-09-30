@@ -33,14 +33,14 @@ var move_speed: float = 360.0
 var move_accel: float = 3200.0         ## 速度变化最大加速度 (惯性/手感)
 
 # 旋转：鼠标给"目标角度"，角色带惯性逐渐追踪 (设计: 独立于移动)
-var max_angular_velocity: float = 80.0   ## rad/s 最大角速度
-var rotation_acceleration: float = 300.0 ## rad/s^2 角速度变化上限 (旋转惯性)
+var max_angular_velocity: float = 8.0   ## rad/s 最大角速度
+var rotation_acceleration: float = 30.0 ## rad/s^2 角速度变化上限 (旋转惯性)
 var rotation_response: float = 6.0      ## 角度误差 -> 目标角速度的响应增益
 var rotation_damping: float = 6.0       ## 无有效目标时的角速度衰减 (rad/s^2)
 
-# 鼠标左右拖动 = 相对"朝球方向"的角度偏移 (屏幕像素 -> 弧度)
-#   不拖 = 朝球；右拖 = 顺时针；左拖 = 逆时针；距离决定偏移大小；松开 = 回正。
-#   只用 mouse_drag.x；没有方向投影、没有角度累计。
+# 鼠标左右拖动 = 相对"按下鼠标时朝向"的角度偏移 (屏幕像素 -> 弧度)
+#   无任何自动朝球/自动校准；按住时基准=按下瞬间朝向；右拖=顺时针，左拖=逆时针；
+#   松开保持当前朝向。只用 mouse_drag.x；没有方向投影、没有角度累计。
 var aim_mouse_button: int = MOUSE_BUTTON_LEFT
 var mouse_rotation_sensitivity: float = 0.006  ## 每屏幕像素对应的弧度
 var max_mouse_angle_offset: float = 2.6        ## 角度偏移上限 (弧度)

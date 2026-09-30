@@ -17,10 +17,12 @@ var ball: Ball = null
 
 var hit_points: Array[HitPoint] = []
 var debug_aim_override: float = NAN  ## 测试用：非 NAN 时覆盖目标角度
-var debug_ball_angle: float = 0.0     ## 朝球方向 (目标角基准)
-var debug_angle_offset: float = 0.0   ## 鼠标拖动产生的角度偏移
+var debug_angle_offset: float = 0.0   ## 鼠标拖动产生的角度偏移 (相对按下基准)
 var debug_target_rotation: float = 0.0
 var debug_has_aim: bool = false
+var _aim_angle: float = 0.0           ## 持久目标朝向 (纯手动，无自动校准)
+var _aim_base: float = 0.0            ## 按下鼠标瞬间的基准朝向
+var _was_dragging: bool = false
 var _last_touch_time: float = -10.0
 var _body_color: Color = Color(0.31, 0.82, 0.77)
 
@@ -55,6 +57,7 @@ func _ready() -> void:
 		add_child(hp)
 		hit_points.append(hp)
 
+	_aim_angle = rotation
 	queue_redraw()
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
@@ -93,30 +96,29 @@ func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
 	var accel: float = GameConfig.rotation_acceleration * step
 	if input_scheme.aim_mode == InputScheme.AimMode.MOUSE:
 		input_scheme.update_mouse(self)
-		var origin: Vector2 = state.transform.origin
 		var target: float
 		if not is_nan(debug_aim_override):
 			# 测试用：直接给目标角度
 			target = debug_aim_override
-			debug_ball_angle = target
+			_aim_angle = target
 			debug_angle_offset = 0.0
 			debug_has_aim = true
 		else:
-			# 基准 = 朝球 (只用球的 XY 投影，忽略高度 Z)
-			var ball_xy: Vector2 = ball.global_position if ball != null else origin + Vector2(0.0, -100.0)
-			var ball_dir: Vector2 = ball_xy - origin
-			var ball_angle: float = ball_dir.angle() if ball_dir.length() > 1.0 else state.transform.get_rotation()
-			# 鼠标水平拖动 -> 角度偏移 (不累积；死区内为 0)
+			# 纯手动朝向：按下瞬间的朝向为基准 + 鼠标水平拖动偏移；松开保持。
+			var dragging: bool = input_scheme.is_dragging()
+			if dragging and not _was_dragging:
+				_aim_base = _aim_angle
 			var angle_offset: float = 0.0
-			if input_scheme.is_dragging():
+			if dragging:
 				var dx: float = input_scheme.mouse_drag_screen_x(self)
 				var dead: float = GameConfig.mouse_drag_deadzone
 				if absf(dx) > dead:
 					var eff: float = dx - signf(dx) * dead  # 死区外平滑，无跳变
 					angle_offset = clampf(eff * GameConfig.mouse_rotation_sensitivity,
 						-GameConfig.max_mouse_angle_offset, GameConfig.max_mouse_angle_offset)
-			target = ball_angle + angle_offset
-			debug_ball_angle = ball_angle
+				_aim_angle = _aim_base + angle_offset
+			_was_dragging = dragging
+			target = _aim_angle
 			debug_angle_offset = angle_offset
 			debug_has_aim = true
 		debug_target_rotation = target

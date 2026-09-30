@@ -4,13 +4,13 @@ extends RefCounted
 ##
 ## 基础控制模型 (玩家1)：
 ##   移动 = 世界坐标 (WASD 永远对应屏幕上/下/左/右，与朝向无关)
-##   朝向 = 默认朝球；按住鼠标后，鼠标相对锚点的"水平"拖动直接产生角度偏移。
+##   朝向 = 纯手动。按住鼠标后，鼠标相对锚点的"水平"拖动产生角度偏移。
 ##
-## 朝向公式：
-##   ball_angle   = angle(球XY - 角色位置)
-##   angle_offset = clamp(水平拖动像素 * sensitivity, -max, +max)   (死区内为 0)
-##   target_rot   = ball_angle + angle_offset
-## 右拖 = 顺时针，左拖 = 逆时针 (固定映射，不随球/角色位置变化)。松开 -> offset=0。
+## 朝向公式 (无自动朝球)：
+##   base         = 按下鼠标瞬间的朝向
+##   angle_offset = clamp((水平拖动像素-死区) * sensitivity, -max, +max)  (死区内 0)
+##   target_rot   = base + angle_offset     (松开后保持)
+## 右拖 = 顺时针，左拖 = 逆时针 (固定映射，不随球/角色位置变化)。
 
 enum AimMode { MOUSE, KEYBOARD, NONE }
 
