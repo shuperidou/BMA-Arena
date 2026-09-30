@@ -39,15 +39,15 @@ WASD  -> 世界坐标移动向量 -> 角色位置          (不受 rotation 影�
 ```
 
 - WASD 永远对应屏幕上/下/左/右，角色朝哪都一样。
-- **没有任何自动朝球/自动校准。** 朝向完全手动。
-- **按住鼠标**：按下瞬间记录屏幕锚点 + 以"按下时的朝向"为基准，偏移=0（不跳变）。之后只用**水平拖动像素**：
+- **松开鼠标时自动回正到球**（用同一套旋转惯性逐渐转回，不瞬回）；**按住鼠标时手动覆盖朝向**。
+- **按住鼠标**：按下瞬间记录屏幕锚点，并以"按下时的朝球方向"为基准，偏移=0（不跳变）。之后只用**水平拖动像素**：
   `angle_offset = clamp((drag_x - deadzone) * mouse_rotation_sensitivity, ±max_mouse_angle_offset)`
-  `target_rotation = 按下时朝向基准 + angle_offset`
-- 固定映射：**右拖 = 顺时针，左拖 = 逆时针**（不随球/角色位置变化）。拖得越远偏得越多；**松开保持当前朝向**。不累积角度，只看当前相对锚点的水平距离（鼠标回锚点即回基准）。
+  `target_rotation = 按下时朝球基准 + angle_offset`
+- 固定映射：**右拖 = 顺时针，左拖 = 逆时针**（不随球/角色位置变化）。拖得越远偏得越多。不累积角度（鼠标回锚点即回基准）。
 - 鼠标 Y 轴暂不参与旋转。
 - 参数：`mouse_rotation_sensitivity` / `max_mouse_angle_offset` / `mouse_drag_deadzone` / `rotation_response` / `max_angular_velocity` / `rotation_acceleration` / `rotation_damping` / `aim_mouse_button`。
-- 已删除 Q/E，无绝对瞄准/投影/自动朝球/累计。玩家2 的键盘朝向只是本地双人测试的临时方案 [TEMP]。
-- `F1` 调试会画出：球的 XY 投影(参考)、锚点、当前鼠标、目标方向线(品红) / 当前朝向线(绿)，并显示 `offset / target / rot / drag / dx`。
+- 已删除 Q/E，无绝对瞄准/投影/角度累计。玩家2 的键盘朝向只是本地双人测试的临时方案 [TEMP]。
+- `F1` 调试会画出：球的 XY 投影、锚点、当前鼠标、朝球方向线(青) / 目标方向线(品红) / 当前朝向线(绿)，并显示 `ball_ang / offset / target / rot / drag / dx`。
 
 ### 无头自动对拉测试（开发用）
 

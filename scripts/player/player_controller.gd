@@ -17,11 +17,12 @@ var ball: Ball = null
 
 var hit_points: Array[HitPoint] = []
 var debug_aim_override: float = NAN  ## 测试用：非 NAN 时覆盖目标角度
+var debug_ball_angle: float = 0.0     ## 回正目标：朝球方向
 var debug_angle_offset: float = 0.0   ## 鼠标拖动产生的角度偏移 (相对按下基准)
 var debug_target_rotation: float = 0.0
 var debug_has_aim: bool = false
-var _aim_angle: float = 0.0           ## 持久目标朝向 (纯手动，无自动校准)
-var _aim_base: float = 0.0            ## 按下鼠标瞬间的基准朝向
+var _aim_angle: float = 0.0           ## 当前目标朝向
+var _aim_base: float = 0.0            ## 按下鼠标瞬间的基准朝向 (按下时的朝球方向)
 var _was_dragging: bool = false
 var _last_touch_time: float = -10.0
 var _body_color: Color = Color(0.31, 0.82, 0.77)
@@ -96,29 +97,39 @@ func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
 	var accel: float = GameConfig.rotation_acceleration * step
 	if input_scheme.aim_mode == InputScheme.AimMode.MOUSE:
 		input_scheme.update_mouse(self)
+		var origin: Vector2 = state.transform.origin
 		var target: float
 		if not is_nan(debug_aim_override):
 			# 测试用：直接给目标角度
 			target = debug_aim_override
 			_aim_angle = target
 			debug_angle_offset = 0.0
+			debug_ball_angle = target
 			debug_has_aim = true
 		else:
-			# 纯手动朝向：按下瞬间的朝向为基准 + 鼠标水平拖动偏移；松开保持。
+			# 基准 = 朝球方向 (只用球 XY)
+			var ball_xy: Vector2 = ball.global_position if ball != null else origin + Vector2(0.0, -100.0)
+			var bd: Vector2 = ball_xy - origin
+			var ball_angle: float = bd.angle() if bd.length() > 1.0 else state.transform.get_rotation()
 			var dragging: bool = input_scheme.is_dragging()
-			if dragging and not _was_dragging:
-				_aim_base = _aim_angle
 			var angle_offset: float = 0.0
+			if dragging and not _was_dragging:
+				_aim_base = ball_angle  # 按住瞬间：以当时的朝球方向为基准
 			if dragging:
+				# 手动：基准 + 鼠标水平拖动偏移 (不累积；死区内 0)
 				var dx: float = input_scheme.mouse_drag_screen_x(self)
 				var dead: float = GameConfig.mouse_drag_deadzone
 				if absf(dx) > dead:
 					var eff: float = dx - signf(dx) * dead  # 死区外平滑，无跳变
 					angle_offset = clampf(eff * GameConfig.mouse_rotation_sensitivity,
 						-GameConfig.max_mouse_angle_offset, GameConfig.max_mouse_angle_offset)
-				_aim_angle = _aim_base + angle_offset
+				target = _aim_base + angle_offset
+			else:
+				# 放手：自动回正到球 (带惯性逐渐转)
+				target = ball_angle
 			_was_dragging = dragging
-			target = _aim_angle
+			_aim_angle = target
+			debug_ball_angle = ball_angle
 			debug_angle_offset = angle_offset
 			debug_has_aim = true
 		debug_target_rotation = target

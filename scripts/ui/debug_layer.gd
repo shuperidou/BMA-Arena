@@ -77,9 +77,11 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 	var o: Vector2 = p1.global_position
 	var ball_xy: Vector2 = match_ref.ball.global_position
 	var length := 110.0
-	# 球的 XY 投影 (仅参考)
+	# 球的 XY 投影
 	draw_circle(ball_xy, 3.0, Color(1.0, 0.45, 0.9))
-	# 目标方向线 (品红) —— 纯手动
+	# 朝球方向 (青) —— 松手时的回正目标
+	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_ball_angle) * length, Color(0.3, 0.9, 1.0, 0.8), 2.0)
+	# 最终目标方向线 (品红) —— 拖动时 = 基准+偏移；松手时与青线重合
 	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_target_rotation) * length, Color(1.0, 0.35, 0.85, 0.9), 2.0)
 	# 角色当前朝向 (绿)
 	draw_line(o, o + Vector2.RIGHT.rotated(p1.rotation) * length, Color(0.4, 1.0, 0.4, 0.85), 2.0)
@@ -92,8 +94,8 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 		draw_circle(anchor, 6.0, Color(0.5, 0.85, 1.0, 0.9))
 		draw_line(anchor, cur, Color(0.5, 0.85, 1.0, 0.6), 1.5)
 		draw_circle(cur, 4.0, Color(0.6, 0.95, 1.0))
-	var txt := "offset=%.2f target=%.2f rot=%.2f\ndrag=%s dx=%.0fpx" % [
-		p1.debug_angle_offset, p1.debug_target_rotation, p1.rotation,
+	var txt := "ball_ang=%.2f offset=%.2f target=%.2f rot=%.2f\ndrag=%s dx=%.0fpx" % [
+		p1.debug_ball_angle, p1.debug_angle_offset, p1.debug_target_rotation, p1.rotation,
 		str(sch.is_dragging()), dx_screen]
 	draw_string(font, o + Vector2(12, 20), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.7, 0.95, 0.95))
 

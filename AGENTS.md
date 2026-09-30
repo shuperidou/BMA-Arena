@@ -40,4 +40,4 @@ Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Des
 - 球的**视觉缩放只影响 _draw**，绝不改 `radius`（逻辑碰撞半径固定）。比赛逻辑读 `state`/`height_state`，不读视觉。
 - 输入用 physical keycode 轮询，没有用 InputMap。
 - **控制模型：平移与旋转严格解耦。** 移动永远是世界坐标（绝不用 `transform.basis * input`）。
-- 朝向 = 纯手动：按下鼠标瞬间的朝向为基准 + 鼠标水平拖动产生的角度偏移（屏幕像素 × `mouse_rotation_sensitivity`，死区内为 0，上限 `max_mouse_angle_offset`；右拖=顺时针），松开保持。**没有自动朝球**。只用 `mouse_drag.x`，不累积角度、不做方向投影、不按球/角色位置重解释左右。改控制时不要引入"角色前后左右""绝对鼠标瞄准"或"自动朝球"的耦合。
+- 朝向 = 按住鼠标时：以"按下瞬间的朝球方向"为基准 + 鼠标水平拖动产生的角度偏移（屏幕像素 × `mouse_rotation_sensitivity`，死区内为 0，上限 `max_mouse_angle_offset`；右拖=顺时针）；**松开后自动回正到球**（带惯性）。只用 `mouse_drag.x`，不累积角度、不做方向投影、不按球/角色位置重解释左右。改控制时不要引入"角色前后左右"或"绝对鼠标瞄准"的耦合。
