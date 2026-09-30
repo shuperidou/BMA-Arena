@@ -41,4 +41,4 @@ Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Des
 - 输入用 physical keycode 轮询，没有用 InputMap。
 - **控制模型：平移与旋转严格解耦。** 移动永远是世界坐标（绝不用 `transform.basis * input`）。
 - 朝向 = 基础"面向桌中心"(`GameConfig.table_center`)，带惯性维持；**不再追随球**。
-- 鼠标横向拖动（锚点方案，只用 `mouse_drag.x`，屏幕像素）同时驱动：① 两个击球区沿身体长轴反向位移（`hit_zone_sensitivity`/`max_hit_zone_offset`，松开平滑回位）；② 身体相对桌中心方向的小幅偏转（`rotation_sensitivity`/`max_rotation_offset`）。**不累积角度**，不按球/角色位置重解释左右。改控制时不要引入"角色前后左右"、"绝对鼠标瞄准"或"自动朝球"的耦合。
+- 鼠标横向拖动（锚点方案，只用 `mouse_drag.x`，屏幕像素）先归一化 `normalized = clamp(|dx|*mouse_drag_sensitivity,0..1)`，再用两条**独立、非线性**曲线分配：① 击球区反向位移（ease-out，到 `hit_zone_drag_threshold` 满偏，`hit_zone_max_offset`；松开按 `hit_zone_return_speed` 平滑回位）；② 身体相对桌中心方向偏转（`rotation_drag_start` 前只有 `rotation_early_max`，之后 ramp 到 1，`rotation_max_offset`）。**不累积角度**，不按球/角色位置重解释左右。改控制时不要引入"角色前后左右"、"绝对鼠标瞄准"或"自动朝球"的耦合。

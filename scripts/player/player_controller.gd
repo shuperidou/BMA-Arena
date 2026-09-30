@@ -20,6 +20,9 @@ var debug_aim_override: float = NAN  ## 测试用：非 NAN 时覆盖目标角�
 var debug_base_rotation: float = 0.0    ## 面向桌中心的基础朝向
 var debug_target_rotation: float = 0.0  ## 基础朝向 ± 偏转
 var debug_angle_limit: float = 0.0      ## 当前拖动允许的角度偏转
+var debug_normalized_drag: float = 0.0  ## 归一化拖动 (带符号)
+var debug_hit_zone_ratio: float = 0.0   ## 击球区响应曲线输出 (0..1)
+var debug_rotation_ratio: float = 0.0   ## 旋转响应曲线输出 (0..1)
 var hit_zone_offset: float = 0.0        ## 平滑后的击球区位移
 var debug_hit_zone_offset: float = 0.0  ## Debug 显示用
 var _last_touch_time: float = -10.0
@@ -97,17 +100,27 @@ func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
 		var origin: Vector2 = state.transform.origin
 		# 基础朝向 = 面向桌中心 (球不再影响朝向)
 		var base: float = (GameConfig.table_center - origin).angle()
-		var eff: float = _effective_drag()
-		# 身体偏转：拖动越远，允许偏离桌中心方向越多 (有上限，不累积)
-		var angle_limit: float = clampf(absf(eff) * GameConfig.rotation_sensitivity,
-			0.0, GameConfig.max_rotation_offset)
-		var target: float = base + signf(eff) * angle_limit
+		var eff: float = _effective_drag()   # 有符号像素 (已去死区)
+		var sgn: float = signf(eff)
+		var normalized: float = clampf(absf(eff) * GameConfig.mouse_drag_sensitivity, 0.0, 1.0)
+		# 击球区曲线：前半段快速到顶，接近上限渐缓 (ease-out)
+		var hz_t: float = clampf(normalized / maxf(GameConfig.hit_zone_drag_threshold, 0.0001), 0.0, 1.0)
+		var hit_zone_ratio: float = 1.0 - pow(1.0 - hz_t, 2.0)
+		# 旋转曲线：阈值前非常小，阈值后明显增加
+		var rot_ratio: float
+		if normalized < GameConfig.rotation_drag_start:
+			rot_ratio = (normalized / maxf(GameConfig.rotation_drag_start, 0.0001)) * GameConfig.rotation_early_max
+		else:
+			var rt: float = clampf((normalized - GameConfig.rotation_drag_start)
+				/ maxf(1.0 - GameConfig.rotation_drag_start, 0.0001), 0.0, 1.0)
+			rot_ratio = lerpf(GameConfig.rotation_early_max, 1.0, rt)
+		var angle_limit: float = sgn * rot_ratio * GameConfig.rotation_max_offset
+		var target: float = base + angle_limit
 		if not is_nan(debug_aim_override):
 			target = debug_aim_override  # 测试用
 			angle_limit = 0.0
 		# 击球区反向位移 (平滑回位)
-		var target_zone: float = clampf(eff * GameConfig.hit_zone_sensitivity,
-			-GameConfig.max_hit_zone_offset, GameConfig.max_hit_zone_offset)
+		var target_zone: float = sgn * hit_zone_ratio * GameConfig.hit_zone_max_offset
 		hit_zone_offset = move_toward(hit_zone_offset, target_zone,
 			GameConfig.hit_zone_return_speed * step)
 		_update_hit_points()
@@ -115,6 +128,9 @@ func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
 		debug_target_rotation = target
 		debug_angle_limit = angle_limit
 		debug_hit_zone_offset = hit_zone_offset
+		debug_normalized_drag = normalized * sgn
+		debug_hit_zone_ratio = hit_zone_ratio
+		debug_rotation_ratio = rot_ratio
 		var err: float = wrapf(target - state.transform.get_rotation(), -PI, PI)
 		var desired_w: float = clampf(err * GameConfig.rotation_response,
 			-GameConfig.max_angular_velocity, GameConfig.max_angular_velocity)

@@ -40,19 +40,23 @@ var rotation_damping: float = 6.0       ## 无有效目标时的角速度衰减 
 
 # 鼠标：按住建立锚点，水平拖动 -> 同时驱动
 #   1) 两个击球区反向位移 (拳击出拳/收拳)
-#   2) 身体相对"面向桌中心"的小幅偏转 (受 max_rotation_offset 限制，不累积)
+#   2) 身体相对"面向桌中心"的小幅偏转 (受 rotation_max_offset 限制，不累积)
 #   只用 mouse_drag.x；固定左右映射；没有方向投影、没有角度累计。
 var aim_mouse_button: int = MOUSE_BUTTON_LEFT
 var mouse_drag_deadzone: float = 6.0        ## 水平死区 (屏幕像素)
 
-# 击球区 (两端判定区) 反向位移
-var hit_zone_sensitivity: float = 0.5       ## 每像素 -> 世界位移
-var max_hit_zone_offset: float = 40.0       ## 位移上限 (世界单位)
-var hit_zone_return_speed: float = 300.0    ## 松开后的回位速度 (单位/秒)
+# 鼠标拖动 -> 归一化距离 (0..1)，随后由两条独立曲线分配
+var mouse_drag_sensitivity: float = 0.008    ## 每像素 -> normalized_drag
 
-# 身体偏转 (相对"面向桌中心"，非累积)
-var rotation_sensitivity: float = 0.006     ## 每像素 -> 弧度 (角度上限)
-var max_rotation_offset: float = 0.7        ## 最大偏转角 (弧度)
+# 击球区 (两端判定区) 反向位移：前半段快速到顶，接近上限时渐缓
+var hit_zone_max_offset: float = 40.0        ## 位移上限 (世界单位)
+var hit_zone_drag_threshold: float = 0.45    ## normalized 达到此值 = 击球区满偏
+var hit_zone_return_speed: float = 300.0     ## 松开后的回位速度 (单位/秒)
+
+# 身体偏转 (相对"面向桌中心"，非累积)：前半段很小，过阈值后明显增加
+var rotation_max_offset: float = 0.7         ## 最大偏转角 (弧度)
+var rotation_drag_start: float = 0.5         ## normalized 达到此值 = 旋转开始明显增加
+var rotation_early_max: float = 0.12         ## 阈值前旋转最多占上限的比例 (非常小)
 
 # ============================================================
 #  球：伪 Z 轴 (高度) 系统

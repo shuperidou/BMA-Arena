@@ -37,16 +37,21 @@
 WASD   -> 世界坐标移动 (与朝向无关)
 基础朝向 -> 面向桌中心 (angle(char -> table_center))，带惯性维持
 按住鼠标 -> 建立锚点; 水平拖动 drag.x:
-   ├─ 两个击球区沿身体长轴反向位移 (一伸一缩)  [hit_zone_sensitivity, max_hit_zone_offset]
-   └─ 身体相对"面向桌中心"小幅偏转             [rotation_sensitivity, max_rotation_offset]
+    normalized = clamp(|drag.x| * mouse_drag_sensitivity, 0..1)
+    ├─ 击球区: 前半段快速到顶、接近上限渐缓 (ease-out)，到 hit_zone_drag_threshold 满偏
+    └─ 旋转:  阈值 rotation_drag_start 前非常小，之后明显增加
 松开鼠标 -> 击球区回位 + 身体回到面向桌中心 (平滑，不瞬跳)
 ```
 
 - WASD 永远对应屏幕上/下/左/右，角色朝哪都一样。
 - **朝向不再追随球**；球只影响球自己。基础姿态 = 面向桌中心。
-- 朝向**不累积**：`target = base + sign(drag.x) * clamp(|drag.x|*rot_sens, 0, max_rotation_offset)`；鼠标回锚点即回桌中心方向。
+- **两段式非线性曲线**（击球区与旋转不同步，共享同一次拖动）：
+  - 小拖动 → 几乎只动击球区（拳先伸出去）。
+  - 中拖动 → 击球区逼近上限，身体开始明显转。
+  - 大拖动 → 击球区锁在上限，多出的拖动量主要变成身体旋转。
+- 朝向**不累积**：`target = base + sign(drag.x) * rot_ratio * rotation_max_offset`；鼠标回锚点即回桌中心方向。
 - 固定左右映射（不随球/角色位置重解释）。鼠标 Y 轴不参与。
-- 参数：`hit_zone_sensitivity` / `max_hit_zone_offset` / `hit_zone_return_speed` / `rotation_sensitivity` / `max_rotation_offset` / `mouse_drag_deadzone` / `rotation_response` / `max_angular_velocity` / `rotation_acceleration` / `rotation_damping` / `aim_mouse_button`。
+- 参数：`mouse_drag_sensitivity`（像素→归一化）/ `hit_zone_drag_threshold` / `rotation_drag_start` / `rotation_early_max` / `hit_zone_max_offset` / `rotation_max_offset` / `hit_zone_return_speed` / `mouse_drag_deadzone` / `rotation_response` / `max_angular_velocity` / `rotation_acceleration` / `rotation_damping` / `aim_mouse_button`。
 - 已删除 Q/E，无绝对瞄准/投影/自动朝球/角度累计。玩家2 的键盘朝向只是本地双人测试的临时方案 [TEMP]。
 - `F1` 调试画出：桌中心、基础朝向(灰) / 目标朝向(品红) / 当前朝向(绿)、两个击球区的默认位置(空心)与当前偏移位置(实心)、锚点、当前鼠标，并显示 `base/target/rot/limit/zone/drag/dx`。
 

@@ -101,10 +101,11 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 		draw_circle(anchor, 6.0, Color(0.5, 0.85, 1.0, 0.9))
 		draw_line(anchor, cur, Color(0.5, 0.85, 1.0, 0.6), 1.5)
 		draw_circle(cur, 4.0, Color(0.6, 0.95, 1.0))
-	var txt := "base=%.2f target=%.2f rot=%.2f\nlimit=%.2f (max %.2f)\nzone=%.1f (max %.0f)\ndrag=%s dx=%.0fpx" % [
+	var txt := "base=%.2f target=%.2f rot=%.2f\nnorm_drag=%.2f\nhit_ratio=%.2f zone=%.1f/%.0f\nrot_ratio=%.2f limit=%.2f/%.2f\ndrag=%s dx=%.0fpx" % [
 		p1.debug_base_rotation, p1.debug_target_rotation, p1.rotation,
-		p1.debug_angle_limit, GameConfig.max_rotation_offset,
-		p1.debug_hit_zone_offset, GameConfig.max_hit_zone_offset,
+		p1.debug_normalized_drag,
+		p1.debug_hit_zone_ratio, p1.debug_hit_zone_offset, GameConfig.hit_zone_max_offset,
+		p1.debug_rotation_ratio, p1.debug_angle_limit, GameConfig.rotation_max_offset,
 		str(sch.is_dragging()), dx_screen]
 	draw_string(font, o + Vector2(12, 20), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.7, 0.95, 0.95))
 
