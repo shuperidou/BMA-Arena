@@ -14,6 +14,9 @@ Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Des
 # 自动对拉测试（验证发球/弹跳/计分）
 & "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes/RallyTest.tscn
 
+# 控制模型测试（世界移动/解耦/旋转惯性）
+& "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes/ControlTest.tscn
+
 # 编辑器
 & "D:\Godot\Godot_v4.7-stable_win64.exe" --path "D:\Godot\Games\ArenaBlock" -e
 ```
@@ -35,3 +38,4 @@ Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Des
 - 碰撞层：`1` = 玩家，`2` = 场地（墙/桌/边界）。球不使用物理层（自定义 z 物理）。
 - 球模型：俯视 xy + 独立高度 z；桌面高度为 0，地面 -`table_height`。
 - 输入用 physical keycode 轮询，没有用 InputMap。
+- **控制模型：平移与旋转严格解耦。** 移动永远是世界坐标（绝不用 `transform.basis * input`）；朝向用鼠标目标角度 + 限角加速度追踪。改控制时不要引入"角色前后左右"的耦合逻辑。

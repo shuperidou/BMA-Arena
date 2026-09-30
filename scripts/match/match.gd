@@ -76,7 +76,7 @@ func _physics_process(dt: float) -> void:
 func _begin_serve() -> void:
 	state = GameTypes.MatchState.SERVE
 	_interference_fired = false
-	_serve_latch = players[server_index - 1].input_scheme.serve_pressed()
+	_serve_latch = _server_serve_pressed(players[server_index - 1])
 	last_hitter = null
 	expected_receiver = _other(players[server_index - 1])
 	_reset_positions()
@@ -93,9 +93,12 @@ func _begin_serve() -> void:
 	state_changed.emit(state)
 	EventBus.notify("玩家%d 发球  (按发球键)" % server_index, 1.2)
 
+func _server_serve_pressed(p: PlayerController) -> bool:
+	return p.input_scheme != null and p.input_scheme.serve_pressed()
+
 func _tick_serve() -> void:
 	var server: PlayerController = players[server_index - 1]
-	var pressed: bool = server.input_scheme.serve_pressed()
+	var pressed: bool = _server_serve_pressed(server)
 	if pressed and not _serve_latch:
 		_serve_latch = true
 		_do_serve(server)

@@ -31,8 +31,13 @@ func _ready() -> void:
 	for i in 2:
 		var p := PlayerController.new()
 		p.name = "Player%d" % (i + 1)
-		var key_map: Dictionary = GameConfig.p1_keys if i == 0 else GameConfig.p2_keys
-		p.setup(i + 1, key_map)
+		var scheme: InputScheme
+		if i == 0:
+			scheme = InputScheme.new(GameConfig.p1_move, GameConfig.p1_serve, GameConfig.p1_aim_mode)
+		else:
+			scheme = InputScheme.new(GameConfig.p2_move, GameConfig.p2_serve, GameConfig.p2_aim_mode,
+				GameConfig.p2_rot_ccw, GameConfig.p2_rot_cw)
+		p.setup(i + 1, scheme)
 		p.global_position = Vector2(-300.0, 140.0) if i == 0 else Vector2(300.0, 140.0)
 		add_child(p)
 		players.append(p)

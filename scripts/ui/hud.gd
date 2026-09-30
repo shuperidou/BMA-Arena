@@ -30,9 +30,9 @@ func _ready() -> void:
 
 	_controls_label = _make_label(Vector2(24, 596), 18, Color(0.7, 0.74, 0.82))
 	_controls_label.size = Vector2(900, 110)
-	_controls_label.text = "玩家1  WASD 移动 / Q E 旋转 / 空格 发球\n" \
-		+ "玩家2  方向键 移动 / , . 旋转 / 回车 发球\n" \
-		+ "F1 调试显示   R 重开   Esc 退出"
+	_controls_label.text = "玩家1  WASD 世界移动 / 鼠标 朝向 / 空格 发球\n" \
+		+ "玩家2  方向键 世界移动 / , . 旋转 / 回车 发球 (测试用)\n" \
+		+ "F1 调试显示   F2 空间提示   R 重开   Esc 退出"
 
 	EventBus.message.connect(_on_message)
 	EventBus.score_changed.connect(_on_score)

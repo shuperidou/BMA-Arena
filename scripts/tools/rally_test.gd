@@ -18,6 +18,8 @@ func _ready() -> void:
 	ball = main_node.ball
 	players = main_node.players
 	main_node.debug_layer.enabled = true  # 确保调试绘制路径也被执行
+	for p in players:
+		p.input_scheme = null  # 测试里不让鼠标/键盘控制旋转，手动摆位更稳定
 
 	ball.table_bounced.connect(func(i: int) -> void:
 		events.append("TABLE%d y=%.0f z=%.0f" % [i, ball.global_position.y, ball.z]))

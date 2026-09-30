@@ -16,12 +16,13 @@ var input_scheme: InputScheme = null
 var ball: Ball = null
 
 var hit_points: Array[HitPoint] = []
+var debug_aim_override: float = NAN  ## 测试用：非 NAN 时覆盖鼠标目标角度
 var _last_touch_time: float = -10.0
 var _body_color: Color = Color(0.31, 0.82, 0.77)
 
-func setup(index: int, key_map: Dictionary) -> void:
+func setup(index: int, scheme: InputScheme) -> void:
 	player_index = index
-	input_scheme = InputScheme.new(key_map)
+	input_scheme = scheme
 	_body_color = Color(0.31, 0.82, 0.77) if index == 1 else Color(0.95, 0.43, 0.43)
 
 func _ready() -> void:
@@ -54,15 +55,14 @@ func _ready() -> void:
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 	var step: float = state.step
+	# --- 平移：世界坐标。WASD 永远对应世界方向，与 rotation 无关 ---
 	var dir: Vector2 = input_scheme.move_vector() if input_scheme != null else Vector2.ZERO
 	var target_v: Vector2 = dir * GameConfig.move_speed
 	var dv: Vector2 = target_v - state.linear_velocity
 	state.linear_velocity += dv.limit_length(GameConfig.move_accel * step)
 
-	var ta: float = input_scheme.turn_axis() if input_scheme != null else 0.0
-	var target_w: float = ta * GameConfig.turn_speed
-	var dw: float = target_w - state.angular_velocity
-	state.angular_velocity += clampf(dw, -GameConfig.turn_accel * step, GameConfig.turn_accel * step)
+	# --- 旋转：与平移完全独立 ---
+	_update_rotation(state, step)
 
 	for i in state.get_contact_count():
 		var obj: Object = state.get_contact_collider_object(i)
@@ -81,6 +81,26 @@ func _physics_process(_dt: float) -> void:
 			_last_touch_time = now
 			ball_touched.emit(self, hp)
 			return
+
+## 旋转追踪：鼠标给目标角度，带角加速度限制地逐渐转向 (有旋转惯性)。
+func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
+	if input_scheme == null:
+		return
+	var accel: float = GameConfig.rotation_acceleration * step
+	if input_scheme.aim_mode == InputScheme.AimMode.MOUSE:
+		var target: float = debug_aim_override if not is_nan(debug_aim_override) \
+			else input_scheme.mouse_aim_angle(self)
+		if is_nan(target):
+			# 鼠标太近或不在鼠标模式：角速度逐渐衰减
+			state.angular_velocity = move_toward(state.angular_velocity, 0.0, GameConfig.rotation_damping * step)
+			return
+		var err: float = wrapf(target - state.transform.get_rotation(), -PI, PI)
+		var desired_w: float = clampf(err * GameConfig.rotation_gain,
+			-GameConfig.max_angular_velocity, GameConfig.max_angular_velocity)
+		state.angular_velocity += clampf(desired_w - state.angular_velocity, -accel, accel)
+	elif input_scheme.aim_mode == InputScheme.AimMode.KEYBOARD:
+		var target_w: float = input_scheme.turn_axis() * GameConfig.max_angular_velocity
+		state.angular_velocity += clampf(target_w - state.angular_velocity, -accel, accel)
 
 func reset_to(pos: Vector2, rot: float) -> void:
 	linear_velocity = Vector2.ZERO
