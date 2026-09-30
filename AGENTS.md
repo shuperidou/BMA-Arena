@@ -36,6 +36,7 @@ Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Des
 ## 已知结构
 
 - 碰撞层：`1` = 玩家，`2` = 场地（墙/桌/边界）。球不使用物理层（自定义 z 物理）。
-- 球模型：俯视 xy + 独立高度 z；桌面高度为 0，地面 -`table_height`。
+- 球模型：俯视 XY + 独立高度 `height_z`（距地面）。`GROUND_Z=ground_z`，`TABLE_Z=table_z`（独立，不要假定为 0）。桌弹=下降且高度穿过 `table_z` 且 XY 在桌面内；`height_z<=ground_z` 落地。
+- 球的**视觉缩放只影响 _draw**，绝不改 `radius`（逻辑碰撞半径固定）。比赛逻辑读 `state`/`height_state`，不读视觉。
 - 输入用 physical keycode 轮询，没有用 InputMap。
 - **控制模型：平移与旋转严格解耦。** 移动永远是世界坐标（绝不用 `transform.basis * input`）；朝向用鼠标目标角度 + 限角加速度追踪。改控制时不要引入"角色前后左右"的耦合逻辑。

@@ -81,9 +81,10 @@ func _begin_serve() -> void:
 	expected_receiver = _other(players[server_index - 1])
 	_reset_positions()
 	ball.state = GameTypes.BallState.HELD
+	ball.height_state = GameTypes.BallHeightState.NONE
 	ball.reset_shot()
 	ball.last_hitter = null
-	ball.z = 0.0
+	ball.z = GameConfig.table_z
 	ball.vz = 0.0
 	ball.vel = Vector2.ZERO
 	ball.global_position = _serve_spot()
@@ -107,7 +108,7 @@ func _tick_serve() -> void:
 
 func _do_serve(server: PlayerController) -> void:
 	ball.global_position = _serve_spot()
-	ball.z = 0.0
+	ball.z = GameConfig.table_z
 	ball.launch_velocity(Vector2(0.0, -GameConfig.ball_hit_speed), GameConfig.ball_hit_vz)
 	ball.last_hitter = server
 	last_hitter = server
@@ -138,7 +139,7 @@ func _on_ball_touched(player: PlayerController, hit_point: HitPoint) -> void:
 		return
 	if not ball.returnable:
 		return
-	if ball.z > GameConfig.max_hit_height:
+	if ball.z < GameConfig.hit_height_min or ball.z > GameConfig.hit_height_max:
 		return
 	if player != expected_receiver:
 		return
@@ -150,7 +151,7 @@ func _apply_hit(player: PlayerController, hit_point: HitPoint) -> void:
 	var v: Vector2 = outward * GameConfig.ball_hit_speed \
 		+ player.linear_velocity * GameConfig.hit_player_vel_influence
 	ball.launch_velocity(v, GameConfig.ball_hit_vz)
-	ball.z = maxf(ball.z, 0.0)
+	ball.z = maxf(ball.z, GameConfig.table_z)
 	ball.last_hitter = player
 	last_hitter = player
 	expected_receiver = _other(player)

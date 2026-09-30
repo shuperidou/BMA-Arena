@@ -40,16 +40,30 @@ var rotation_damping: float = 6.0       ## 无鼠标目标时的角速度衰减 
 var min_mouse_distance: float = 6.0     ## 鼠标离角色太近则不改变目标朝向
 
 # ============================================================
-#  球 (俯视投影 + 独立高度 z)
+#  球：伪 Z 轴 (高度) 系统
 # ============================================================
-var ball_radius: float = 8.0
-var ball_gravity: float = 1800.0       ## [TUNED]
-var ball_table_rest: float = 0.8       ## 桌弹恢复系数 [TUNED]
-var ball_wall_rest: float = 0.85       ## 墙弹恢复系数 [TUNED]
+## 约定 (全部是世界单位)：
+##   position.x / position.y = 场地水平位置 (XY)
+##   height_z                = 球距地面的高度 (独立变量，不参与 XY)
+##   GROUND_Z = 地面高度；TABLE_Z = 桌面高度 (独立，可改)
+var ground_z: float = 0.0              ## 落地高度 (height_z <= ground_z => 球死)
+var table_z: float = 60.0              ## 桌面高度 (不假定为 0)
+var wall_max_height: float = 300.0     ## 墙有效反弹高度上限 (预留；超过则飞过墙)
+
+var ball_radius: float = 8.0           ## 逻辑碰撞半径 (固定，不随视觉缩放)
+var ball_gravity: float = 1800.0       ## [TUNED] z 方向重力
+var table_bounce_factor: float = 0.8   ## 桌弹垂直恢复系数 [TUNED]
+var ball_wall_rest: float = 0.85       ## 墙弹水平恢复系数 [TUNED]
 var ball_air_drag: float = 0.10        ## 每秒水平阻尼比例
 var bounce_vz_threshold: float = 25.0  ## 小于此下落速度不算"弹"，视为贴桌滚动
-var table_height: float = 60.0         ## 桌面高于地面 (用于判定落地)
-var ball_visual_height_scale: float = 0.35
+
+# --- 视觉：高度 -> 大小 + 阴影 (游戏化提示，非真实透视) ---
+var base_ball_scale: float = 1.0
+var height_scale_factor: float = 0.9   ## 高度对显示大小的贡献
+var min_visual_scale: float = 0.8
+var max_visual_scale: float = 2.6
+var shadow_offset_factor: float = 0.35 ## 每单位高度，球相对影子向上偏移的像素数
+var shadow_scale: float = 1.0          ## 影子不随高度缩放
 
 ## 墙弹后"辅助回桌"：纯物理下球会掉进桌墙缝隙，这里主动给一个落点。
 ## 这是游戏化处理 (设计文档允许)，可用 wall_return_assist 关闭。
@@ -62,7 +76,10 @@ var ball_hit_vz: float = 260.0         ## [TUNED]
 var ball_hit_vz_min: float = 150.0
 var ball_hit_vz_max: float = 360.0
 var hit_player_vel_influence: float = 0.5
-var max_hit_height: float = 60.0       ## 球高于此不可被击打 (约等于桌面高度)
+
+## 可击球的高度范围 (第一阶段宽松)
+var hit_height_min: float = 0.0
+var hit_height_max: float = 150.0
 
 # ============================================================
 #  比赛 (计分/轮换均为临时方案) [TEMP]

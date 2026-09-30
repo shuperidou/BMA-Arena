@@ -60,8 +60,8 @@ func _draw_debug() -> void:
 	# 球信息
 	var b: Ball = match_ref.ball
 	if b != null:
-		var txt := "state=%d\nvel=(%.0f,%.0f)\nz=%.1f vz=%.1f\n桌弹=%d 接弹=%d\n撞墙=%s 可回击=%s" % [
-			b.state, b.vel.x, b.vel.y, b.z, b.vz,
+		var txt := "state=%d height=%d\nvel=(%.0f,%.0f)\nz=%.1f vz=%.1f scale=%.2f\n桌弹=%d 接弹=%d\n撞墙=%s 可回击=%s" % [
+			b.state, b.height_state, b.vel.x, b.vel.y, b.z, b.vz, b.visual_scale(),
 			b.table_bounces, b.receiver_bounces,
 			str(b.wall_since_hit), str(b.returnable)]
 		draw_string(font, b.global_position + Vector2(16, -12), txt,

@@ -18,6 +18,15 @@ enum BallState {
 	DEAD,     ## 已死
 }
 
+## 球的高度状态 (逻辑状态，比赛系统读取，不靠视觉判断)
+enum BallHeightState {
+	NONE,       ## 非飞行
+	ON_GROUND,  ## 触地
+	ASCENDING,  ## 上升
+	DESCENDING, ## 下降
+	HOVERING,   ## 接近顶点/贴桌
+}
+
 ## 球死亡原因 (TEMP 计分规则依据)
 enum DeathReason {
 	NONE,

@@ -120,6 +120,28 @@ ArenaBlock/
 
 ---
 
+## 球的伪 Z 轴（高度）系统
+
+2D 俯视 + 一个独立高度变量，不改成 3D。
+
+```
+position (x,y) = 场地水平位置       vel = 水平速度
+height_z       = 距地面高度         vz  = 垂直速度
+radius         = 逻辑碰撞半径(固定)  state/height_state = 逻辑状态
+```
+
+- `GROUND_Z = GameConfig.ground_z`（落地 → 球死）；`TABLE_Z = GameConfig.table_z`（独立，可改）。
+- 桌弹同时看 XY 与 Z：**下降中 + 高度穿过 TABLE_Z + XY 在桌面内** 才弹。
+- 墙：XY 反弹，且 `height_z <= wall_max_height`（预留，超了就飞过墙）。
+- 可击球高度范围：`hit_height_min` / `hit_height_max`（第一阶段宽松）。
+- 击球是否有效由 `Match` 读 **逻辑状态** 判断，绝不靠视觉。
+
+视觉只做可读性，且**不改变逻辑半径**：
+
+- 高度越高 → 球显示越大：`visual_scale = clamp(base_ball_scale * (1 + height_scale_factor * z/TABLE_Z), min_visual_scale, max_visual_scale)`。
+- 影子固定在 XY、大小固定；球相对影子向上偏移 `z * shadow_offset_factor`，高度越高两者越远。
+- 参数：`base_ball_scale` / `height_scale_factor` / `min_visual_scale` / `max_visual_scale` / `shadow_offset_factor` / `shadow_scale`。
+
 ## 临时设计（TEMP，等试玩后再改）
 
 | 项 | 当前临时方案 | 位置 |
