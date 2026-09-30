@@ -27,7 +27,7 @@ var table_center: Vector2 = Vector2(0.0, -103.0)
 var player_half_length: float = 90.0   ## 纺锤半长 (两端到中心)
 var player_radius: float = 14.0        ## 纺锤半径
 var player_mass: float = 1.0
-var hit_reach: float = 22.0            ## 击球点判定额外半径 [TUNED]
+var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [TUNED]
 
 var move_speed: float = 360.0
 var move_accel: float = 3200.0         ## 速度变化最大加速度 (惯性/手感)
