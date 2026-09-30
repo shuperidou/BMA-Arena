@@ -19,8 +19,12 @@ var rot_cw_key: int
 
 # 鼠标拖动状态 (锚点方案)
 var _dragging: bool = false
-var _anchor_screen: Vector2 = Vector2.ZERO  ## 屏幕/视口坐标 (角度输入用)
+var _anchor_screen: Vector2 = Vector2.ZERO  ## 屏幕/视口坐标 (拖动输入用)
 var _anchor_world: Vector2 = Vector2.ZERO   ## 世界坐标 (仅 Debug 画图)
+
+# 测试用覆盖 (无头环境无法真实移动鼠标)
+var debug_dragging_override: bool = false
+var debug_drag_override: Vector2 = Vector2.ZERO
 
 func _init(p_move: Dictionary, p_serve: int, p_aim: int, p_ccw: int = 0, p_cw: int = 0) -> void:
 	move_keys = p_move
@@ -64,16 +68,22 @@ func update_mouse(owner: Node2D) -> void:
 		_dragging = false
 
 func is_dragging() -> bool:
-	return _dragging
+	return debug_dragging_override or _dragging
 
 func _viewport_mouse(owner: Node2D) -> Vector2:
 	return owner.get_viewport().get_mouse_position()
 
-## 屏幕空间水平拖动距离 (像素)。旋转只用这个，不用世界坐标。
-func mouse_drag_screen_x(owner: Node2D) -> float:
+## 屏幕/视口空间的完整 2D 拖动向量 (像素)。
+func mouse_drag_screen(owner: Node2D) -> Vector2:
+	if debug_dragging_override:
+		return debug_drag_override
 	if not _dragging:
-		return 0.0
-	return _viewport_mouse(owner).x - _anchor_screen.x
+		return Vector2.ZERO
+	return _viewport_mouse(owner) - _anchor_screen
+
+## 水平分量 (兼容保留)。
+func mouse_drag_screen_x(owner: Node2D) -> float:
+	return mouse_drag_screen(owner).x
 
 func mouse_anchor_world() -> Vector2:
 	return _anchor_world

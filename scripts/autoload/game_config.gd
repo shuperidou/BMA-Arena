@@ -32,31 +32,23 @@ var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [
 var move_speed: float = 360.0
 var move_accel: float = 3200.0         ## 速度变化最大加速度 (惯性/手感)
 
-# 旋转：基础朝向 = 面向桌中心；鼠标拖动只允许"小幅偏转"(不累积)
-var max_angular_velocity: float = 80.0   ## rad/s 最大角速度
-var rotation_acceleration: float = 300.0 ## rad/s^2 角速度变化上限 (旋转惯性)
-var rotation_response: float = 6.0      ## 角度误差 -> 目标角速度的响应增益
-var rotation_damping: float = 6.0       ## 无有效目标时的角速度衰减 (rad/s^2)
+# 旋转：玩家1 的 rotation 完全交给物理 (撞桌/墙/角色会自然转)；
+# 初始朝向 = 面向桌中心。以下参数只给键盘方案(玩家2 临时)使用。
+var max_angular_velocity: float = 80.0   ## rad/s 最大角速度 (仅键盘方案)
+var rotation_acceleration: float = 300.0 ## rad/s^2 角速度变化上限 (仅键盘方案)
+var rotation_response: float = 6.0       ## 角度误差 -> 目标角速度的增益 (仅键盘方案)
+var rotation_damping: float = 6.0        ## 无有效目标时的角速度衰减 (仅键盘方案)
+var player_angular_damp: float = 3.0     ## 物理角阻尼：撞击旋转后逐渐停下
 
-# 鼠标：按住建立锚点，水平拖动 -> 同时驱动
-#   1) 两个击球区反向位移 (拳击出拳/收拳)
-#   2) 身体相对"面向桌中心"的小幅偏转 (受 rotation_max_offset 限制，不累积)
-#   只用 mouse_drag.x；固定左右映射；没有方向投影、没有角度累计。
+# 鼠标：按住建立锚点。鼠标在世界/屏幕中的 2D 拖动向量，**原样**作为
+# 击球判定区在角色**局部坐标系**中的位移 (故意不做 world->local 转换)。
+#   击球区A局部偏移 = +delta ; 击球区B局部偏移 = -delta  (反向)
+#   不做缩放(数值相同)；只在局部空间限制大小；鼠标不改变 rotation。
 var aim_mouse_button: int = MOUSE_BUTTON_LEFT
-var mouse_drag_deadzone: float = 6.0        ## 水平死区 (屏幕像素)
-
-# 鼠标拖动 -> 归一化距离 (0..1)，随后由两条独立曲线分配
-var mouse_drag_sensitivity: float = 0.008    ## 每像素 -> normalized_drag
-
-# 击球区 (两端判定区) 反向位移：前半段快速到顶，接近上限时渐缓
-var hit_zone_max_offset: float = 40.0        ## 位移上限 (世界单位)
-var hit_zone_drag_threshold: float = 0.45    ## normalized 达到此值 = 击球区满偏
+var mouse_drag_deadzone: float = 0.0         ## 拖动死区 (屏幕像素, 0=不启用)
+var hit_zone_drag_scale: float = 1.0         ## 鼠标位移 -> 局部偏移 (1.0 = 数值相同)
+var hit_zone_max_offset: float = 40.0        ## 局部位移上限 (世界单位)
 var hit_zone_return_speed: float = 300.0     ## 松开后的回位速度 (单位/秒)
-
-# 身体偏转 (相对"面向桌中心"，非累积)：前半段很小，过阈值后明显增加
-var rotation_max_offset: float = 0.7         ## 最大偏转角 (弧度)
-var rotation_drag_start: float = 0.5         ## normalized 达到此值 = 旋转开始明显增加
-var rotation_early_max: float = 0.12         ## 阈值前旋转最多占上限的比例 (非常小)
 
 # ============================================================
 #  球：伪 Z 轴 (高度) 系统

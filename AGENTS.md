@@ -40,5 +40,5 @@ Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Des
 - 球的**视觉缩放只影响 _draw**，绝不改 `radius`（逻辑碰撞半径固定）。比赛逻辑读 `state`/`height_state`，不读视觉。
 - 输入用 physical keycode 轮询，没有用 InputMap。
 - **控制模型：平移与旋转严格解耦。** 移动永远是世界坐标（绝不用 `transform.basis * input`）。
-- 朝向 = 基础"面向桌中心"(`GameConfig.table_center`)，带惯性维持；**不再追随球**。
-- 鼠标横向拖动（锚点方案，只用 `mouse_drag.x`，屏幕像素）先归一化 `normalized = clamp(|dx|*mouse_drag_sensitivity,0..1)`，再用两条**独立、非线性**曲线分配：① 击球区反向位移（ease-out，到 `hit_zone_drag_threshold` 满偏，`hit_zone_max_offset`；松开按 `hit_zone_return_speed` 平滑回位）；② 身体相对桌中心方向偏转（`rotation_drag_start` 前只有 `rotation_early_max`，之后 ramp 到 1，`rotation_max_offset`）。**不累积角度**，不按球/角色位置重解释左右。改控制时不要引入"角色前后左右"、"绝对鼠标瞄准"或"自动朝球"的耦合。
+- 朝向：初始面向桌中心；之后 rotation **完全交给物理**（玩家1 不做任何主动旋转/回正）。球不影响朝向。
+- 鼠标（锚点方案）：`mouse_delta = 当前鼠标 - 锚点`（屏幕/视口 2D 向量）。**把它数值原样当作击球区的局部坐标系位移，绝不做 world->local 转换**（故意让角色 rotation 影响击球区最终世界方向）。A=(0,-L)+delta，B=(0,+L)-delta（反向），`|delta|<=hit_zone_max_offset`。松开按 `hit_zone_return_speed` 平滑回位。鼠标**不修改 rotation**。改控制时不要引入 `transform.basis*input`、世界→局部转换、绝对鼠标瞄准或自动朝球。

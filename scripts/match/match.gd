@@ -128,8 +128,11 @@ func _reset_positions() -> void:
 	var sign: float = -1.0 if server_index == 1 else 1.0
 	var server: PlayerController = players[server_index - 1]
 	var receiver: PlayerController = _other(server)
-	server.reset_to(Vector2(sign * 140.0, 60.0), 0.0)
-	receiver.reset_to(Vector2(-sign * 140.0, 140.0), 0.0)
+	var sp := Vector2(sign * 140.0, 60.0)
+	var rp := Vector2(-sign * 140.0, 140.0)
+	# 初始朝向 = 面向桌中心 (之后完全交给物理，不再主动旋转)
+	server.reset_to(sp, (GameConfig.table_center - sp).angle())
+	receiver.reset_to(rp, (GameConfig.table_center - rp).angle())
 
 # ------------------------------------------------------------
 #  击球

@@ -75,39 +75,35 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 	if sch == null or sch.aim_mode != InputScheme.AimMode.MOUSE:
 		return
 	var o: Vector2 = p1.global_position
-	var length := 110.0
-	# 桌中心
-	var tc: Vector2 = GameConfig.table_center
-	draw_circle(tc, 10.0, Color(1.0, 0.85, 0.2, 0.18))
-	draw_arc(tc, 10.0, 0.0, TAU, 24, Color(1.0, 0.85, 0.2, 0.9), 2.0)
-	draw_line(tc + Vector2(-14, 0), tc + Vector2(14, 0), Color(1.0, 0.85, 0.2, 0.9), 2.0)
-	draw_line(tc + Vector2(0, -14), tc + Vector2(0, 14), Color(1.0, 0.85, 0.2, 0.9), 2.0)
-	# 基础朝向 (灰) / 目标 (品红) / 当前 (绿)
-	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_base_rotation) * length, Color(0.8, 0.8, 0.8, 0.7), 2.0)
-	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_target_rotation) * length, Color(1.0, 0.35, 0.85, 0.9), 2.0)
-	draw_line(o, o + Vector2.RIGHT.rotated(p1.rotation) * length, Color(0.4, 1.0, 0.4, 0.85), 2.0)
-	# 击球区：默认位置 (空心) + 当前 (实心)
 	var l: float = GameConfig.player_half_length
+	# 桌中心 (参考)
+	var tc: Vector2 = GameConfig.table_center
+	draw_line(o, tc, Color(1.0, 0.85, 0.2, 0.22), 1.0)
+	draw_circle(tc, 8.0, Color(1.0, 0.85, 0.2, 0.2))
+	draw_arc(tc, 8.0, 0.0, TAU, 20, Color(1.0, 0.85, 0.2, 0.85), 2.0)
+	# 击球区默认位置 (空心) 与当前位置 (实心，HitPoint 也画了触及圈)
 	for local_pos in [Vector2(0.0, -l), Vector2(0.0, l)]:
 		draw_arc(p1.to_global(local_pos), 6.0, 0.0, TAU, 20, Color(0.6, 0.6, 0.65, 0.85), 1.5)
-	for hp in p1.hit_points:
-		draw_circle(hp.global_position, 4.0, Color(0.35, 1.0, 0.4))
+	if p1.hit_points.size() >= 2:
+		draw_circle(p1.hit_points[0].global_position, 4.0, Color(0.35, 1.0, 0.4))
+		draw_circle(p1.hit_points[1].global_position, 4.0, Color(0.35, 1.0, 0.4))
+		# 角色自身朝向 (绿)
+		draw_line(o, o + Vector2.RIGHT.rotated(p1.rotation) * 110.0, Color(0.4, 1.0, 0.4, 0.7), 2.0)
 	# 锚点 / 当前鼠标 (世界坐标)
-	var dx_screen: float = 0.0
 	if sch.is_dragging():
 		var anchor: Vector2 = sch.mouse_anchor_world()
 		var cur: Vector2 = sch.current_mouse_world(self)
-		dx_screen = sch.mouse_drag_screen_x(self)
 		draw_circle(anchor, 6.0, Color(0.5, 0.85, 1.0, 0.9))
 		draw_line(anchor, cur, Color(0.5, 0.85, 1.0, 0.6), 1.5)
 		draw_circle(cur, 4.0, Color(0.6, 0.95, 1.0))
-	var txt := "base=%.2f target=%.2f rot=%.2f\nnorm_drag=%.2f\nhit_ratio=%.2f zone=%.1f/%.0f\nrot_ratio=%.2f limit=%.2f/%.2f\ndrag=%s dx=%.0fpx" % [
-		p1.debug_base_rotation, p1.debug_target_rotation, p1.rotation,
-		p1.debug_normalized_drag,
-		p1.debug_hit_zone_ratio, p1.debug_hit_zone_offset, GameConfig.hit_zone_max_offset,
-		p1.debug_rotation_ratio, p1.debug_angle_limit, GameConfig.rotation_max_offset,
-		str(sch.is_dragging()), dx_screen]
-	draw_string(font, o + Vector2(12, 20), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.7, 0.95, 0.95))
+	var a_pos: Vector2 = p1.hit_points[0].position if p1.hit_points.size() >= 2 else Vector2.ZERO
+	var b_pos: Vector2 = p1.hit_points[1].position if p1.hit_points.size() >= 2 else Vector2.ZERO
+	var txt := "rot=%.2f\nMouseWorldDelta=(%.1f,%.1f)\nHitLocalDelta  =(%.1f,%.1f)\nA_local=(%.1f,%.1f) B_local=(%.1f,%.1f)" % [
+		p1.rotation,
+		p1.debug_mouse_world_delta.x, p1.debug_mouse_world_delta.y,
+		p1.hit_zone_offset_local.x, p1.hit_zone_offset_local.y,
+		a_pos.x, a_pos.y, b_pos.x, b_pos.y]
+	draw_string(font, o + Vector2(12, 22), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.8, 1.0, 0.9, 0.95))
 
 func _draw_capsule(c: Vector2, angle: float, hl: float, r: float, color: Color) -> void:
 	var seg: float = hl - r

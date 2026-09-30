@@ -16,15 +16,11 @@ var input_scheme: InputScheme = null
 var ball: Ball = null
 
 var hit_points: Array[HitPoint] = []
-var debug_aim_override: float = NAN  ## 测试用：非 NAN 时覆盖目标角度
-var debug_base_rotation: float = 0.0    ## 面向桌中心的基础朝向
-var debug_target_rotation: float = 0.0  ## 基础朝向 ± 偏转
-var debug_angle_limit: float = 0.0      ## 当前拖动允许的角度偏转
-var debug_normalized_drag: float = 0.0  ## 归一化拖动 (带符号)
-var debug_hit_zone_ratio: float = 0.0   ## 击球区响应曲线输出 (0..1)
-var debug_rotation_ratio: float = 0.0   ## 旋转响应曲线输出 (0..1)
-var hit_zone_offset: float = 0.0        ## 平滑后的击球区位移
-var debug_hit_zone_offset: float = 0.0  ## Debug 显示用
+## 击球区在角色局部坐标系中的位移 (2D)。
+## 直接复用鼠标拖动向量的数值，**不做 world->local 转换**。
+var hit_zone_offset_local: Vector2 = Vector2.ZERO
+var debug_mouse_world_delta: Vector2 = Vector2.ZERO    ## 鼠标原始拖动向量
+var debug_hit_zone_local_delta: Vector2 = Vector2.ZERO ## 限幅后的目标局部偏移
 var _last_touch_time: float = -10.0
 var _body_color: Color = Color(0.31, 0.82, 0.77)
 
@@ -41,7 +37,7 @@ func _ready() -> void:
 	contact_monitor = true
 	max_contacts_reported = 8
 	linear_damp = 0.0
-	angular_damp = 0.0
+	angular_damp = GameConfig.player_angular_damp  # 撞击旋转后逐渐停下
 
 	var cap := CapsuleShape2D.new()
 	cap.radius = GameConfig.player_radius
@@ -69,8 +65,8 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 	var dv: Vector2 = target_v - state.linear_velocity
 	state.linear_velocity += dv.limit_length(GameConfig.move_accel * step)
 
-	# --- 旋转：与平移完全独立 ---
-	_update_rotation(state, step)
+	# --- 击球区 / (仅键盘方) 旋转 ---
+	_update_controls(state, step)
 
 	for i in state.get_contact_count():
 		var obj: Object = state.get_contact_collider_object(i)
@@ -90,72 +86,43 @@ func _physics_process(_dt: float) -> void:
 			ball_touched.emit(self, hp)
 			return
 
-## 旋转追踪：鼠标给目标角度，带角加速度限制地逐渐转向 (有旋转惯性)。
-func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
+## 控制击球区位置 (玩家1) / (玩家2 临时) 键盘旋转。玩家1 的 rotation 完全交给物理。
+func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 	if input_scheme == null:
 		return
-	var accel: float = GameConfig.rotation_acceleration * step
-	if input_scheme.aim_mode == InputScheme.AimMode.MOUSE:
-		input_scheme.update_mouse(self)
-		var origin: Vector2 = state.transform.origin
-		# 基础朝向 = 面向桌中心 (球不再影响朝向)
-		var base: float = (GameConfig.table_center - origin).angle()
-		var eff: float = _effective_drag()   # 有符号像素 (已去死区)
-		var sgn: float = signf(eff)
-		var normalized: float = clampf(absf(eff) * GameConfig.mouse_drag_sensitivity, 0.0, 1.0)
-		# 击球区曲线：前半段快速到顶，接近上限渐缓 (ease-out)
-		var hz_t: float = clampf(normalized / maxf(GameConfig.hit_zone_drag_threshold, 0.0001), 0.0, 1.0)
-		var hit_zone_ratio: float = 1.0 - pow(1.0 - hz_t, 2.0)
-		# 旋转曲线：阈值前非常小，阈值后明显增加
-		var rot_ratio: float
-		if normalized < GameConfig.rotation_drag_start:
-			rot_ratio = (normalized / maxf(GameConfig.rotation_drag_start, 0.0001)) * GameConfig.rotation_early_max
-		else:
-			var rt: float = clampf((normalized - GameConfig.rotation_drag_start)
-				/ maxf(1.0 - GameConfig.rotation_drag_start, 0.0001), 0.0, 1.0)
-			rot_ratio = lerpf(GameConfig.rotation_early_max, 1.0, rt)
-		var angle_limit: float = sgn * rot_ratio * GameConfig.rotation_max_offset
-		var target: float = base + angle_limit
-		if not is_nan(debug_aim_override):
-			target = debug_aim_override  # 测试用
-			angle_limit = 0.0
-		# 击球区反向位移 (平滑回位)
-		var target_zone: float = sgn * hit_zone_ratio * GameConfig.hit_zone_max_offset
-		hit_zone_offset = move_toward(hit_zone_offset, target_zone,
-			GameConfig.hit_zone_return_speed * step)
-		_update_hit_points()
-		debug_base_rotation = base
-		debug_target_rotation = target
-		debug_angle_limit = angle_limit
-		debug_hit_zone_offset = hit_zone_offset
-		debug_normalized_drag = normalized * sgn
-		debug_hit_zone_ratio = hit_zone_ratio
-		debug_rotation_ratio = rot_ratio
-		var err: float = wrapf(target - state.transform.get_rotation(), -PI, PI)
-		var desired_w: float = clampf(err * GameConfig.rotation_response,
-			-GameConfig.max_angular_velocity, GameConfig.max_angular_velocity)
-		state.angular_velocity += clampf(desired_w - state.angular_velocity, -accel, accel)
-	elif input_scheme.aim_mode == InputScheme.AimMode.KEYBOARD:
+	if input_scheme.aim_mode == InputScheme.AimMode.KEYBOARD:
+		# 仅玩家2 临时方案：键盘主动旋转
+		var accel: float = GameConfig.rotation_acceleration * step
 		var target_w: float = input_scheme.turn_axis() * GameConfig.max_angular_velocity
 		state.angular_velocity += clampf(target_w - state.angular_velocity, -accel, accel)
-
-## 去掉死区后的水平拖动 (屏幕像素)。未拖动或死区内返回 0。
-func _effective_drag() -> float:
-	if input_scheme == null or not input_scheme.is_dragging():
-		return 0.0
-	var dx: float = input_scheme.mouse_drag_screen_x(self)
+		return
+	if input_scheme.aim_mode != InputScheme.AimMode.MOUSE:
+		return
+	input_scheme.update_mouse(self)
+	# 鼠标世界/屏幕拖动向量 -> 原样作为击球区"局部"位移向量 (故意不做转换/缩放)
+	var raw: Vector2 = input_scheme.mouse_drag_screen(self)
+	debug_mouse_world_delta = raw
+	var drag: Vector2 = raw
 	var dead: float = GameConfig.mouse_drag_deadzone
-	if absf(dx) <= dead:
-		return 0.0
-	return dx - signf(dx) * dead
+	if dead > 0.0:
+		if drag.length() <= dead:
+			drag = Vector2.ZERO
+		else:
+			drag = drag - drag.normalized() * dead
+	var target_local: Vector2 = (drag * GameConfig.hit_zone_drag_scale) \
+		.limit_length(GameConfig.hit_zone_max_offset)
+	hit_zone_offset_local = hit_zone_offset_local.move_toward(target_local,
+		GameConfig.hit_zone_return_speed * step)
+	_update_hit_points()
+	debug_hit_zone_local_delta = target_local
 
-## 两个击球区沿身体长轴反向位移 (拳击出拳/收拳)。
+## 两个击球区在角色局部坐标系中反向位移 (A=+delta, B=-delta)，再经 Transform 转世界。
 func _update_hit_points() -> void:
 	if hit_points.size() < 2:
 		return
 	var l: float = GameConfig.player_half_length
-	hit_points[0].position = Vector2(0.0, -l + hit_zone_offset)  # 前端
-	hit_points[1].position = Vector2(0.0, l + hit_zone_offset)   # 后端
+	hit_points[0].position = Vector2(0.0, -l) + hit_zone_offset_local  # 前端 A
+	hit_points[1].position = Vector2(0.0, l) - hit_zone_offset_local   # 后端 B
 
 func reset_to(pos: Vector2, rot: float) -> void:
 	linear_velocity = Vector2.ZERO
