@@ -34,15 +34,17 @@
 平移与旋转**完全解耦**：
 
 ```
-WASD  -> 世界坐标移动向量 -> 角色位置    (不受 rotation 影响)
-鼠标  -> 目标角度 -> 带惯性旋转追踪 -> 角色 rotation
+WASD  -> 世界坐标移动向量 -> 角色位置          (不受 rotation 影响)
+朝向  -> 默认朝球；按住鼠标拖动改变目标点 -> 带惯性旋转追踪 -> 角色 rotation
 ```
 
 - WASD 永远对应屏幕上/下/左/右，角色朝哪都一样。
-- 鼠标只给"目标角度"，角色用限角加速度逐渐转向，不瞬移。
-- 允许"身体朝一边、往另一个方向移动"（侧滑、倒退、横移）。
-- 参数集中在 `GameConfig`：`max_angular_velocity` / `rotation_acceleration` / `rotation_gain` / `rotation_damping` / `min_mouse_distance`。
-- 玩家1 的基础控制就是 **WASD + 鼠标**，已删除 Q/E 旋转；玩家2 的键盘朝向只是本地双人测试的临时方案 [TEMP]。
+- 朝向默认 = 球的 XY 投影（忽略高度 Z）。
+- 按住鼠标：以**按下瞬间的位置为锚点**做相对偏移，`aim_point = ball_xy + (mouse - anchor) * mouse_to_world_scale`（限制 `max_aim_offset`）；松开回正到球。按下瞬间不跳变。
+- 旋转带惯性（限角加速度），不瞬移。允许"身体朝一边、往另一个方向移动"。
+- 参数：`max_angular_velocity` / `rotation_acceleration` / `rotation_gain` / `rotation_damping` / `mouse_to_world_scale` / `max_aim_offset` / `aim_mouse_button`。
+- 已删除 Q/E。玩家2 的键盘朝向只是本地双人测试的临时方案 [TEMP]。
+- `F1` 调试会画出：球的 XY 投影、锚点、当前鼠标、偏移、`aim_point`、当前朝向(绿)与目标朝向(品红)、以及「球→aim_point」辅助线。
 
 ### 无头自动对拉测试（开发用）
 
