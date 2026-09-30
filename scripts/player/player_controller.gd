@@ -17,7 +17,8 @@ var ball: Ball = null
 
 var hit_points: Array[HitPoint] = []
 var debug_aim_override: float = NAN  ## 测试用：非 NAN 时覆盖目标角度
-var debug_aim_point: Vector2 = Vector2.ZERO
+var debug_ball_angle: float = 0.0     ## 朝球方向 (目标角基准)
+var debug_angle_offset: float = 0.0   ## 鼠标拖动产生的角度偏移
 var debug_target_rotation: float = 0.0
 var debug_has_aim: bool = false
 var _last_touch_time: float = -10.0
@@ -97,26 +98,30 @@ func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
 		if not is_nan(debug_aim_override):
 			# 测试用：直接给目标角度
 			target = debug_aim_override
-			debug_aim_point = origin + Vector2.RIGHT.rotated(target) * 100.0
+			debug_ball_angle = target
+			debug_angle_offset = 0.0
 			debug_has_aim = true
 		else:
-			# 默认朝球 (只用球的 XY 投影，忽略高度 Z)
+			# 基准 = 朝球 (只用球的 XY 投影，忽略高度 Z)
 			var ball_xy: Vector2 = ball.global_position if ball != null else origin + Vector2(0.0, -100.0)
-			var aim_point: Vector2 = ball_xy
+			var ball_dir: Vector2 = ball_xy - origin
+			var ball_angle: float = ball_dir.angle() if ball_dir.length() > 1.0 else state.transform.get_rotation()
+			# 鼠标水平拖动 -> 角度偏移 (不累积；死区内为 0)
+			var angle_offset: float = 0.0
 			if input_scheme.is_dragging():
-				var off: Vector2 = input_scheme.mouse_world_offset(self).limit_length(GameConfig.max_aim_offset)
-				aim_point = ball_xy + off
-			debug_aim_point = aim_point
-			var d: Vector2 = aim_point - origin
-			if d.length() > 1.0:
-				target = d.angle()
-				debug_has_aim = true
-			else:
-				target = state.transform.get_rotation()
-				debug_has_aim = false
+				var dx: float = input_scheme.mouse_drag_screen_x(self)
+				var dead: float = GameConfig.mouse_drag_deadzone
+				if absf(dx) > dead:
+					var eff: float = dx - signf(dx) * dead  # 死区外平滑，无跳变
+					angle_offset = clampf(eff * GameConfig.mouse_rotation_sensitivity,
+						-GameConfig.max_mouse_angle_offset, GameConfig.max_mouse_angle_offset)
+			target = ball_angle + angle_offset
+			debug_ball_angle = ball_angle
+			debug_angle_offset = angle_offset
+			debug_has_aim = true
 		debug_target_rotation = target
 		var err: float = wrapf(target - state.transform.get_rotation(), -PI, PI)
-		var desired_w: float = clampf(err * GameConfig.rotation_gain,
+		var desired_w: float = clampf(err * GameConfig.rotation_response,
 			-GameConfig.max_angular_velocity, GameConfig.max_angular_velocity)
 		state.angular_velocity += clampf(desired_w - state.angular_velocity, -accel, accel)
 	elif input_scheme.aim_mode == InputScheme.AimMode.KEYBOARD:

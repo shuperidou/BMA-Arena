@@ -33,15 +33,18 @@ var move_speed: float = 360.0
 var move_accel: float = 3200.0         ## 速度变化最大加速度 (惯性/手感)
 
 # 旋转：鼠标给"目标角度"，角色带惯性逐渐追踪 (设计: 独立于移动)
-var max_angular_velocity: float = 15000.0   ## rad/s 最大角速度
-var rotation_acceleration: float = 30.0 ## rad/s^2 角速度变化上限 (旋转惯性)
-var rotation_gain: float = 6.0          ## 角度误差 -> 目标角速度的增益
+var max_angular_velocity: float = 80.0   ## rad/s 最大角速度
+var rotation_acceleration: float = 300.0 ## rad/s^2 角速度变化上限 (旋转惯性)
+var rotation_response: float = 6.0      ## 角度误差 -> 目标角速度的响应增益
 var rotation_damping: float = 6.0       ## 无有效目标时的角速度衰减 (rad/s^2)
 
-# 鼠标相对瞄准：默认朝球；按住鼠标拖动，以"按下瞬间位置"为锚点偏移目标点。
+# 鼠标左右拖动 = 相对"朝球方向"的角度偏移 (屏幕像素 -> 弧度)
+#   不拖 = 朝球；右拖 = 顺时针；左拖 = 逆时针；距离决定偏移大小；松开 = 回正。
+#   只用 mouse_drag.x；没有方向投影、没有角度累计。
 var aim_mouse_button: int = MOUSE_BUTTON_LEFT
-var mouse_to_world_scale: float = 1.0   ## 鼠标拖动距离 -> 世界空间偏移距离
-var max_aim_offset: float = 220.0       ## target 点相对球的最大偏移 (世界单位)
+var mouse_rotation_sensitivity: float = 0.006  ## 每屏幕像素对应的弧度
+var max_mouse_angle_offset: float = 2.6        ## 角度偏移上限 (弧度)
+var mouse_drag_deadzone: float = 6.0           ## 水平死区 (屏幕像素)
 
 # ============================================================
 #  球：伪 Z 轴 (高度) 系统

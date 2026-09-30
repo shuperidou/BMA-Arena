@@ -74,29 +74,29 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 	var sch: InputScheme = p1.input_scheme
 	if sch == null or sch.aim_mode != InputScheme.AimMode.MOUSE or not p1.debug_has_aim:
 		return
+	var o: Vector2 = p1.global_position
 	var ball_xy: Vector2 = match_ref.ball.global_position
-	var aim: Vector2 = p1.debug_aim_point
-	# 球 -> aim_point 辅助线
-	draw_line(ball_xy, aim, Color(1.0, 0.45, 0.9, 0.9), 2.0)
-	draw_circle(aim, 9.0, Color(1.0, 0.35, 0.85, 0.25))
-	draw_arc(aim, 9.0, 0.0, TAU, 24, Color(1.0, 0.35, 0.85), 2.0)
+	var length := 110.0
 	# 球的 XY 投影
 	draw_circle(ball_xy, 3.0, Color(1.0, 0.45, 0.9))
-	# 锚点 / 当前鼠标
-	var off_len: float = 0.0
+	# 朝球方向线 (青)
+	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_ball_angle) * length, Color(0.3, 0.9, 1.0, 0.8), 2.0)
+	# 最终目标方向线 (品红)
+	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_target_rotation) * length, Color(1.0, 0.35, 0.85, 0.9), 2.0)
+	# 角色当前朝向 (绿)
+	draw_line(o, o + Vector2.RIGHT.rotated(p1.rotation) * length, Color(0.4, 1.0, 0.4, 0.85), 2.0)
+	# 锚点 / 当前鼠标 (用世界坐标绘制)
+	var dx_screen: float = 0.0
 	if sch.is_dragging():
-		var anchor: Vector2 = sch.mouse_anchor()
-		var cur: Vector2 = sch.current_mouse(self)
-		off_len = (cur - anchor).length() * GameConfig.mouse_to_world_scale
+		var anchor: Vector2 = sch.mouse_anchor_world()
+		var cur: Vector2 = sch.current_mouse_world(self)
+		dx_screen = sch.mouse_drag_screen_x(self)
 		draw_circle(anchor, 6.0, Color(0.5, 0.85, 1.0, 0.9))
 		draw_line(anchor, cur, Color(0.5, 0.85, 1.0, 0.6), 1.5)
 		draw_circle(cur, 4.0, Color(0.6, 0.95, 1.0))
-	# 角色当前朝向 (绿) 与目标朝向 (品红)
-	var o: Vector2 = p1.global_position
-	draw_line(o, o + Vector2.RIGHT.rotated(p1.rotation) * 90.0, Color(0.4, 1.0, 0.4, 0.85), 2.0)
-	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_target_rotation) * 90.0, Color(1.0, 0.35, 0.85, 0.85), 2.0)
-	var txt := "aim=(%.0f,%.0f) target=%.2f rot=%.2f\ndrag=%s offset=%.0f" % [
-		aim.x, aim.y, p1.debug_target_rotation, p1.rotation, str(sch.is_dragging()), off_len]
+	var txt := "ball_ang=%.2f offset=%.2f target=%.2f rot=%.2f\ndrag=%s dx=%.0fpx" % [
+		p1.debug_ball_angle, p1.debug_angle_offset, p1.debug_target_rotation, p1.rotation,
+		str(sch.is_dragging()), dx_screen]
 	draw_string(font, o + Vector2(12, 20), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.7, 0.95, 0.95))
 
 func _draw_capsule(c: Vector2, angle: float, hl: float, r: float, color: Color) -> void:
