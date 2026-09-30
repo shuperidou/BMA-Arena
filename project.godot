@@ -1,0 +1,36 @@
+; Engine configuration file.
+; Godot 4.7 project for "竞技场：阻挡个屁" (Arena: Block My Ass)
+; Phase 0 + Phase 1 prototype. See README.md and AGENTS.md.
+
+config_version=5
+
+[application]
+
+config/name="竞技场：阻挡个屁"
+config/description="Top-down 2D physics desk-wall-ball arena prototype."
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameConfig="*res://scripts/autoload/game_config.gd"
+EventBus="*res://scripts/autoload/event_bus.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[physics]
+
+common/physics_ticks_per_second=120
+2d/default_gravity=0.0
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.09, 0.1, 0.13, 1)
