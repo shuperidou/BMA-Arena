@@ -72,20 +72,27 @@ func _draw_debug() -> void:
 
 func _draw_aim(font: Font, p1: PlayerController) -> void:
 	var sch: InputScheme = p1.input_scheme
-	if sch == null or sch.aim_mode != InputScheme.AimMode.MOUSE or not p1.debug_has_aim:
+	if sch == null or sch.aim_mode != InputScheme.AimMode.MOUSE:
 		return
 	var o: Vector2 = p1.global_position
-	var ball_xy: Vector2 = match_ref.ball.global_position
 	var length := 110.0
-	# 球的 XY 投影
-	draw_circle(ball_xy, 3.0, Color(1.0, 0.45, 0.9))
-	# 朝球方向 (青) —— 松手时的回正目标
-	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_ball_angle) * length, Color(0.3, 0.9, 1.0, 0.8), 2.0)
-	# 最终目标方向线 (品红) —— 拖动时 = 基准+偏移；松手时与青线重合
+	# 桌中心
+	var tc: Vector2 = GameConfig.table_center
+	draw_circle(tc, 10.0, Color(1.0, 0.85, 0.2, 0.18))
+	draw_arc(tc, 10.0, 0.0, TAU, 24, Color(1.0, 0.85, 0.2, 0.9), 2.0)
+	draw_line(tc + Vector2(-14, 0), tc + Vector2(14, 0), Color(1.0, 0.85, 0.2, 0.9), 2.0)
+	draw_line(tc + Vector2(0, -14), tc + Vector2(0, 14), Color(1.0, 0.85, 0.2, 0.9), 2.0)
+	# 基础朝向 (灰) / 目标 (品红) / 当前 (绿)
+	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_base_rotation) * length, Color(0.8, 0.8, 0.8, 0.7), 2.0)
 	draw_line(o, o + Vector2.RIGHT.rotated(p1.debug_target_rotation) * length, Color(1.0, 0.35, 0.85, 0.9), 2.0)
-	# 角色当前朝向 (绿)
 	draw_line(o, o + Vector2.RIGHT.rotated(p1.rotation) * length, Color(0.4, 1.0, 0.4, 0.85), 2.0)
-	# 锚点 / 当前鼠标 (用世界坐标绘制)
+	# 击球区：默认位置 (空心) + 当前 (实心)
+	var l: float = GameConfig.player_half_length
+	for local_pos in [Vector2(0.0, -l), Vector2(0.0, l)]:
+		draw_arc(p1.to_global(local_pos), 6.0, 0.0, TAU, 20, Color(0.6, 0.6, 0.65, 0.85), 1.5)
+	for hp in p1.hit_points:
+		draw_circle(hp.global_position, 4.0, Color(0.35, 1.0, 0.4))
+	# 锚点 / 当前鼠标 (世界坐标)
 	var dx_screen: float = 0.0
 	if sch.is_dragging():
 		var anchor: Vector2 = sch.mouse_anchor_world()
@@ -94,8 +101,10 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 		draw_circle(anchor, 6.0, Color(0.5, 0.85, 1.0, 0.9))
 		draw_line(anchor, cur, Color(0.5, 0.85, 1.0, 0.6), 1.5)
 		draw_circle(cur, 4.0, Color(0.6, 0.95, 1.0))
-	var txt := "ball_ang=%.2f offset=%.2f target=%.2f rot=%.2f\ndrag=%s dx=%.0fpx" % [
-		p1.debug_ball_angle, p1.debug_angle_offset, p1.debug_target_rotation, p1.rotation,
+	var txt := "base=%.2f target=%.2f rot=%.2f\nlimit=%.2f (max %.2f)\nzone=%.1f (max %.0f)\ndrag=%s dx=%.0fpx" % [
+		p1.debug_base_rotation, p1.debug_target_rotation, p1.rotation,
+		p1.debug_angle_limit, GameConfig.max_rotation_offset,
+		p1.debug_hit_zone_offset, GameConfig.max_hit_zone_offset,
 		str(sch.is_dragging()), dx_screen]
 	draw_string(font, o + Vector2(12, 20), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.7, 0.95, 0.95))
 

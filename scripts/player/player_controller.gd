@@ -17,13 +17,11 @@ var ball: Ball = null
 
 var hit_points: Array[HitPoint] = []
 var debug_aim_override: float = NAN  ## 测试用：非 NAN 时覆盖目标角度
-var debug_ball_angle: float = 0.0     ## 回正目标：朝球方向
-var debug_angle_offset: float = 0.0   ## 鼠标拖动产生的角度偏移 (相对按下基准)
-var debug_target_rotation: float = 0.0
-var debug_has_aim: bool = false
-var _aim_angle: float = 0.0           ## 当前目标朝向
-var _aim_base: float = 0.0            ## 按下鼠标瞬间的基准朝向 (按下时的朝球方向)
-var _was_dragging: bool = false
+var debug_base_rotation: float = 0.0    ## 面向桌中心的基础朝向
+var debug_target_rotation: float = 0.0  ## 基础朝向 ± 偏转
+var debug_angle_limit: float = 0.0      ## 当前拖动允许的角度偏转
+var hit_zone_offset: float = 0.0        ## 平滑后的击球区位移
+var debug_hit_zone_offset: float = 0.0  ## Debug 显示用
 var _last_touch_time: float = -10.0
 var _body_color: Color = Color(0.31, 0.82, 0.77)
 
@@ -58,7 +56,6 @@ func _ready() -> void:
 		add_child(hp)
 		hit_points.append(hp)
 
-	_aim_angle = rotation
 	queue_redraw()
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
@@ -98,41 +95,26 @@ func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
 	if input_scheme.aim_mode == InputScheme.AimMode.MOUSE:
 		input_scheme.update_mouse(self)
 		var origin: Vector2 = state.transform.origin
-		var target: float
+		# 基础朝向 = 面向桌中心 (球不再影响朝向)
+		var base: float = (GameConfig.table_center - origin).angle()
+		var eff: float = _effective_drag()
+		# 身体偏转：拖动越远，允许偏离桌中心方向越多 (有上限，不累积)
+		var angle_limit: float = clampf(absf(eff) * GameConfig.rotation_sensitivity,
+			0.0, GameConfig.max_rotation_offset)
+		var target: float = base + signf(eff) * angle_limit
 		if not is_nan(debug_aim_override):
-			# 测试用：直接给目标角度
-			target = debug_aim_override
-			_aim_angle = target
-			debug_angle_offset = 0.0
-			debug_ball_angle = target
-			debug_has_aim = true
-		else:
-			# 基准 = 朝球方向 (只用球 XY)
-			var ball_xy: Vector2 = ball.global_position if ball != null else origin + Vector2(0.0, -100.0)
-			var bd: Vector2 = ball_xy - origin
-			var ball_angle: float = bd.angle() if bd.length() > 1.0 else state.transform.get_rotation()
-			var dragging: bool = input_scheme.is_dragging()
-			var angle_offset: float = 0.0
-			if dragging and not _was_dragging:
-				_aim_base = ball_angle  # 按住瞬间：以当时的朝球方向为基准
-			if dragging:
-				# 手动：基准 + 鼠标水平拖动偏移 (不累积；死区内 0)
-				var dx: float = input_scheme.mouse_drag_screen_x(self)
-				var dead: float = GameConfig.mouse_drag_deadzone
-				if absf(dx) > dead:
-					var eff: float = dx - signf(dx) * dead  # 死区外平滑，无跳变
-					angle_offset = clampf(eff * GameConfig.mouse_rotation_sensitivity,
-						-GameConfig.max_mouse_angle_offset, GameConfig.max_mouse_angle_offset)
-				target = _aim_base + angle_offset
-			else:
-				# 放手：自动回正到球 (带惯性逐渐转)
-				target = ball_angle
-			_was_dragging = dragging
-			_aim_angle = target
-			debug_ball_angle = ball_angle
-			debug_angle_offset = angle_offset
-			debug_has_aim = true
+			target = debug_aim_override  # 测试用
+			angle_limit = 0.0
+		# 击球区反向位移 (平滑回位)
+		var target_zone: float = clampf(eff * GameConfig.hit_zone_sensitivity,
+			-GameConfig.max_hit_zone_offset, GameConfig.max_hit_zone_offset)
+		hit_zone_offset = move_toward(hit_zone_offset, target_zone,
+			GameConfig.hit_zone_return_speed * step)
+		_update_hit_points()
+		debug_base_rotation = base
 		debug_target_rotation = target
+		debug_angle_limit = angle_limit
+		debug_hit_zone_offset = hit_zone_offset
 		var err: float = wrapf(target - state.transform.get_rotation(), -PI, PI)
 		var desired_w: float = clampf(err * GameConfig.rotation_response,
 			-GameConfig.max_angular_velocity, GameConfig.max_angular_velocity)
@@ -140,6 +122,24 @@ func _update_rotation(state: PhysicsDirectBodyState2D, step: float) -> void:
 	elif input_scheme.aim_mode == InputScheme.AimMode.KEYBOARD:
 		var target_w: float = input_scheme.turn_axis() * GameConfig.max_angular_velocity
 		state.angular_velocity += clampf(target_w - state.angular_velocity, -accel, accel)
+
+## 去掉死区后的水平拖动 (屏幕像素)。未拖动或死区内返回 0。
+func _effective_drag() -> float:
+	if input_scheme == null or not input_scheme.is_dragging():
+		return 0.0
+	var dx: float = input_scheme.mouse_drag_screen_x(self)
+	var dead: float = GameConfig.mouse_drag_deadzone
+	if absf(dx) <= dead:
+		return 0.0
+	return dx - signf(dx) * dead
+
+## 两个击球区沿身体长轴反向位移 (拳击出拳/收拳)。
+func _update_hit_points() -> void:
+	if hit_points.size() < 2:
+		return
+	var l: float = GameConfig.player_half_length
+	hit_points[0].position = Vector2(0.0, -l + hit_zone_offset)  # 前端
+	hit_points[1].position = Vector2(0.0, l + hit_zone_offset)   # 后端
 
 func reset_to(pos: Vector2, rot: float) -> void:
 	linear_velocity = Vector2.ZERO

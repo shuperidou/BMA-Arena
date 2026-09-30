@@ -31,23 +31,24 @@
 
 ### 控制模型（重要）
 
-平移与旋转**完全解耦**：
+拳击式控制：WASD 移动身体，鼠标横向拖动调整两个击球区与身体姿态。
 
 ```
-WASD  -> 世界坐标移动向量 -> 角色位置          (不受 rotation 影响)
-朝向  -> 纯手动：按住鼠标水平拖动 -> 角度偏移 -> 带惯性旋转追踪 -> 角色 rotation
+WASD   -> 世界坐标移动 (与朝向无关)
+基础朝向 -> 面向桌中心 (angle(char -> table_center))，带惯性维持
+按住鼠标 -> 建立锚点; 水平拖动 drag.x:
+   ├─ 两个击球区沿身体长轴反向位移 (一伸一缩)  [hit_zone_sensitivity, max_hit_zone_offset]
+   └─ 身体相对"面向桌中心"小幅偏转             [rotation_sensitivity, max_rotation_offset]
+松开鼠标 -> 击球区回位 + 身体回到面向桌中心 (平滑，不瞬跳)
 ```
 
 - WASD 永远对应屏幕上/下/左/右，角色朝哪都一样。
-- **松开鼠标时自动回正到球**（用同一套旋转惯性逐渐转回，不瞬回）；**按住鼠标时手动覆盖朝向**。
-- **按住鼠标**：按下瞬间记录屏幕锚点，并以"按下时的朝球方向"为基准，偏移=0（不跳变）。之后只用**水平拖动像素**：
-  `angle_offset = clamp((drag_x - deadzone) * mouse_rotation_sensitivity, ±max_mouse_angle_offset)`
-  `target_rotation = 按下时朝球基准 + angle_offset`
-- 固定映射：**右拖 = 顺时针，左拖 = 逆时针**（不随球/角色位置变化）。拖得越远偏得越多。不累积角度（鼠标回锚点即回基准）。
-- 鼠标 Y 轴暂不参与旋转。
-- 参数：`mouse_rotation_sensitivity` / `max_mouse_angle_offset` / `mouse_drag_deadzone` / `rotation_response` / `max_angular_velocity` / `rotation_acceleration` / `rotation_damping` / `aim_mouse_button`。
-- 已删除 Q/E，无绝对瞄准/投影/角度累计。玩家2 的键盘朝向只是本地双人测试的临时方案 [TEMP]。
-- `F1` 调试会画出：球的 XY 投影、锚点、当前鼠标、朝球方向线(青) / 目标方向线(品红) / 当前朝向线(绿)，并显示 `ball_ang / offset / target / rot / drag / dx`。
+- **朝向不再追随球**；球只影响球自己。基础姿态 = 面向桌中心。
+- 朝向**不累积**：`target = base + sign(drag.x) * clamp(|drag.x|*rot_sens, 0, max_rotation_offset)`；鼠标回锚点即回桌中心方向。
+- 固定左右映射（不随球/角色位置重解释）。鼠标 Y 轴不参与。
+- 参数：`hit_zone_sensitivity` / `max_hit_zone_offset` / `hit_zone_return_speed` / `rotation_sensitivity` / `max_rotation_offset` / `mouse_drag_deadzone` / `rotation_response` / `max_angular_velocity` / `rotation_acceleration` / `rotation_damping` / `aim_mouse_button`。
+- 已删除 Q/E，无绝对瞄准/投影/自动朝球/角度累计。玩家2 的键盘朝向只是本地双人测试的临时方案 [TEMP]。
+- `F1` 调试画出：桌中心、基础朝向(灰) / 目标朝向(品红) / 当前朝向(绿)、两个击球区的默认位置(空心)与当前偏移位置(实心)、锚点、当前鼠标，并显示 `base/target/rot/limit/zone/drag/dx`。
 
 ### 无头自动对拉测试（开发用）
 

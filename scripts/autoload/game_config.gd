@@ -32,19 +32,27 @@ var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [
 var move_speed: float = 360.0
 var move_accel: float = 3200.0         ## 速度变化最大加速度 (惯性/手感)
 
-# 旋转：鼠标给"目标角度"，角色带惯性逐渐追踪 (设计: 独立于移动)
-var max_angular_velocity: float = 8.0   ## rad/s 最大角速度
-var rotation_acceleration: float = 30.0 ## rad/s^2 角速度变化上限 (旋转惯性)
+# 旋转：基础朝向 = 面向桌中心；鼠标拖动只允许"小幅偏转"(不累积)
+var max_angular_velocity: float = 80.0   ## rad/s 最大角速度
+var rotation_acceleration: float = 300.0 ## rad/s^2 角速度变化上限 (旋转惯性)
 var rotation_response: float = 6.0      ## 角度误差 -> 目标角速度的响应增益
 var rotation_damping: float = 6.0       ## 无有效目标时的角速度衰减 (rad/s^2)
 
-# 鼠标左右拖动 = 相对"按下鼠标时朝向"的角度偏移 (屏幕像素 -> 弧度)
-#   无任何自动朝球/自动校准；按住时基准=按下瞬间朝向；右拖=顺时针，左拖=逆时针；
-#   松开保持当前朝向。只用 mouse_drag.x；没有方向投影、没有角度累计。
+# 鼠标：按住建立锚点，水平拖动 -> 同时驱动
+#   1) 两个击球区反向位移 (拳击出拳/收拳)
+#   2) 身体相对"面向桌中心"的小幅偏转 (受 max_rotation_offset 限制，不累积)
+#   只用 mouse_drag.x；固定左右映射；没有方向投影、没有角度累计。
 var aim_mouse_button: int = MOUSE_BUTTON_LEFT
-var mouse_rotation_sensitivity: float = 0.006  ## 每屏幕像素对应的弧度
-var max_mouse_angle_offset: float = 2.6        ## 角度偏移上限 (弧度)
-var mouse_drag_deadzone: float = 6.0           ## 水平死区 (屏幕像素)
+var mouse_drag_deadzone: float = 6.0        ## 水平死区 (屏幕像素)
+
+# 击球区 (两端判定区) 反向位移
+var hit_zone_sensitivity: float = 0.5       ## 每像素 -> 世界位移
+var max_hit_zone_offset: float = 40.0       ## 位移上限 (世界单位)
+var hit_zone_return_speed: float = 300.0    ## 松开后的回位速度 (单位/秒)
+
+# 身体偏转 (相对"面向桌中心"，非累积)
+var rotation_sensitivity: float = 0.006     ## 每像素 -> 弧度 (角度上限)
+var max_rotation_offset: float = 0.7        ## 最大偏转角 (弧度)
 
 # ============================================================
 #  球：伪 Z 轴 (高度) 系统
