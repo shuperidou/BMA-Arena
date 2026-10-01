@@ -150,20 +150,25 @@ func _run() -> void:
 		ball.state == GameTypes.BallState.DEAD and _last_death == GameTypes.DeathReason.DOUBLE_BOUNCE,
 		"state=%d reason=%d" % [ball.state, _last_death])
 
-	# T9: AI 智能击球 —— 一定落桌, 且角度有变化
+	# T9: AI 击球力度/vz 必须落在"玩家的上下限"内, 且角度有变化
 	var ai: AiPlayer = main_node.players[1]
-	var all_land := true
+	var in_limits := true
 	var angle0: float = 999.0
 	var varied := false
 	for i in 16:
 		ball.global_position = Vector2(randf_range(-120.0, 120.0), randf_range(-60.0, -20.0))
 		var oa: Dictionary = ai.compute_hit(ai.hit_points[0], ball)
+		var spd: float = oa.ball_speed
+		var vz: float = oa.vz
+		if spd < GameConfig.hit_speed_min - 1.0 or spd > GameConfig.hit_speed_max + 1.0 \
+				or vz < GameConfig.ball_hit_vz_min - 1.0 or vz > GameConfig.ball_hit_vz_max + 1.0:
+			in_limits = false
 		var d: Vector2 = oa.velocity.normalized()
-		if not _lands_on_table(ball.global_position, d, oa.ball_speed, oa.vz):
-			all_land = false
 		if i == 0:
 			angle0 = d.angle()
 		elif absf(wrapf(d.angle() - angle0, -PI, PI)) > 0.001:
 			varied = true
-	_check("T9 AI shot always lands on table", all_land, "samples=16")
+	_check("T9 AI strength/vz within player limits", in_limits,
+		"speed=[%.0f,%.0f] vz=[%.0f,%.0f]" % [GameConfig.hit_speed_min, GameConfig.hit_speed_max,
+			GameConfig.ball_hit_vz_min, GameConfig.ball_hit_vz_max])
 	_check("T9 AI varies hit angle", varied, "angle0=%.2f" % angle0)

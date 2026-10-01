@@ -137,14 +137,11 @@ func _do_serve(server: PlayerController) -> void:
 func _reset_positions() -> void:
 	if solo_mode:
 		return  # 单人调试：不重置位置，玩家自由走动
-	var tr := GameConfig.table_rect()
-	var server: PlayerController = players[server_index - 1]
-	var receiver: PlayerController = _other(server)
-	# 发球方站在桌子近边、面向桌中心 (这样沿朝向发球能落桌)
-	var sp := Vector2(0.0, tr.end.y + 18.0)
-	var rp := Vector2(0.0, tr.end.y + 178.0)
-	server.reset_to(sp, (GameConfig.table_center - sp).angle())
-	receiver.reset_to(rp, (GameConfig.table_center - rp).angle())
+	# 玩家1 站左边, 玩家2(AI) 站右边, 都面向桌中心
+	var left := Vector2(-180.0, 10.0)
+	var right := Vector2(180.0, 10.0)
+	players[0].reset_to(left, (GameConfig.table_center - left).angle())
+	players[1].reset_to(right, (GameConfig.table_center - right).angle())
 
 # ------------------------------------------------------------
 #  击球
@@ -183,6 +180,8 @@ func _decide_winner(reason: int) -> int:
 	match reason:
 		GameTypes.DeathReason.DOUBLE_BOUNCE:
 			return hitter_index
+		GameTypes.DeathReason.BAD_BOUNCE:
+			return receiver_index  # 同一面连弹/跳弹 -> 击球方失误
 		GameTypes.DeathReason.FLOOR, GameTypes.DeathReason.OUT_OF_BOUNDS:
 			# 撞墙过且有桌弹 => 接球方没接到，击球方得分；否则击球方失误，接球方得分
 			if ball.wall_since_hit and ball.table_bounces >= 1:
@@ -282,6 +281,8 @@ func _reason_text(reason: int) -> String:
 	match reason:
 		GameTypes.DeathReason.DOUBLE_BOUNCE:
 			return "接球方没接到"
+		GameTypes.DeathReason.BAD_BOUNCE:
+			return "弹跳犯规"
 		GameTypes.DeathReason.FLOOR:
 			return "球落地"
 		GameTypes.DeathReason.OUT_OF_BOUNDS:

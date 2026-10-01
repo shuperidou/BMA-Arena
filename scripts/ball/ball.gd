@@ -43,6 +43,7 @@ var hit_flash: float = 0.0        ## 1->0 的击球闪一下
 var last_strength: float = 0.0    ## 上次击球力度 (0..1)
 var last_hit_info: Dictionary = {} ## 上次击球调试信息
 var _trail: Array[Vector2] = []   ## 拖尾 (存视觉位置，含高度偏移)
+var _last_surface: int = 0        ## 最近一次弹跳的面 (0=无 1=桌 2=墙) —— 同面连弹即结算
 
 func _ready() -> void:
 	radius = GameConfig.ball_radius
@@ -55,6 +56,7 @@ func reset_shot() -> void:
 	receiver_bounces = 0
 	wall_since_hit = false
 	returnable = false
+	_last_surface = 0
 
 ## 从当前位置以给定 xy 速度发射 (高度/垂直速度由调用方设置)。
 func launch_velocity(v: Vector2, vz0: float) -> void:
@@ -96,9 +98,13 @@ func _step(dt: float) -> void:
 	# --- 墙 (顶边)：XY 反弹，仅在有效高度内 ---
 	var wall_y: float = GameConfig.wall_inner_y()
 	if position.y - radius <= wall_y and vel.y < 0.0 and z <= GameConfig.wall_max_height:
+		if _last_surface == 2:
+			_die(GameTypes.DeathReason.BAD_BOUNCE)  # 墙连弹 -> 直接结算
+			return
 		position.y = wall_y + radius
 		vel.y = -vel.y * GameConfig.ball_wall_rest
 		wall_since_hit = true
+		_last_surface = 2
 		_apply_wall_return_assist()
 		wall_bounced.emit()
 	# z 高于墙顶时不做 XY 反弹：球会飞过墙 (由越界判定处理)
@@ -129,6 +135,14 @@ func _step(dt: float) -> void:
 	queue_redraw()
 
 func _register_table_bounce() -> void:
+	# 同一面(桌)连续弹两次 -> 直接结算：墙前跳弹=击球方失误, 墙后=接球方没接到
+	if _last_surface == 1:
+		if wall_since_hit:
+			_die(GameTypes.DeathReason.DOUBLE_BOUNCE)
+		else:
+			_die(GameTypes.DeathReason.BAD_BOUNCE)
+		return
+	_last_surface = 1
 	table_bounces += 1
 	if wall_since_hit:
 		receiver_bounces += 1

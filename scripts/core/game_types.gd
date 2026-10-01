@@ -31,7 +31,8 @@ enum BallHeightState {
 enum DeathReason {
 	NONE,
 	FLOOR,          ## 落地
-	DOUBLE_BOUNCE,  ## 接球方侧桌弹次数超限
+	DOUBLE_BOUNCE,  ## 接球方侧(墙后)桌弹超过一次 -> 接球方输
+	BAD_BOUNCE,     ## 同一面连续弹超过一次(未到墙就跳弹/墙连弹) -> 击球方失误
 	OUT_OF_BOUNDS,  ## 出界
 }
 
