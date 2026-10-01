@@ -137,6 +137,9 @@ var block_pursuit_max_dist: float = 360.0   ## 接球方离预计接球点多远
 var block_corridor_width: float = 46.0      ## 危险走廊宽度
 var block_pursuit_speed: float = 40.0       ## 判定"正在移动"的最小速度
 var block_pursuit_dot: float = 0.3          ## 速度方向与接球方向的最小点积
+## 时间可达判定 (忽略对手)：接球方要在球到达"可接住点"前赶到，否则不算有机会。
+var block_require_time_reachable: bool = true  ## 开关
+var block_reach_slack: float = 0.12            ## 允许的宽限时间 (秒)
 var show_hints: bool = true                 ## 是否显示接球/阻挡空间提示
 
 # ============================================================
