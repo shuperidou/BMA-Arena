@@ -148,6 +148,6 @@ func _draw() -> void:
 	draw_rect(Rect2(-r, -seg, 2.0 * r, 2.0 * seg), _body_color)
 	draw_circle(Vector2(0.0, -seg), r, _body_color)
 	draw_circle(Vector2(0.0, seg), r, _body_color)
-	# 朝向标记 (局部 -y 为"前方")
-	draw_line(Vector2.ZERO, Vector2(0.0, -seg), Color(1, 1, 1, 0.45), 3.0)
+	# 朝向标记: 局部 +x 为"前方" (面向桌中心 / 发球方向)
+	draw_line(Vector2.ZERO, Vector2(seg, 0.0), Color(1, 1, 1, 0.6), 4.0)
 	draw_circle(Vector2.ZERO, 5.0, Color(1, 1, 1, 0.85))
