@@ -44,12 +44,15 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var assist_angle: float = 0.0
 	var assist_speed_delta: float = 0.0
 	if assist > 0.0 and not _lands_on_table(p, raw_dir, 2.0 * ball_speed * vz / g):
-		# 恢复解：瞄准桌中心，速度使第一次落桌正好落在中心
-		var to_t: Vector2 = GameConfig.table_center - p
-		if to_t.length() < 1.0:
-			to_t = raw_dir
-		var recov_dir: Vector2 = to_t.normalized()
-		var recov_speed: float = clampf(to_t.length() * g / (2.0 * vz), 60.0, GameConfig.hit_speed_max)
+		# 恢复解 (镜面法)：
+		#   方向 = 指向"桌中心关于墙的镜像点" -> 球撞墙反弹后水平路径经过桌中心
+		#   力度 = 单独选，让第一次落桌仍在桌面内 (镜像点在墙外，不能当落点)
+		var tc: Vector2 = GameConfig.table_center
+		var wall_y: float = GameConfig.wall_inner_y()
+		var mirror := Vector2(tc.x, 2.0 * wall_y - tc.y)
+		var to_m: Vector2 = mirror - p
+		var recov_dir: Vector2 = to_m.normalized() if to_m.length() > 1.0 else raw_dir
+		var recov_speed: float = _recovery_speed(p, recov_dir, vz, g)
 		var da: float = wrapf(recov_dir.angle() - raw_dir.angle(), -PI, PI)
 		var cap: float = deg_to_rad(GameConfig.max_assist_angle)
 		da = clampf(da, -cap, cap)
@@ -77,3 +80,43 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 ## 沿 dir 飞出 dist 后是否落在桌面内。
 static func _lands_on_table(p: Vector2, dir: Vector2, dist: float) -> bool:
 	return GameConfig.table_rect().grow(-4.0).has_point(p + dir * dist)
+
+## 桌中心关于墙的镜像点 (墙在俯视上是水平镜面 -> 翻转 y)。
+static func mirror_of_table_center() -> Vector2:
+	var tc := GameConfig.table_center
+	return Vector2(tc.x, 2.0 * GameConfig.wall_inner_y() - tc.y)
+
+## 恢复力度：让第一次落桌点位于桌面内 (取射线与桌面交段的靠远端)。
+static func _recovery_speed(p: Vector2, dir: Vector2, vz: float, g: float) -> float:
+	var seg: Array = _ray_rect_segment(p, dir, GameConfig.table_rect())
+	var d: float
+	if seg.size() == 2:
+		d = lerpf(seg[0], seg[1], 0.7)
+	else:
+		d = p.distance_to(GameConfig.table_center)
+	return clampf(d * g / (2.0 * vz), 60.0, GameConfig.hit_speed_max)
+
+## 射线 p+dir*t 与矩形相交的参数区间 [t0,t1] (t>=0)；不相交返回 []。
+static func _ray_rect_segment(p: Vector2, dir: Vector2, rect: Rect2) -> Array:
+	var tmin: float = -INF
+	var tmax: float = INF
+	if absf(dir.x) < 1e-6:
+		if p.x < rect.position.x or p.x > rect.end.x:
+			return []
+	else:
+		var ta: float = (rect.position.x - p.x) / dir.x
+		var tb: float = (rect.end.x - p.x) / dir.x
+		tmin = maxf(tmin, minf(ta, tb))
+		tmax = minf(tmax, maxf(ta, tb))
+	if absf(dir.y) < 1e-6:
+		if p.y < rect.position.y or p.y > rect.end.y:
+			return []
+	else:
+		var tc2: float = (rect.position.y - p.y) / dir.y
+		var td: float = (rect.end.y - p.y) / dir.y
+		tmin = maxf(tmin, minf(tc2, td))
+		tmax = minf(tmax, maxf(tc2, td))
+	var lo: float = maxf(tmin, 0.0)
+	if tmax < lo:
+		return []
+	return [lo, tmax]

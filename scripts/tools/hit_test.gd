@@ -31,6 +31,22 @@ func _lands_on_table(p: Vector2, dir: Vector2, speed: float, vz: float) -> bool:
 	var d: float = 2.0 * speed * vz / GameConfig.ball_gravity
 	return GameConfig.table_rect().grow(-4.0).has_point(p + dir * d)
 
+## 沿 dir 打到墙并反射后，水平路径离桌中心的最近距离 (验证镜面法)。
+func _post_wall_center_dist(p: Vector2, dir: Vector2) -> float:
+	var wall_y: float = GameConfig.wall_inner_y()
+	if absf(dir.y) < 1e-6:
+		return 999.0
+	var t: float = (wall_y - p.y) / dir.y
+	if t <= 0.0:
+		return 999.0
+	var hit: Vector2 = p + dir * t
+	var rd := Vector2(dir.x, -dir.y)  # 水平反射方向
+	var to_c: Vector2 = GameConfig.table_center - hit
+	var proj: float = to_c.dot(rd)
+	if proj < 0.0:
+		return 999.0
+	return (to_c - rd * proj).length()
+
 func _run() -> void:
 	var zone: HitPoint = p1.hit_points[0]
 	p1.global_position = Vector2(0.0, -14.0)
@@ -59,9 +75,22 @@ func _run() -> void:
 	var o2: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T3 raw misses table",
 		not _lands_on_table(ball.global_position, o2.raw_dir, o2.raw_speed, o2.vz), "raw=%s" % str(o2.raw_dir))
-	_check("T3 assist=1 fully lands",
+	_check("T3 assist=1 first bounce on table",
 		_lands_on_table(ball.global_position, o2.assisted_dir, o2.ball_speed, o2.vz),
 		"assisted=%s spd=%.0f" % [str(o2.assisted_dir), o2.ball_speed])
+	var pw3: float = _post_wall_center_dist(ball.global_position, o2.assisted_dir)
+	_check("T3 assist aims so post-wall line hits table center (mirror)", pw3 < 8.0, "dist=%.1f" % pw3)
+
+	# T3b: 偏心球 -> 无辅助会飞出, 辅助后墙后路径仍经过桌中心 (真正的镜面验证)
+	ball.global_position = Vector2(-120.0, -30.0)
+	zone.velocity = Vector2(1500.0, 0.0)
+	var o2b: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T3b off-center raw misses",
+		not _lands_on_table(ball.global_position, o2b.raw_dir, o2b.raw_speed, o2b.vz), "raw=%s" % str(o2b.raw_dir))
+	_check("T3b off-center assist first bounce on table",
+		_lands_on_table(ball.global_position, o2b.assisted_dir, o2b.ball_speed, o2b.vz), str(o2b.assisted_dir))
+	var pwb: float = _post_wall_center_dist(ball.global_position, o2b.assisted_dir)
+	_check("T3b off-center post-wall line hits table center", pwb < 8.0, "dist=%.1f" % pwb)
 
 	# T4: assist=0 -> 完全无辅助
 	GameConfig.assist_strength = 0.0
@@ -89,9 +118,11 @@ func _run() -> void:
 	ball.global_position = Vector2(0.0, -20.0)
 	zone.velocity = Vector2.ZERO
 	var o5: Dictionary = HitSystem.compute(p1, zone, ball)
-	_check("T6 no-input touch returns to table",
+	_check("T6 no-input touch first bounce on table",
 		_lands_on_table(ball.global_position, o5.assisted_dir, o5.ball_speed, o5.vz),
 		"assisted=%s spd=%.0f" % [str(o5.assisted_dir), o5.ball_speed])
+	var pw6: float = _post_wall_center_dist(ball.global_position, o5.assisted_dir)
+	_check("T6 assist aims at wall-mirror of center", pw6 < 8.0, "dist=%.1f" % pw6)
 
 	# T7: 墙后连续第 2 次落桌 -> DOUBLE_BOUNCE (接球方输)
 	ball.state = GameTypes.BallState.LIVE

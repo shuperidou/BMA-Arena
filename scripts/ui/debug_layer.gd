@@ -81,6 +81,11 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 	draw_line(o, tc, Color(1.0, 0.85, 0.2, 0.22), 1.0)
 	draw_circle(tc, 8.0, Color(1.0, 0.85, 0.2, 0.2))
 	draw_arc(tc, 8.0, 0.0, TAU, 20, Color(1.0, 0.85, 0.2, 0.85), 2.0)
+	# 辅助瞄准点: 桌中心关于墙的镜像 (在墙外)
+	var mirror: Vector2 = HitSystem.mirror_of_table_center()
+	draw_circle(mirror, 7.0, Color(0.8, 0.6, 1.0, 0.25))
+	draw_arc(mirror, 7.0, 0.0, TAU, 20, Color(0.8, 0.6, 1.0, 0.9), 2.0)
+	draw_line(tc, mirror, Color(0.8, 0.6, 1.0, 0.25), 1.0)
 	# 击球区默认位置 (空心) 与当前位置 (实心，HitPoint 也画了触及圈)
 	for local_pos in [Vector2(0.0, -l), Vector2(0.0, l)]:
 		draw_arc(p1.to_global(local_pos), 6.0, 0.0, TAU, 20, Color(0.6, 0.6, 0.65, 0.85), 1.5)
