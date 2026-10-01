@@ -60,8 +60,8 @@ var hit_zone_return_speed: float = 300.0     ## 松开后的回位速度 (单位
 #  击球系统 (集中管理，见 scripts/match/hit_system.gd)
 # ============================================================
 ## 力度：由"击球区在世界空间中的实际速度"决定，经过曲线映射到球速区间。
-var hit_speed_min: float = 220.0        ## 轻击球速
-var hit_speed_max: float = 620.0        ## 强击球速
+var hit_speed_min: float = 420.0        ## 轻击球速
+var hit_speed_max: float = 720.0        ## 强击球速
 var hit_speed_curve: float = 1.2        ## 力度响应曲线指数 (>1 需要更快才到强)
 var hit_zone_speed_ref: float = 1500.0  ## 击球区速度归一化基准 (世界单位/秒)
 ## 方向：基础方向=面向桌中心；叠加"击球区位置 + 挥动方向"的偏置。
@@ -103,8 +103,8 @@ var wall_return_assist: bool = true
 var wall_return_depth_frac: float = 0.8  ## 0=远边, 1=近边。落点=远边+深度*frac [TUNED]
 
 ## 击球赋予的初速度
-var ball_hit_speed: float = 360.0      ## [TUNED]
-var ball_hit_vz: float = 260.0         ## [TUNED]
+var ball_hit_speed: float = 520.0      ## [TUNED]
+var ball_hit_vz: float = 360.0         ## [TUNED]
 var ball_hit_vz_min: float = 150.0
 var ball_hit_vz_max: float = 360.0
 var hit_player_vel_influence: float = 0.5
@@ -117,8 +117,9 @@ var hit_height_max: float = 150.0
 #  比赛 (计分/轮换均为临时方案) [TEMP]
 # ============================================================
 var score_to_win: int = 5
-## 接球方侧允许的桌弹次数；超过即判接球方输。
-var receiver_bounce_limit: int = 2
+## 墙后接球方侧允许的桌弹次数。设计文档: "球在桌上第二次弹起 -> 接球方输"，
+## 所以设为 1：允许第一次落桌，第 2 次连续落桌即判接球方输 (击球方得分)。
+var receiver_bounce_limit: int = 1
 var point_pause: float = 1.6
 var interference_pause: float = 1.8
 var hit_cooldown: float = 0.15

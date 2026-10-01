@@ -6,6 +6,7 @@ var main_node: Node
 var p1: PlayerController
 var ball: Ball
 var failures: int = 0
+var _last_death: int = -1
 
 func _ready() -> void:
 	main_node = preload("res://scenes/Main.tscn").instantiate()
@@ -14,6 +15,7 @@ func _ready() -> void:
 	p1 = main_node.players[0]
 	ball = main_node.ball
 	p1.input_scheme = null
+	ball.died.connect(func(r: int) -> void: _last_death = r)
 	_run()
 	print("HIT TEST failures=", failures)
 	get_tree().quit()
@@ -53,15 +55,34 @@ func _run() -> void:
 	ball.global_position = Vector2(0.0, -30.0)
 	zone.velocity = Vector2(1500.0, 0.0)  # 向右挥 -> raw 偏右上, 会飞出远端
 	var o2: Dictionary = HitSystem.compute(p1, zone, ball)
-	_check("T3 raw misses table", not _lands_on_table(ball.global_position, o2.raw_dir, o2.ball_speed, o2.vz),
-		"raw=%s" % str(o2.raw_dir))
+	var raw_miss: bool = not _lands_on_table(ball.global_position, o2.raw_dir, o2.ball_speed, o2.vz)
+	_check("T3 raw misses table", raw_miss, "raw=%s" % str(o2.raw_dir))
 	_check("T3 assist within limit", absf(rad_to_deg(o2.assist_angle)) <= GameConfig.max_assist_angle + 0.01,
 		"assist=%.1f deg" % rad_to_deg(o2.assist_angle))
-	_check("T3 assisted lands on table", _lands_on_table(ball.global_position, o2.assisted_dir, o2.ball_speed, o2.vz),
-		"assisted=%s" % str(o2.assisted_dir))
+	if absf(o2.assist_angle) > 0.001:
+		_check("T3 assisted lands on table",
+			_lands_on_table(ball.global_position, o2.assisted_dir, o2.ball_speed, o2.vz),
+			"assisted=%s" % str(o2.assisted_dir))
 
-	# T4: 原始方向已合法 -> 不辅助
-	ball.global_position = Vector2(0.0, -30.0)
-	zone.velocity = Vector2.ZERO
-	var o3: Dictionary = HitSystem.compute(p1, zone, ball)
-	_check("T4 no assist when already valid", absf(o3.assist_angle) < 0.001, "assist=%.3f" % o3.assist_angle)
+	# T4: 辅助算法本身 (确定性, 不依赖球速参数)
+	var tp := Vector2(0.0, -40.0)
+	var td := 100.0
+	var traw := Vector2(0.9, 0.436).normalized()  # 明显朝下, 会飞过近边
+	_check("T4 raw misses (helper)", not HitSystem._lands_on_table(tp, traw, td), str(traw))
+	var corr: float = HitSystem._find_correction(tp, traw, td, deg_to_rad(GameConfig.max_assist_angle))
+	_check("T4 correction bounded", absf(rad_to_deg(corr)) <= GameConfig.max_assist_angle + 0.01,
+		"corr=%.1f" % rad_to_deg(corr))
+	_check("T4 corrected lands", HitSystem._lands_on_table(tp, traw.rotated(corr), td),
+		str(traw.rotated(corr)))
+
+	# T5: 墙后连续第 2 次落桌 -> DOUBLE_BOUNCE (接球方输)
+	ball.state = GameTypes.BallState.LIVE
+	ball.reset_shot()
+	ball.wall_since_hit = true
+	ball._register_table_bounce()
+	var after_first: bool = ball.state != GameTypes.BallState.DEAD
+	ball._register_table_bounce()
+	_check("T5 1st bounce allowed", after_first, "state=%d" % ball.state)
+	_check("T5 2nd bounce -> DOUBLE_BOUNCE",
+		ball.state == GameTypes.BallState.DEAD and _last_death == GameTypes.DeathReason.DOUBLE_BOUNCE,
+		"state=%d reason=%d" % [ball.state, _last_death])
