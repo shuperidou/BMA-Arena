@@ -121,8 +121,9 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 		var ass: Vector2 = info.get("assisted_dir", Vector2.ZERO)
 		draw_line(bp, bp + raw * 90.0, Color(1.0, 0.5, 0.2, 0.85), 2.0)   # 原始方向 (橙)
 		draw_line(bp, bp + ass * 90.0, Color(0.2, 1.0, 0.5, 0.95), 3.0)   # 辅助后方向 (绿)
-		var ht := "Strength=%.2f  ballSpd=%.0f  zoneSpd=%.0f\nRawDir=(%.2f,%.2f)\nAssistDir=(%.2f,%.2f)\nAssistAngle=%.1f deg  ballV=(%.0f,%.0f)" % [
-			info.get("strength", 0.0), info.get("ball_speed", 0.0), info.get("zone_speed", 0.0),
+		var ht := "Strength=%.2f  zoneSpd=%.0f\nrawSpd=%.0f -> ballSpd=%.0f (assist %+.0f)\nRawDir=(%.2f,%.2f)\nAssistDir=(%.2f,%.2f)\nAssistAngle=%.1f deg  ballV=(%.0f,%.0f)" % [
+			info.get("strength", 0.0), info.get("zone_speed", 0.0),
+			info.get("raw_speed", 0.0), info.get("ball_speed", 0.0), info.get("assist_speed_delta", 0.0),
 			raw.x, raw.y, ass.x, ass.y, rad_to_deg(info.get("assist_angle", 0.0)), b.vel.x, b.vel.y]
 		draw_string(font, tc + Vector2(18, 30), ht, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.9, 0.6, 0.95))
 
