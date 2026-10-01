@@ -35,6 +35,7 @@ func _run() -> void:
 	var zone: HitPoint = p1.hit_points[0]
 	p1.global_position = Vector2(0.0, -14.0)
 	p1.rotation = -PI / 2.0  # 面向桌中心 (局部 +x = 世界上方)
+	GameConfig.assist_strength = 0.0  # 先关辅助, 单独测力度/方向映射
 
 	# T1: 击球区静止 -> 力度最低, 球速=min, 方向≈面向
 	ball.global_position = Vector2(0.0, -60.0)
@@ -51,31 +52,48 @@ func _run() -> void:
 	_check("T2 ball speed <= max", o1.ball_speed <= GameConfig.hit_speed_max + 1.0, "spd=%.0f" % o1.ball_speed)
 	_check("T2 speed increases", o1.ball_speed > o0.ball_speed, "%.0f > %.0f" % [o1.ball_speed, o0.ball_speed])
 
-	# T3: 原始方向会出界 -> 有界辅助并落桌
+	# T3: assist=1, raw 出界 -> 完全辅助后落桌
+	GameConfig.assist_strength = 1.0
 	ball.global_position = Vector2(0.0, -30.0)
 	zone.velocity = Vector2(1500.0, 0.0)  # 向右挥 -> raw 偏右上, 会飞出远端
 	var o2: Dictionary = HitSystem.compute(p1, zone, ball)
-	var raw_miss: bool = not _lands_on_table(ball.global_position, o2.raw_dir, o2.ball_speed, o2.vz)
-	_check("T3 raw misses table", raw_miss, "raw=%s" % str(o2.raw_dir))
-	_check("T3 assist within limit", absf(rad_to_deg(o2.assist_angle)) <= GameConfig.max_assist_angle + 0.01,
-		"assist=%.1f deg" % rad_to_deg(o2.assist_angle))
-	if absf(o2.assist_angle) > 0.001:
-		_check("T3 assisted lands on table",
-			_lands_on_table(ball.global_position, o2.assisted_dir, o2.ball_speed, o2.vz),
-			"assisted=%s" % str(o2.assisted_dir))
+	_check("T3 raw misses table",
+		not _lands_on_table(ball.global_position, o2.raw_dir, o2.raw_speed, o2.vz), "raw=%s" % str(o2.raw_dir))
+	_check("T3 assist=1 fully lands",
+		_lands_on_table(ball.global_position, o2.assisted_dir, o2.ball_speed, o2.vz),
+		"assisted=%s spd=%.0f" % [str(o2.assisted_dir), o2.ball_speed])
 
-	# T4: 辅助算法本身 (确定性, 不依赖球速参数)
-	var tp := Vector2(0.0, -40.0)
-	var td := 100.0
-	var traw := Vector2(0.9, 0.436).normalized()  # 明显朝下, 会飞过近边
-	_check("T4 raw misses (helper)", not HitSystem._lands_on_table(tp, traw, td), str(traw))
-	var corr: float = HitSystem._find_correction(tp, traw, td, deg_to_rad(GameConfig.max_assist_angle))
-	_check("T4 correction bounded", absf(rad_to_deg(corr)) <= GameConfig.max_assist_angle + 0.01,
-		"corr=%.1f" % rad_to_deg(corr))
-	_check("T4 corrected lands", HitSystem._lands_on_table(tp, traw.rotated(corr), td),
-		str(traw.rotated(corr)))
+	# T4: assist=0 -> 完全无辅助
+	GameConfig.assist_strength = 0.0
+	var o3: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T4 assist=0 -> no correction",
+		absf(o3.assist_angle) < 0.001 and o3.assisted_dir.is_equal_approx(o3.raw_dir),
+		"angle=%.3f" % o3.assist_angle)
 
-	# T5: 墙后连续第 2 次落桌 -> DOUBLE_BOUNCE (接球方输)
+	# T5: assist=1 但 raw 已合法 -> 不干预
+	GameConfig.assist_strength = 1.0
+	var checked_valid := false
+	for y0 in [0.0, -10.0, -25.0, -40.0, -55.0, -70.0, -90.0]:
+		ball.global_position = Vector2(0.0, y0)
+		zone.velocity = Vector2.ZERO
+		var oc: Dictionary = HitSystem.compute(p1, zone, ball)
+		if _lands_on_table(ball.global_position, oc.raw_dir, oc.raw_speed, oc.vz):
+			_check("T5 no assist when already valid", absf(oc.assist_angle) < 0.001,
+				"y0=%.0f angle=%.3f" % [y0, oc.assist_angle])
+			checked_valid = true
+			break
+	if not checked_valid:
+		_check("T5 no-assist branch reachable", false, "no landing ball position found")
+
+	# T6: assist=1, 静止触球(不做任何操作)也回桌
+	ball.global_position = Vector2(0.0, -20.0)
+	zone.velocity = Vector2.ZERO
+	var o5: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T6 no-input touch returns to table",
+		_lands_on_table(ball.global_position, o5.assisted_dir, o5.ball_speed, o5.vz),
+		"assisted=%s spd=%.0f" % [str(o5.assisted_dir), o5.ball_speed])
+
+	# T7: 墙后连续第 2 次落桌 -> DOUBLE_BOUNCE (接球方输)
 	ball.state = GameTypes.BallState.LIVE
 	ball.reset_shot()
 	ball.wall_since_hit = true

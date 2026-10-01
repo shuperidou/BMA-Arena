@@ -31,40 +31,49 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var bias: Vector2 = outward * GameConfig.position_bias_weight + swing
 	var raw_dir: Vector2 = (facing + bias * GameConfig.hit_direction_strength).normalized()
 
-	# --- 智能回球辅助：原始方向会出界才修正，修正角有上限 ---
+	# --- 智能回球辅助 (0..1 单一旋钮) ---
+	#   assist=0 -> 完全用原始击球
+	#   assist=1 -> 只要触球就保证回桌 (方向+力度都拉到"瞄准桌中心并落桌"的解)
+	#   0..1    -> 按比例混合
 	var p: Vector2 = ball.global_position
 	var vz: float = GameConfig.ball_hit_vz
-	var dist: float = 2.0 * ball_speed * vz / GameConfig.ball_gravity  # 第一次落桌的水平距离
+	var g: float = GameConfig.ball_gravity
+	var assist: float = clampf(GameConfig.assist_strength, 0.0, 1.0)
 	var assisted_dir: Vector2 = raw_dir
+	var final_speed: float = ball_speed
 	var assist_angle: float = 0.0
-	if GameConfig.assist_strength > 0.0 and not _lands_on_table(p, raw_dir, dist):
-		var found: float = _find_correction(p, raw_dir, dist, deg_to_rad(GameConfig.max_assist_angle))
-		assist_angle = found * GameConfig.assist_strength
+	var assist_speed_delta: float = 0.0
+	if assist > 0.0 and not _lands_on_table(p, raw_dir, 2.0 * ball_speed * vz / g):
+		# 恢复解：瞄准桌中心，速度使第一次落桌正好落在中心
+		var to_t: Vector2 = GameConfig.table_center - p
+		if to_t.length() < 1.0:
+			to_t = raw_dir
+		var recov_dir: Vector2 = to_t.normalized()
+		var recov_speed: float = clampf(to_t.length() * g / (2.0 * vz), 60.0, GameConfig.hit_speed_max)
+		var da: float = wrapf(recov_dir.angle() - raw_dir.angle(), -PI, PI)
+		var cap: float = deg_to_rad(GameConfig.max_assist_angle)
+		da = clampf(da, -cap, cap)
+		assist_angle = da * assist
 		assisted_dir = raw_dir.rotated(assist_angle)
+		var new_speed: float = lerpf(ball_speed, recov_speed, assist)
+		assist_speed_delta = new_speed - ball_speed
+		final_speed = new_speed
 
 	return {
-		"velocity": assisted_dir * ball_speed,
+		"velocity": assisted_dir * final_speed,
 		"vz": vz,
 		"strength": strength,
-		"ball_speed": ball_speed,
+		"ball_speed": final_speed,
+		"raw_speed": ball_speed,
 		"zone_speed": speed,
 		"zone_world": zone_world,
 		"zone_vel": zone_vel,
 		"raw_dir": raw_dir,
 		"assisted_dir": assisted_dir,
 		"assist_angle": assist_angle,
+		"assist_speed_delta": assist_speed_delta,
 	}
 
 ## 沿 dir 飞出 dist 后是否落在桌面内。
 static func _lands_on_table(p: Vector2, dir: Vector2, dist: float) -> bool:
 	return GameConfig.table_rect().grow(-4.0).has_point(p + dir * dist)
-
-## 在 ±max_rad 内找最小修正角，使球落桌；找不到返回 0。
-static func _find_correction(p: Vector2, dir: Vector2, dist: float, max_rad: float) -> float:
-	const STEPS := 48
-	for i in range(1, STEPS + 1):
-		var a: float = max_rad * float(i) / float(STEPS)
-		for s in [1.0, -1.0]:
-			if _lands_on_table(p, dir.rotated(a * s), dist):
-				return a * s
-	return 0.0
