@@ -52,7 +52,7 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 		var mirror := Vector2(tc.x, 2.0 * wall_y - tc.y)
 		var to_m: Vector2 = mirror - p
 		var recov_dir: Vector2 = to_m.normalized() if to_m.length() > 1.0 else raw_dir
-		var recov_speed: float = _recovery_speed(p, recov_dir, vz, g)
+		var recov_speed: float = _recovery_speed(p, recov_dir, vz, g, ball_speed)
 		var da: float = wrapf(recov_dir.angle() - raw_dir.angle(), -PI, PI)
 		var cap: float = deg_to_rad(GameConfig.max_assist_angle)
 		da = clampf(da, -cap, cap)
@@ -90,17 +90,20 @@ static func mirror_of_table_center() -> Vector2:
 	var tc := GameConfig.table_center
 	return Vector2(tc.x, 2.0 * GameConfig.wall_inner_y() - tc.y)
 
-## 恢复力度：让第一次落桌点位于"好区"内 (取射线与好区交段的中点)。
-static func _recovery_speed(p: Vector2, dir: Vector2, vz: float, g: float) -> float:
+## 恢复力度 (选项2：优先保留玩家力量 / 救球)。
+## 沿恢复方向，只要"玩家原本的球速"就能让第一次落桌落在好区内 -> 原速保留；
+## 只有当该速度打不到好区 (太快或太慢) 时，才把它夹到"最快能落进好区"的距离。
+static func _recovery_speed(p: Vector2, dir: Vector2, vz: float, g: float, raw_speed: float) -> float:
 	var good := GameConfig.table_rect().grow(-GameConfig.assist_good_margin)
 	var seg: Array = _ray_rect_segment(p, dir, good)
 	if seg.is_empty():
 		seg = _ray_rect_segment(p, dir, GameConfig.table_rect())
-	var d: float
-	if seg.size() == 2:
-		d = lerpf(seg[0], seg[1], 0.5)
-	else:
-		d = p.distance_to(GameConfig.table_center)
+	if seg.size() != 2:
+		return raw_speed  # 判断不了就保留原力量
+	var t0: float = seg[0]
+	var t1: float = seg[1]
+	var d_raw: float = 2.0 * raw_speed * vz / g      # 玩家原力量对应的落点距离
+	var d: float = clampf(d_raw, t0, t1)             # 在好区内就保留, 否则夹到最近一端
 	return clampf(d * g / (2.0 * vz), 60.0, GameConfig.hit_speed_max)
 
 ## 射线 p+dir*t 与矩形相交的参数区间 [t0,t1] (t>=0)；不相交返回 []。
