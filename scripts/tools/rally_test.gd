@@ -33,6 +33,11 @@ func _ready() -> void:
 	match_ref.state_changed.connect(func(s: int) -> void:
 		events.append("--- STATE=%d score=%s" % [s, str(match_ref.scores)]))
 
+	# 发球现在从发球方位置、沿其朝向发出；把发球方摆在桌近边、朝向桌中心
+	players[0].global_position = Vector2(0.0, -10.0)
+	players[0].rotation = -PI / 2.0
+	players[0].linear_velocity = Vector2.ZERO
+	players[0].angular_velocity = 0.0
 	match_ref._do_serve(players[0])
 	print("TEST serve fired. ball vel=", ball.vel, " vz=", ball.vz)
 

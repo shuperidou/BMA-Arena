@@ -21,6 +21,7 @@ var scores: Dictionary = {1: 0, 2: 0}
 var server_index: int = 1
 var last_hitter: PlayerController = null
 var expected_receiver: PlayerController = null
+var solo_mode: bool = false  ## 调试：玩家2 消失，玩家1 自己发球自己接
 
 var _timer: float = 0.0
 var _serve_latch: bool = false
@@ -55,6 +56,10 @@ func start_match() -> void:
 func restart() -> void:
 	start_match()
 
+func set_solo(v: bool) -> void:
+	solo_mode = v
+	server_index = 1
+
 func _physics_process(dt: float) -> void:
 	_update_block()
 	match state:
@@ -87,7 +92,8 @@ func _begin_serve() -> void:
 	ball.z = GameConfig.table_z
 	ball.vz = 0.0
 	ball.vel = Vector2.ZERO
-	ball.global_position = _serve_spot()
+	# 球贴在发球方身上 (发球前不可见，见 Ball._draw)
+	ball.global_position = players[server_index - 1].global_position
 	block_system.active = false
 	block_system.state = GameTypes.Interference.NONE
 	EventBus.match_state_changed.emit(state)
@@ -107,9 +113,11 @@ func _tick_serve() -> void:
 		_serve_latch = pressed
 
 func _do_serve(server: PlayerController) -> void:
-	ball.global_position = _serve_spot()
+	# 从发球方所在位置、沿其朝向发出 (前方 = 局部 +x)
+	var facing: Vector2 = Vector2.RIGHT.rotated(server.rotation)
+	ball.global_position = server.global_position
 	ball.z = GameConfig.table_z
-	ball.launch_velocity(Vector2(0.0, -GameConfig.ball_hit_speed), GameConfig.ball_hit_vz)
+	ball.launch_velocity(facing * GameConfig.ball_hit_speed, GameConfig.ball_hit_vz)
 	ball.last_hitter = server
 	last_hitter = server
 	expected_receiver = _other(server)
@@ -118,19 +126,15 @@ func _do_serve(server: PlayerController) -> void:
 	EventBus.match_state_changed.emit(state)
 	state_changed.emit(state)
 
-func _serve_spot() -> Vector2:
-	var server: PlayerController = players[server_index - 1]
-	var tr := GameConfig.table_rect()
-	var x: float = clampf(server.global_position.x, tr.position.x + 40.0, tr.end.x - 40.0)
-	return Vector2(x, tr.end.y + GameConfig.ball_radius + 2.0)
-
 func _reset_positions() -> void:
-	var sign: float = -1.0 if server_index == 1 else 1.0
+	if solo_mode:
+		return  # 单人调试：不重置位置，玩家自由走动
+	var tr := GameConfig.table_rect()
 	var server: PlayerController = players[server_index - 1]
 	var receiver: PlayerController = _other(server)
-	var sp := Vector2(sign * 140.0, 60.0)
-	var rp := Vector2(-sign * 140.0, 140.0)
-	# 初始朝向 = 面向桌中心 (之后完全交给物理，不再主动旋转)
+	# 发球方站在桌子近边、面向桌中心 (这样沿朝向发球能落桌)
+	var sp := Vector2(0.0, tr.end.y + 18.0)
+	var rp := Vector2(0.0, tr.end.y + 178.0)
 	server.reset_to(sp, (GameConfig.table_center - sp).angle())
 	receiver.reset_to(rp, (GameConfig.table_center - rp).angle())
 
@@ -181,6 +185,16 @@ func _decide_winner(reason: int) -> int:
 	return receiver_index
 
 func _award_point(winner_index: int, reason: int) -> void:
+	if solo_mode:
+		# 单人调试：不计分，球死后重发
+		EventBus.notify("球死  (%s)" % _reason_text(reason), GameConfig.point_pause)
+		state = GameTypes.MatchState.POINT_PAUSE
+		_timer = GameConfig.point_pause
+		block_system.active = false
+		ball.state = GameTypes.BallState.INACTIVE
+		EventBus.match_state_changed.emit(state)
+		state_changed.emit(state)
+		return
 	scores[winner_index] += 1
 	EventBus.score_changed.emit(scores)
 	EventBus.notify("玩家%d 得分  (%s)" % [winner_index, _reason_text(reason)], GameConfig.point_pause)
@@ -205,7 +219,7 @@ func _finish_match() -> void:
 #  阻挡
 # ------------------------------------------------------------
 func _update_block() -> void:
-	if state != GameTypes.MatchState.RALLY or expected_receiver == null:
+	if solo_mode or state != GameTypes.MatchState.RALLY or expected_receiver == null:
 		block_system.active = false
 		_set_block_state(GameTypes.Interference.NONE)
 		return
@@ -248,6 +262,8 @@ func _on_players_collided(_other_player: PlayerController, world_pos: Vector2) -
 #  工具
 # ------------------------------------------------------------
 func _other(p: PlayerController) -> PlayerController:
+	if solo_mode:
+		return p  # 自己发球自己接
 	return players[1] if p == players[0] else players[0]
 
 func _now() -> float:

@@ -37,7 +37,9 @@ Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Des
 
 - 碰撞层：`1` = 玩家，`2` = 场地（墙/桌/边界）。球不使用物理层（自定义 z 物理）。
 - 球模型：俯视 XY + 独立高度 `height_z`（距地面）。`GROUND_Z=ground_z`，`TABLE_Z=table_z`（独立，不要假定为 0）。桌弹=下降且高度穿过 `table_z` 且 XY 在桌面内；`height_z<=ground_z` 落地。
-- 球的**视觉缩放只影响 _draw**，绝不改 `radius`（逻辑碰撞半径固定）。比赛逻辑读 `state`/`height_state`，不读视觉。
+- 球的**视觉缩放只影响 _draw**，绝不改 `radius`（逻辑碰撞半径固定）。比赛逻辑读 `state`/`height_state`，不读视觉。球只在 `state==LIVE` 时显示（发球前不可见）。
+- 发球（全局）：从发球方 `global_position`、沿其朝向 `Vector2.RIGHT.rotated(rotation)`（局部 +x = 面向桌中心方向）以 `ball_hit_speed`/`ball_hit_vz` 发出。
+- 单人调试：`Match.solo_mode` + `Main._toggle_solo()`（F1 打开调试后按 `1`）。开启后玩家2 隐藏/冻结/关闭碰撞，`_other()` 返回自己（自己发自己接），不计分、不判阻挡、不重置位置。
 - 输入用 physical keycode 轮询，没有用 InputMap。
 - **控制模型：平移与旋转严格解耦。** 移动永远是世界坐标（绝不用 `transform.basis * input`）。
 - 朝向：**强回正到"面向桌中心"**（`base_face_enabled`/`base_face_response`/`base_face_max_angular_velocity`/`base_face_acceleration`，默认较强较快），撞歪后由物理短暂影响、随即快速拉回；不硬锁死。球不影响朝向。

@@ -72,5 +72,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			GameConfig.show_hints = not GameConfig.show_hints
 		KEY_R:
 			match_ref.restart()
+		KEY_1:
+			# 调试：F1 打开调试后，按 1 切换"玩家2 消失"的单人模式
+			if debug_layer.enabled:
+				_toggle_solo()
 		KEY_ESCAPE:
 			get_tree().quit()
+
+func _toggle_solo() -> void:
+	var on: bool = not match_ref.solo_mode
+	match_ref.set_solo(on)
+	var p2: PlayerController = players[1]
+	p2.visible = not on
+	p2.set_physics_process(not on)
+	p2.freeze = on
+	p2.collision_layer = 0 if on else 1
+	p2.collision_mask = 0 if on else 3
+	EventBus.notify("Solo 调试: %s" % ("开 (玩家2 消失, 自己发接)" if on else "关"), 2.0)
+	match_ref.restart()

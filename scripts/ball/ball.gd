@@ -166,6 +166,9 @@ func visual_scale() -> float:
 		GameConfig.min_visual_scale, GameConfig.max_visual_scale)
 
 func _draw() -> void:
+	# 发球前 (HELD/INACTIVE) 不显示；球死(DEAD)也不显示
+	if state != GameTypes.BallState.LIVE:
+		return
 	# 影子：固定在 XY 位置，大小固定 (不随高度缩放)
 	var sh: float = radius * GameConfig.shadow_scale
 	draw_circle(Vector2.ZERO, sh, Color(0, 0, 0, 0.32))
