@@ -60,8 +60,8 @@ var hit_zone_return_speed: float = 300.0     ## 松开后的回位速度 (单位
 #  击球系统 (集中管理，见 scripts/match/hit_system.gd)
 # ============================================================
 ## 力度：由"击球区在世界空间中的实际速度"决定，经过曲线映射到球速区间。
-var hit_speed_min: float = 420.0        ## 轻击球速
-var hit_speed_max: float = 720.0        ## 强击球速
+var hit_speed_min: float = 520.0        ## 轻击球速
+var hit_speed_max: float = 820.0        ## 强击球速
 var hit_speed_curve: float = 1.2        ## 力度响应曲线指数 (>1 需要更快才到强)
 var hit_zone_speed_ref: float = 1500.0  ## 击球区速度归一化基准 (世界单位/秒)
 ## 方向：基础方向=面向桌中心；叠加"击球区位置 + 挥动方向"的偏置。
@@ -70,10 +70,11 @@ var position_bias_weight: float = 0.5   ## 偏置里"击球区位置"的权重 (
 ## 智能回球辅助程度 (0..1 单一旋钮)：
 ##   1 = 完全辅助：只要触球，即使不做任何操作也会被拉回桌面
 ##   0 = 完全关闭辅助：完全按玩家击球
-##   0..1 = 部分辅助，值越大辅助越强
-## 仅在原始击球会飞出桌面时介入 (已合法则不干预)。
-var assist_strength: float = 0.0        ## 辅助程度 0..1
+## 0..1 = 部分辅助，值越大辅助越强
+## 触发条件：原始落点若不在"好区"(桌面内缩 assist_good_margin 像素) 就介入。
+var assist_strength: float = 1.0        ## 辅助程度 0..1
 var max_assist_angle: float = 180.0     ## 修正角硬上限(度)。180=不限制 (让 assist=1 能完全回正)
+var assist_good_margin: float = 40.0    ## 好区=桌面内缩这么多像素。越大越容易触发(越少很偏的球)
 
 # ============================================================
 #  球：伪 Z 轴 (高度) 系统
@@ -107,10 +108,10 @@ var wall_return_assist: bool = true
 var wall_return_depth_frac: float = 0.8  ## 0=远边, 1=近边。落点=远边+深度*frac [TUNED]
 
 ## 击球赋予的初速度
-var ball_hit_speed: float = 520.0      ## [TUNED]
-var ball_hit_vz: float = 360.0         ## [TUNED]
-var ball_hit_vz_min: float = 150.0
-var ball_hit_vz_max: float = 360.0
+var ball_hit_speed: float = 620.0      ## [TUNED]
+var ball_hit_vz: float = 660.0         ## [TUNED]
+var ball_hit_vz_min: float = 650.0
+var ball_hit_vz_max: float = 760.0
 var hit_player_vel_influence: float = 0.5
 
 ## 可击球的高度范围 (第一阶段宽松)

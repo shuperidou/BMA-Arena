@@ -43,7 +43,7 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var final_speed: float = ball_speed
 	var assist_angle: float = 0.0
 	var assist_speed_delta: float = 0.0
-	if assist > 0.0 and not _lands_on_table(p, raw_dir, 2.0 * ball_speed * vz / g):
+	if assist > 0.0 and not _lands_in_good_zone(p, raw_dir, 2.0 * ball_speed * vz / g):
 		# 恢复解 (镜面法)：
 		#   方向 = 指向"桌中心关于墙的镜像点" -> 球撞墙反弹后水平路径经过桌中心
 		#   力度 = 单独选，让第一次落桌仍在桌面内 (镜像点在墙外，不能当落点)
@@ -81,17 +81,24 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 static func _lands_on_table(p: Vector2, dir: Vector2, dist: float) -> bool:
 	return GameConfig.table_rect().grow(-4.0).has_point(p + dir * dist)
 
+## 落点是否落在"好区"(桌面内缩 assist_good_margin)。不在则触发辅助。
+static func _lands_in_good_zone(p: Vector2, dir: Vector2, dist: float) -> bool:
+	return GameConfig.table_rect().grow(-GameConfig.assist_good_margin).has_point(p + dir * dist)
+
 ## 桌中心关于墙的镜像点 (墙在俯视上是水平镜面 -> 翻转 y)。
 static func mirror_of_table_center() -> Vector2:
 	var tc := GameConfig.table_center
 	return Vector2(tc.x, 2.0 * GameConfig.wall_inner_y() - tc.y)
 
-## 恢复力度：让第一次落桌点位于桌面内 (取射线与桌面交段的靠远端)。
+## 恢复力度：让第一次落桌点位于"好区"内 (取射线与好区交段的中点)。
 static func _recovery_speed(p: Vector2, dir: Vector2, vz: float, g: float) -> float:
-	var seg: Array = _ray_rect_segment(p, dir, GameConfig.table_rect())
+	var good := GameConfig.table_rect().grow(-GameConfig.assist_good_margin)
+	var seg: Array = _ray_rect_segment(p, dir, good)
+	if seg.is_empty():
+		seg = _ray_rect_segment(p, dir, GameConfig.table_rect())
 	var d: float
 	if seg.size() == 2:
-		d = lerpf(seg[0], seg[1], 0.7)
+		d = lerpf(seg[0], seg[1], 0.5)
 	else:
 		d = p.distance_to(GameConfig.table_center)
 	return clampf(d * g / (2.0 * vz), 60.0, GameConfig.hit_speed_max)
