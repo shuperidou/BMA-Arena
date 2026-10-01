@@ -38,6 +38,12 @@ var last_hitter: Node = null
 
 var _bounce_threshold: float = 25.0
 
+# 击球反馈
+var hit_flash: float = 0.0        ## 1->0 的击球闪一下
+var last_strength: float = 0.0    ## 上次击球力度 (0..1)
+var last_hit_info: Dictionary = {} ## 上次击球调试信息
+var _trail: Array[Vector2] = []   ## 拖尾 (存视觉位置，含高度偏移)
+
 func _ready() -> void:
 	radius = GameConfig.ball_radius
 	_bounce_threshold = GameConfig.bounce_vz_threshold
@@ -56,6 +62,13 @@ func launch_velocity(v: Vector2, vz0: float) -> void:
 	vz = vz0
 	state = GameTypes.BallState.LIVE
 	reset_shot()
+	_trail.clear()
+
+## 记录一次击球的反馈信息 (由 Match 调用)。
+func register_hit(info: Dictionary) -> void:
+	last_hit_info = info
+	last_strength = clampf(info.get("strength", 0.0), 0.0, 1.0)
+	hit_flash = 1.0
 
 ## 弹道发射：让球第一次落桌点尽量落在 target (xy)。高度从桌面起。
 func launch_toward(target: Vector2, vz0: float) -> void:
@@ -108,6 +121,11 @@ func _step(dt: float) -> void:
 		return
 
 	_update_height_state()
+	# 拖尾 + 闪一下衰减
+	_trail.append(position - Vector2(0.0, z * GameConfig.shadow_offset_factor))
+	if _trail.size() > 12:
+		_trail.pop_front()
+	hit_flash = maxf(0.0, hit_flash - dt * 2.5)
 	queue_redraw()
 
 func _register_table_bounce() -> void:
@@ -154,6 +172,7 @@ func _die(reason: int) -> void:
 		return
 	state = GameTypes.BallState.DEAD
 	height_state = GameTypes.BallHeightState.NONE
+	_trail.clear()
 	queue_redraw()
 	died.emit(reason)
 
@@ -169,16 +188,25 @@ func _draw() -> void:
 	# 发球前 (HELD/INACTIVE) 不显示；球死(DEAD)也不显示
 	if state != GameTypes.BallState.LIVE:
 		return
-	# 影子：固定在 XY 位置，大小固定 (不随高度缩放)
-	var sh: float = radius * GameConfig.shadow_scale
-	draw_circle(Vector2.ZERO, sh, Color(0, 0, 0, 0.32))
-	# 球：随高度放大 + 向上偏移 (影子与球的距离体现高度)
 	var r: float = radius * visual_scale()
 	var p := Vector2(0.0, -z * GameConfig.shadow_offset_factor)
+	# 拖尾 (越新越明显)
+	var n: int = _trail.size()
+	for i in n:
+		var f: float = float(i) / float(maxi(n, 1))
+		var tp: Vector2 = _trail[i] - position
+		draw_circle(tp, radius * (0.25 + 0.5 * f) * visual_scale(),
+			Color(1.0, 0.8, 0.3, 0.04 + 0.16 * f))
+	# 影子：固定在 XY 位置，大小固定 (不随高度缩放)
+	draw_circle(Vector2.ZERO, radius * GameConfig.shadow_scale, Color(0, 0, 0, 0.32))
+	# 球：随高度放大 + 向上偏移 (影子与球的距离体现高度)
 	draw_circle(p, r, Color(1, 1, 1))
 	var inner := Color(1.0, 0.83, 0.3)
-	if state == GameTypes.BallState.DEAD:
-		inner = Color(0.5, 0.5, 0.5)
-	elif state == GameTypes.BallState.HELD:
-		inner = Color(0.6, 0.9, 1.0)
+	if hit_flash > 0.05:
+		# 力度反馈：弱=蓝，强=橙红
+		inner = Color(0.45, 0.7, 1.0).lerp(Color(1.0, 0.35, 0.15), last_strength)
 	draw_circle(p, r * 0.6, inner)
+	# 击球闪环
+	if hit_flash > 0.01:
+		var rr: float = radius * (1.5 + (1.0 - hit_flash) * 10.0)
+		draw_arc(p, rr, 0.0, TAU, 28, Color(1, 1, 1, hit_flash * 0.8), 3.0)

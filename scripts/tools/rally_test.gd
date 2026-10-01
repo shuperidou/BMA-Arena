@@ -1,14 +1,15 @@
 extends Node
-## 无头自动对拉测试 (仅开发用)。
+## 无头自动对拉测试。
 ## 运行: godot --headless --path <project> res://scenes/RallyTest.tscn
-## 让"当前接球方"每帧瞬移到球旁自动回击，验证 发球->桌->墙->桌->回击 的循环与计分。
+## 由测试直接调用 _apply_hit (用可控的击球区速度), 验证 发球->桌->墙->桌->回击 循环与计分。
 
 var main_node: Node
 var match_ref: Match
 var ball: Ball
 var players: Array[PlayerController] = []
-var t: float = 0.0
 var events: Array[String] = []
+var t: float = 0.0
+var _next_hit: float = 0.0
 
 func _ready() -> void:
 	main_node = preload("res://scenes/Main.tscn").instantiate()
@@ -17,9 +18,10 @@ func _ready() -> void:
 	match_ref = main_node.match_ref
 	ball = main_node.ball
 	players = main_node.players
-	main_node.debug_layer.enabled = true  # 确保调试绘制路径也被执行
+	main_node.debug_layer.enabled = true
 	for p in players:
-		p.input_scheme = null  # 测试里不让鼠标/键盘控制旋转，手动摆位更稳定
+		p.input_scheme = null
+		p.ball = null  # 禁用自动触及，避免与手动 _apply_hit 重复
 
 	ball.table_bounced.connect(func(i: int) -> void:
 		events.append("TABLE%d y=%.0f z=%.0f" % [i, ball.global_position.y, ball.z]))
@@ -27,13 +29,12 @@ func _ready() -> void:
 		events.append("WALL y=%.0f z=%.0f" % [ball.global_position.y, ball.z]))
 	ball.died.connect(func(r: int) -> void:
 		events.append("DIE(%d) y=%.0f bounce=%d wall=%s" % [r, ball.global_position.y, ball.table_bounces, str(ball.wall_since_hit)]))
-	for p in players:
-		p.ball_touched.connect(func(pl: PlayerController, _hp: HitPoint) -> void:
-			events.append("HIT by P%d" % pl.player_index))
 	match_ref.state_changed.connect(func(s: int) -> void:
 		events.append("--- STATE=%d score=%s" % [s, str(match_ref.scores)]))
+	for p in players:
+		p.ball_touched.connect(func(pl: PlayerController, _hp: HitPoint) -> void:
+			events.append("TOUCH P%d" % pl.player_index))
 
-	# 发球现在从发球方位置、沿其朝向发出；把发球方摆在桌近边、朝向桌中心
 	players[0].global_position = Vector2(0.0, -10.0)
 	players[0].rotation = -PI / 2.0
 	players[0].linear_velocity = Vector2.ZERO
@@ -41,21 +42,30 @@ func _ready() -> void:
 	match_ref._do_serve(players[0])
 	print("TEST serve fired. ball vel=", ball.vel, " vz=", ball.vz)
 
+func _do_test_hit() -> void:
+	var recv: PlayerController = match_ref.expected_receiver
+	if recv == null:
+		return
+	var facing: float = (GameConfig.table_center - ball.global_position).angle()
+	recv.rotation = facing
+	recv.global_position = ball.global_position - recv.hit_points[0].position.rotated(facing)
+	recv.linear_velocity = Vector2.ZERO
+	recv.angular_velocity = 0.0
+	if recv.hit_points.size() >= 2:
+		recv.hit_points[0].velocity = Vector2(0.0, -400.0)
+		recv.hit_points[1].velocity = Vector2(0.0, 400.0)
+	match_ref._apply_hit(recv, recv.hit_points[0])
+
 func _physics_process(delta: float) -> void:
 	t += delta
 	if match_ref == null or ball == null:
 		return
-	# 前 4 秒自动回击；之后故意不接，验证计分
-	var recv: PlayerController = match_ref.expected_receiver
-	if t < 4.0 and recv != null and ball.state == GameTypes.BallState.LIVE and ball.returnable:
-		recv.global_position = ball.global_position + Vector2(0.0, 90.0)
-		recv.rotation = 0.0
-		recv.linear_velocity = Vector2.ZERO
-		recv.angular_velocity = 0.0
-	elif t >= 4.0:
-		# 故意离开：验证球死 -> 计分 -> 下一分
+	if t < 4.0 and ball.state == GameTypes.BallState.LIVE and ball.returnable and t >= _next_hit:
+		_do_test_hit()
+		_next_hit = t + 0.05
+	if t >= 4.0:
 		for p in players:
-			p.global_position = Vector2(430.0, 250.0)
+			p.global_position = Vector2(430.0, 250.0)  # 故意离开
 	if t > 7.0:
 		print("TEST EVENTS:")
 		for e in events:

@@ -17,6 +17,12 @@ Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Des
 # 控制模型测试（世界移动/解耦/旋转惯性）
 & "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes/ControlTest.tscn
 
+# 击球系统测试（力度曲线/方向/智能辅助）
+& "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes/HitTest.tscn
+
+# 单人调试模式冒烟测试
+& "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes/SoloTest.tscn
+
 # 编辑器
 & "D:\Godot\Godot_v4.7-stable_win64.exe" --path "D:\Godot\Games\ArenaBlock" -e
 ```

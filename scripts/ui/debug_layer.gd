@@ -96,6 +96,9 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 		draw_circle(anchor, 6.0, Color(0.5, 0.85, 1.0, 0.9))
 		draw_line(anchor, cur, Color(0.5, 0.85, 1.0, 0.6), 1.5)
 		draw_circle(cur, 4.0, Color(0.6, 0.95, 1.0))
+	# 击球区世界速度 (箭头)
+	for hp in p1.hit_points:
+		draw_line(hp.global_position, hp.global_position + hp.velocity * 0.12, Color(1.0, 0.3, 1.0, 0.85), 2.0)
 	var a_pos: Vector2 = p1.hit_points[0].position if p1.hit_points.size() >= 2 else Vector2.ZERO
 	var b_pos: Vector2 = p1.hit_points[1].position if p1.hit_points.size() >= 2 else Vector2.ZERO
 	var txt := "rot=%.2f\nMouseWorldDelta=(%.1f,%.1f)\nHitLocalDelta  =(%.1f,%.1f)\nA_local=(%.1f,%.1f) B_local=(%.1f,%.1f)" % [
@@ -104,6 +107,19 @@ func _draw_aim(font: Font, p1: PlayerController) -> void:
 		p1.hit_zone_offset_local.x, p1.hit_zone_offset_local.y,
 		a_pos.x, a_pos.y, b_pos.x, b_pos.y]
 	draw_string(font, o + Vector2(12, 22), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.8, 1.0, 0.9, 0.95))
+	# 击球系统信息 (最近一次击球)
+	var b: Ball = match_ref.ball
+	if b != null and not b.last_hit_info.is_empty():
+		var info: Dictionary = b.last_hit_info
+		var bp: Vector2 = b.global_position
+		var raw: Vector2 = info.get("raw_dir", Vector2.ZERO)
+		var ass: Vector2 = info.get("assisted_dir", Vector2.ZERO)
+		draw_line(bp, bp + raw * 90.0, Color(1.0, 0.5, 0.2, 0.85), 2.0)   # 原始方向 (橙)
+		draw_line(bp, bp + ass * 90.0, Color(0.2, 1.0, 0.5, 0.95), 3.0)   # 辅助后方向 (绿)
+		var ht := "Strength=%.2f  ballSpd=%.0f  zoneSpd=%.0f\nRawDir=(%.2f,%.2f)\nAssistDir=(%.2f,%.2f)\nAssistAngle=%.1f deg  ballV=(%.0f,%.0f)" % [
+			info.get("strength", 0.0), info.get("ball_speed", 0.0), info.get("zone_speed", 0.0),
+			raw.x, raw.y, ass.x, ass.y, rad_to_deg(info.get("assist_angle", 0.0)), b.vel.x, b.vel.y]
+		draw_string(font, tc + Vector2(18, 30), ht, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.9, 0.6, 0.95))
 
 func _draw_capsule(c: Vector2, angle: float, hl: float, r: float, color: Color) -> void:
 	var seg: float = hl - r

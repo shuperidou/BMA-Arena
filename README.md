@@ -55,21 +55,31 @@ rotation -> 强回正到"面向桌中心" (撞歪后快速转回) + 物理碰撞
 - 已删除 Q/E，无绝对瞄准/投影/自动朝球/角度累计。玩家2 的键盘旋转只是本地双人测试的临时方案 [TEMP]。
 - `F1` 调试画出：桌中心、两个击球区默认位置(空心)与当前偏移位置(实心)、锚点、当前鼠标；并显示 `rot / MouseWorldDelta / HitLocalDelta / A_local / B_local` 两套坐标数值可直接对照。
 
-### 无头自动对拉测试（开发用）
+### 击球系统
 
-```powershell
-& "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes/RallyTest.tscn
+模块：`scripts/match/hit_system.gd`（`HitSystem.compute`）。由三因素决定：
+
+```
+击球区世界位置  -> 方向偏置 (相对身体的方向)
+击球区世界速度  -> 力度 (经曲线映射到球速区间) + 方向偏置
+智能回球辅助    -> 原始方向会把球直接打出桌面时，做"有上限"的方向修正
 ```
 
-会让"当前接球方"自动瞬移接球 4 秒，然后故意离开，验证 `发球 -> 桌 -> 墙 -> 桌 -> 回击` 循环与计分。
+- 力度：`t = clamp(zone速度 / hit_zone_speed_ref, 0,1)`；`strength = t^hit_speed_curve`；`球速 = lerp(hit_speed_min, hit_speed_max, strength)`。**用击球区的世界速度**，不是鼠标速度。
+- 方向：`raw = normalize( facing + (outward*position_bias_weight + swing) * hit_direction_strength )`，facing=面向桌中心。
+- 辅助：若 `球位置 + raw*落点距离` 不在桌面内，则在 ±`max_assist_angle` 内找最小修正角（×`assist_strength`）让它落桌；已合法则不修正。**只救一点，不替玩家决定**。
+- 反馈：球被击中时闪一下 + 力度颜色(弱蓝↔强红) + 扩散环 + 拖尾。
+- 参数：`hit_speed_min/max/curve` / `hit_zone_speed_ref` / `hit_direction_strength` / `position_bias_weight` / `max_assist_angle` / `assist_strength`（全部在 `GameConfig`）。
+- `F1` 调试会显示 `Strength / ballSpd / zoneSpd / RawDir / AssistDir / AssistAngle / ballV`，并画原始方向(橙)与辅助后方向(绿)。
 
-### 无头控制测试（开发用）
+### 无头测试（开发用）
 
 ```powershell
-& "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes/ControlTest.tscn
+& "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes\RallyTest.tscn   # 对拉循环 + 计分
+& "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes\ControlTest.tscn # 移动/朝向解耦
+& "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes\HitTest.tscn     # 击球系统 (力度/方向/辅助)
+& "D:\Godot\Godot_v4.7-stable_win64_console.exe" --headless --path "D:\Godot\Games\ArenaBlock" res://scenes\SoloTest.tscn    # 单人调试模式
 ```
-
-自动验证：朝下按 W 仍向世界上移动、朝上按 D 仍向世界右移动、移动与旋转互不干扰、旋转是渐进而非瞬移。
 
 ---
 

@@ -29,7 +29,7 @@ var player_radius: float = 14.0        ## 纺锤半径
 var player_mass: float = 1.0
 var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [TUNED]
 
-var move_speed: float = 360.0
+var move_speed: float = 720.0
 var move_accel: float = 3200.0         ## 速度变化最大加速度 (惯性/手感)
 
 # 旋转
@@ -55,6 +55,21 @@ var mouse_drag_deadzone: float = 0.0         ## 拖动死区 (屏幕像素, 0=�
 var hit_zone_drag_scale: float = 1.0         ## 鼠标位移 -> 局部偏移 (1.0 = 数值相同)
 var hit_zone_max_offset: float = 40.0        ## 局部位移上限 (世界单位)
 var hit_zone_return_speed: float = 300.0     ## 松开后的回位速度 (单位/秒)
+
+# ============================================================
+#  击球系统 (集中管理，见 scripts/match/hit_system.gd)
+# ============================================================
+## 力度：由"击球区在世界空间中的实际速度"决定，经过曲线映射到球速区间。
+var hit_speed_min: float = 220.0        ## 轻击球速
+var hit_speed_max: float = 620.0        ## 强击球速
+var hit_speed_curve: float = 1.2        ## 力度响应曲线指数 (>1 需要更快才到强)
+var hit_zone_speed_ref: float = 1500.0  ## 击球区速度归一化基准 (世界单位/秒)
+## 方向：基础方向=面向桌中心；叠加"击球区位置 + 挥动方向"的偏置。
+var hit_direction_strength: float = 0.6 ## 偏置对方向的影响程度 (0=永远朝桌, 1=完全由挥动决定)
+var position_bias_weight: float = 0.5   ## 偏置里"击球区位置"的权重 (其余给挥动速度)
+## 智能回球辅助：只在原始方向会把球直接打出桌面时才介入，且修正角有上限。
+var max_assist_angle: float = 35.0      ## 最大修正角 (度)
+var assist_strength: float = 1.0        ## 修正应用比例 (0..1)
 
 # ============================================================
 #  球：伪 Z 轴 (高度) 系统

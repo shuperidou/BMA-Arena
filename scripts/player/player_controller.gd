@@ -111,8 +111,11 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 			drag = drag - drag.normalized() * dead
 	var target_local: Vector2 = (drag * GameConfig.hit_zone_drag_scale) \
 		.limit_length(GameConfig.hit_zone_max_offset)
-	hit_zone_offset_local = hit_zone_offset_local.move_toward(target_local,
-		GameConfig.hit_zone_return_speed * step)
+	if input_scheme.is_dragging():
+		hit_zone_offset_local = target_local  # 拖动中 1:1 跟随 (速度=挥动速度)
+	else:
+		hit_zone_offset_local = hit_zone_offset_local.move_toward(Vector2.ZERO,
+			GameConfig.hit_zone_return_speed * step)
 	_update_hit_points()
 	debug_hit_zone_local_delta = target_local
 	# 强回正：快速转向"面向桌中心" (仍是物理刚体，撞歪会被物理短暂影响后拉回)

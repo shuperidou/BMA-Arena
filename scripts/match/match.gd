@@ -153,12 +153,10 @@ func _on_ball_touched(player: PlayerController, hit_point: HitPoint) -> void:
 	_apply_hit(player, hit_point)
 
 func _apply_hit(player: PlayerController, hit_point: HitPoint) -> void:
-	var outward: Vector2 = hit_point.global_position - player.global_position
-	outward = outward.normalized() if outward.length() > 1.0 else Vector2(0.0, -1.0)
-	var v: Vector2 = outward * GameConfig.ball_hit_speed \
-		+ player.linear_velocity * GameConfig.hit_player_vel_influence
-	ball.launch_velocity(v, GameConfig.ball_hit_vz)
+	var info: Dictionary = HitSystem.compute(player, hit_point, ball)
+	ball.launch_velocity(info.velocity, info.vz)
 	ball.z = maxf(ball.z, GameConfig.table_z)
+	ball.register_hit(info)
 	ball.last_hitter = player
 	last_hitter = player
 	expected_receiver = _other(player)

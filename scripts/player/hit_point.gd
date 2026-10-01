@@ -6,10 +6,20 @@ extends Node2D
 ## 改变半径、方向或触发特殊击球。
 
 var reach: float = 22.0
+var velocity: Vector2 = Vector2.ZERO  ## 世界空间实际速度 (击球力度依据)
+var _prev_world: Vector2 = Vector2.ZERO
+var _has_prev: bool = false
 
 func _ready() -> void:
 	reach = GameConfig.hit_reach
 	queue_redraw()
+
+func _physics_process(dt: float) -> void:
+	var gp: Vector2 = global_position
+	if _has_prev and dt > 0.0:
+		velocity = (gp - _prev_world) / dt
+	_prev_world = gp
+	_has_prev = true
 
 ## 是否触及球。
 func touches(ball: Ball) -> bool:
