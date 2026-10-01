@@ -24,6 +24,7 @@ var expected_receiver: PlayerController = null
 var solo_mode: bool = false  ## 调试：玩家2 消失，玩家1 自己发球自己接
 
 var _timer: float = 0.0
+var _serve_timer: float = 0.0
 var _serve_latch: bool = false
 var _interference_fired: bool = false
 var _match_over_pending: bool = false
@@ -64,7 +65,7 @@ func _physics_process(dt: float) -> void:
 	_update_block()
 	match state:
 		GameTypes.MatchState.SERVE:
-			_tick_serve()
+			_tick_serve(dt)
 		GameTypes.MatchState.RALLY:
 			pass
 		GameTypes.MatchState.POINT_PAUSE, GameTypes.MatchState.INTERFERENCE:
@@ -82,6 +83,7 @@ func _begin_serve() -> void:
 	state = GameTypes.MatchState.SERVE
 	_interference_fired = false
 	_serve_latch = _server_serve_pressed(players[server_index - 1])
+	_serve_timer = GameConfig.ai_serve_delay
 	last_hitter = null
 	expected_receiver = _other(players[server_index - 1])
 	_reset_positions()
@@ -103,8 +105,14 @@ func _begin_serve() -> void:
 func _server_serve_pressed(p: PlayerController) -> bool:
 	return p.input_scheme != null and p.input_scheme.serve_pressed()
 
-func _tick_serve() -> void:
+func _tick_serve(dt: float) -> void:
 	var server: PlayerController = players[server_index - 1]
+	if server is AiPlayer:
+		# AI 自动发球：等一小段(给玩家反应时间)后发出
+		_serve_timer -= dt
+		if _serve_timer <= 0.0:
+			_do_serve(server)
+		return
 	var pressed: bool = _server_serve_pressed(server)
 	if pressed and not _serve_latch:
 		_serve_latch = true

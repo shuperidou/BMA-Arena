@@ -39,6 +39,9 @@ var base_face_response: float = 30.0             ## 角度误差 -> 目标角速
 var base_face_max_angular_velocity: float = 25.0 ## rad/s (强)
 var base_face_acceleration: float = 600.0        ## rad/s^2 (快速起转)
 var player_angular_damp: float = 3.0             ## 物理角阻尼
+## 鼠标左右拖动时，身体跟随做"有限的小幅旋转"(让判定区移动看起来自然)
+var drag_rot_sensitivity: float = 0.0016         ## 每像素 -> 弧度
+var drag_rot_max: float = 0.25                   ## 最大角度 (弧度, ~14°)
 
 # 玩家2 键盘临时方案专用
 var max_angular_velocity: float = 80.0   ## rad/s 最大角速度
@@ -128,6 +131,8 @@ var receiver_bounce_limit: int = 1
 var point_pause: float = 1.6
 var interference_pause: float = 1.8
 var hit_cooldown: float = 0.15
+## AI 自动发球前的等待时间 (给玩家反应时间)
+var ai_serve_delay: float = 1.5
 
 # ============================================================
 #  阻挡判定 (全部临时阈值) [TEMP]

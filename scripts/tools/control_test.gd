@@ -113,19 +113,23 @@ func _run() -> void:
 	_check("T3d zones opposite", a_delta.is_equal_approx(off) and b_delta.is_equal_approx(-off),
 		"A=%s B=%s off=%s" % [str(a_delta.round()), str(b_delta.round()), str(off.round())])
 
-	# T4: 强回正到"面向桌中心"，且与鼠标拖动无关
+	# T4: 强回正到"面向桌中心"
 	GameConfig.base_face_enabled = true
 	var base_angle: float = (GameConfig.table_center - Vector2(0, 120)).angle()
-	var results: Array = []
-	for dragv in [Vector2(200.0, 50.0), Vector2(-200.0, -50.0)]:
-		_place(Vector2(0, 120), 0.7)
-		_set_drag(true, dragv)
-		await _frames(60)
-		results.append(p1.rotation)
-	var t4a: bool = absf(wrapf(results[0] - base_angle, -PI, PI)) < 0.12
-	var t4b: bool = absf(wrapf(results[0] - results[1], -PI, PI)) < 0.12
-	_check("T4a recenters to table center", t4a, "rot=%.3f base=%.3f" % [results[0], base_angle])
-	_check("T4b recenter independent of mouse", t4b, "A=%.3f B=%.3f" % [results[0], results[1]])
+	# T4a: 不拖动 -> 回到 base
+	_place(Vector2(0, 120), 0.7)
+	_set_drag(false, Vector2.ZERO)
+	await _frames(60)
+	_check("T4a recenters to base (no drag)",
+		absf(wrapf(p1.rotation - base_angle, -PI, PI)) < 0.12, "rot=%.3f base=%.3f" % [p1.rotation, base_angle])
+	# T4b: 拖动 -> 有限的小幅旋转 (不超过 drag_rot_max)
+	_place(Vector2(0, 120), 0.7)
+	_set_drag(true, Vector2(200.0, 0.0))
+	await _frames(60)
+	var off4: float = absf(wrapf(p1.rotation - base_angle, -PI, PI))
+	_check("T4b drag gives small bounded rotation",
+		off4 <= GameConfig.drag_rot_max + 0.12 and off4 > 0.02,
+		"off=%.2f max=%.2f" % [off4, GameConfig.drag_rot_max])
 
 	# T4c: 回正很快 (撞歪 2.27rad，1 秒内回到基准)
 	_place(Vector2(0, 120), 0.7)

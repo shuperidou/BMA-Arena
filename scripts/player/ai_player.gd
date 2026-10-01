@@ -46,7 +46,7 @@ func _desired_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
 
 func _target_point() -> Vector2:
 	if ball == null or ball.state != GameTypes.BallState.LIVE:
-		return _home
+		return global_position  # 球不在场(发球/死球): 原地待命
 	var pred: Dictionary = ball.predict_catchable()
 	if pred.found:
 		return pred.point

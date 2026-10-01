@@ -121,6 +121,11 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 	# 强回正：快速转向"面向桌中心" (仍是物理刚体，撞歪会被物理短暂影响后拉回)
 	if GameConfig.base_face_enabled:
 		var base: float = (GameConfig.table_center - state.transform.origin).angle()
+		# 鼠标左右拖动时，身体跟随做"有限的小幅旋转"，让判定区移动更自然
+		if input_scheme.is_dragging():
+			var dx: float = input_scheme.mouse_drag_screen_x(self)
+			base += clampf(dx * GameConfig.drag_rot_sensitivity,
+				-GameConfig.drag_rot_max, GameConfig.drag_rot_max)
 		var err: float = wrapf(base - state.transform.get_rotation(), -PI, PI)
 		var desired_w: float = clampf(err * GameConfig.base_face_response,
 			-GameConfig.base_face_max_angular_velocity, GameConfig.base_face_max_angular_velocity)
