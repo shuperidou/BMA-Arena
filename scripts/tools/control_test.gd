@@ -16,6 +16,12 @@ func _ready() -> void:
 	p1 = main_node.players[0]
 	p2 = main_node.players[1]
 	p2.input_scheme = null
+	# 关掉玩家2(AI)，避免它跑动干扰玩家1的测试
+	p2.freeze = true
+	p2.set_physics_process(false)
+	p2.global_position = Vector2(430.0, 250.0)
+	p2.collision_layer = 0
+	p2.collision_mask = 0
 	GameConfig.base_face_enabled = false  # 先关回正，便于隔离测试坐标/移动
 	await _run()
 	print("CONTROL TEST failures=", failures)

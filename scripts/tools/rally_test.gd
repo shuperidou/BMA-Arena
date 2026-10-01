@@ -22,6 +22,12 @@ func _ready() -> void:
 	for p in players:
 		p.input_scheme = null
 		p.ball = null  # 禁用自动触及，避免与手动 _apply_hit 重复
+	# 玩家2 (AI) 关掉，避免跑动/碰撞干扰对拉验证
+	players[1].freeze = true
+	players[1].set_physics_process(false)
+	players[1].collision_layer = 0
+	players[1].collision_mask = 0
+	players[1].global_position = Vector2(430.0, 250.0)
 
 	ball.table_bounced.connect(func(i: int) -> void:
 		events.append("TABLE%d y=%.0f z=%.0f" % [i, ball.global_position.y, ball.z]))

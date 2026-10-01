@@ -113,11 +113,11 @@ func _tick_serve() -> void:
 		_serve_latch = pressed
 
 func _do_serve(server: PlayerController) -> void:
-	# 从发球方所在位置、沿其朝向发出 (前方 = 局部 +x)
-	var facing: Vector2 = Vector2.RIGHT.rotated(server.rotation)
+	# 从发球方所在位置发出；默认沿朝向，AI 走智能发球
 	ball.global_position = server.global_position
 	ball.z = GameConfig.table_z
-	ball.launch_velocity(facing * GameConfig.ball_hit_speed, GameConfig.ball_hit_vz)
+	var info: Dictionary = server.compute_serve(ball)
+	ball.launch_velocity(info.velocity, info.vz)
 	ball.last_hitter = server
 	last_hitter = server
 	expected_receiver = _other(server)
@@ -153,7 +153,7 @@ func _on_ball_touched(player: PlayerController, hit_point: HitPoint) -> void:
 	_apply_hit(player, hit_point)
 
 func _apply_hit(player: PlayerController, hit_point: HitPoint) -> void:
-	var info: Dictionary = HitSystem.compute(player, hit_point, ball)
+	var info: Dictionary = player.compute_hit(hit_point, ball)
 	ball.launch_velocity(info.velocity, info.vz)
 	ball.z = maxf(ball.z, GameConfig.table_z)
 	ball.register_hit(info)
@@ -217,6 +217,9 @@ func _finish_match() -> void:
 #  阻挡
 # ------------------------------------------------------------
 func _update_block() -> void:
+	# 阻挡重发停顿期间保留上一步的 CONFIRMED 状态，让 Debug 能持续显示红色
+	if state == GameTypes.MatchState.INTERFERENCE:
+		return
 	if solo_mode or state != GameTypes.MatchState.RALLY or expected_receiver == null:
 		block_system.active = false
 		_set_block_state(GameTypes.Interference.NONE)
@@ -241,7 +244,7 @@ func _set_block_state(s: int) -> void:
 func _begin_interference() -> void:
 	state = GameTypes.MatchState.INTERFERENCE
 	_timer = GameConfig.interference_pause
-	block_system.active = false
+	# 故意不关 active：让 CONFIRMED(红) 在重发停顿期间一直可见
 	ball.state = GameTypes.BallState.INACTIVE
 	var victim: PlayerController = expected_receiver
 	server_index = victim.player_index  # 被阻挡方重发

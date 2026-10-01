@@ -28,19 +28,20 @@ func _ready() -> void:
 	ball.name = "Ball"
 	add_child(ball)
 
-	for i in 2:
-		var p := PlayerController.new()
-		p.name = "Player%d" % (i + 1)
-		var scheme: InputScheme
-		if i == 0:
-			scheme = InputScheme.new(GameConfig.p1_move, GameConfig.p1_serve, GameConfig.p1_aim_mode)
-		else:
-			scheme = InputScheme.new(GameConfig.p2_move, GameConfig.p2_serve, GameConfig.p2_aim_mode,
-				GameConfig.p2_rot_ccw, GameConfig.p2_rot_cw)
-		p.setup(i + 1, scheme)
-		p.global_position = Vector2(-300.0, 140.0) if i == 0 else Vector2(300.0, 140.0)
-		add_child(p)
-		players.append(p)
+	# 玩家1: 鼠标控制的纺锤; 玩家2: 圆形 AI
+	var human := PlayerController.new()
+	human.name = "Player1"
+	human.setup(1, InputScheme.new(GameConfig.p1_move, GameConfig.p1_serve, GameConfig.p1_aim_mode))
+	human.global_position = Vector2(-300.0, 140.0)
+	add_child(human)
+	players.append(human)
+
+	var ai := AiPlayer.new()
+	ai.name = "Player2"
+	ai.setup(2, null)
+	ai.global_position = Vector2(300.0, 140.0)
+	add_child(ai)
+	players.append(ai)
 
 	block_system = BlockSystem.new()
 	block_system.name = "BlockSystem"

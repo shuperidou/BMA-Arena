@@ -149,3 +149,21 @@ func _run() -> void:
 	_check("T8 2nd bounce -> DOUBLE_BOUNCE",
 		ball.state == GameTypes.BallState.DEAD and _last_death == GameTypes.DeathReason.DOUBLE_BOUNCE,
 		"state=%d reason=%d" % [ball.state, _last_death])
+
+	# T9: AI 智能击球 —— 一定落桌, 且角度有变化
+	var ai: AiPlayer = main_node.players[1]
+	var all_land := true
+	var angle0: float = 999.0
+	var varied := false
+	for i in 16:
+		ball.global_position = Vector2(randf_range(-120.0, 120.0), randf_range(-60.0, -20.0))
+		var oa: Dictionary = ai.compute_hit(ai.hit_points[0], ball)
+		var d: Vector2 = oa.velocity.normalized()
+		if not _lands_on_table(ball.global_position, d, oa.ball_speed, oa.vz):
+			all_land = false
+		if i == 0:
+			angle0 = d.angle()
+		elif absf(wrapf(d.angle() - angle0, -PI, PI)) > 0.001:
+			varied = true
+	_check("T9 AI shot always lands on table", all_land, "samples=16")
+	_check("T9 AI varies hit angle", varied, "angle0=%.2f" % angle0)

@@ -167,6 +167,56 @@ func _apply_wall_return_assist() -> void:
 func _over_table() -> bool:
 	return GameConfig.table_rect().has_point(position)
 
+## 预测"可接住点"：球撞墙后落桌、且高度在可击范围内的第一个位置与时间。
+## 返回 {point: Vector2, time: float, found: bool}；found=false 时 time=-1。
+func predict_catchable(horizon: float = 2.0) -> Dictionary:
+	if state != GameTypes.BallState.LIVE:
+		return {"point": global_position, "time": -1.0, "found": false}
+	if returnable and _over_table() and z >= GameConfig.hit_height_min and z <= GameConfig.hit_height_max:
+		return {"point": global_position, "time": 0.0, "found": true}
+	var p: Vector2 = position
+	var v: Vector2 = vel
+	var zz: float = z
+	var vzz: float = vz
+	var wall: bool = wall_since_hit
+	var bounced_after_wall: bool = false
+	var t: float = 0.0
+	var dt: float = 0.016
+	var wall_y: float = GameConfig.wall_inner_y()
+	var tr := GameConfig.table_rect()
+	var g: float = GameConfig.ball_gravity
+	while t < horizon:
+		p += v * dt
+		v = v.lerp(Vector2.ZERO, clampf(GameConfig.ball_air_drag * dt, 0.0, 1.0))
+		var prev_zz: float = zz
+		zz += vzz * dt
+		vzz -= g * dt
+		if p.y - radius <= wall_y and v.y < 0.0 and zz <= GameConfig.wall_max_height:
+			p.y = wall_y + radius
+			v.y = -v.y * GameConfig.ball_wall_rest
+			wall = true
+			bounced_after_wall = false
+			var vy_ret: float = v.y
+			if vy_ret > 1.0:
+				var target_y: float = tr.position.y + tr.size.y * GameConfig.wall_return_depth_frac
+				var dy: float = target_y - p.y
+				if dy > 1.0:
+					var tt: float = dy / vy_ret
+					var zw: float = maxf(zz, GameConfig.table_z + 5.0)
+					vzz = (GameConfig.table_z - zw + 0.5 * g * tt * tt) / tt
+		if vzz <= 0.0 and prev_zz > GameConfig.table_z and zz <= GameConfig.table_z and tr.has_point(p):
+			zz = GameConfig.table_z
+			vzz = -vzz * GameConfig.table_bounce_factor
+			if wall:
+				bounced_after_wall = true
+		if wall and bounced_after_wall and tr.has_point(p) \
+				and zz >= GameConfig.hit_height_min and zz <= GameConfig.hit_height_max:
+			return {"point": p, "time": t, "found": true}
+		if zz <= GameConfig.ground_z:
+			break
+		t += dt
+	return {"point": global_position, "time": -1.0, "found": false}
+
 func _die(reason: int) -> void:
 	if state == GameTypes.BallState.DEAD:
 		return

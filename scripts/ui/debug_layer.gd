@@ -25,12 +25,13 @@ func _draw_hints() -> void:
 		return
 	var a: Vector2 = bs.receiver.global_position
 	var p: Vector2 = bs.intercept_point
+	# 安全=蓝; 即将阻挡(POSSIBLE)=红; 阻挡成立(CONFIRMED)=亮红
 	var col := Color(0.3, 0.8, 1.0)
 	match bs.state:
 		GameTypes.Interference.CONFIRMED:
-			col = Color(1.0, 0.3, 0.3)
+			col = Color(1.0, 0.1, 0.1)
 		GameTypes.Interference.POSSIBLE:
-			col = Color(1.0, 0.85, 0.3)
+			col = Color(1.0, 0.35, 0.2)
 	# 危险走廊 (接球者 -> 预计接球点)
 	draw_line(a, p, Color(col, 0.16), GameConfig.block_corridor_width * 2.0, true)
 	draw_line(a, p, Color(col, 0.5), 2.0, true)

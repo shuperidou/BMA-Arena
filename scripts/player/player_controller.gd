@@ -60,7 +60,7 @@ func _ready() -> void:
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 	var step: float = state.step
 	# --- 平移：世界坐标。WASD 永远对应世界方向，与 rotation 无关 ---
-	var dir: Vector2 = input_scheme.move_vector() if input_scheme != null else Vector2.ZERO
+	var dir: Vector2 = _desired_move_dir(state)
 	var target_v: Vector2 = dir * GameConfig.move_speed
 	var dv: Vector2 = target_v - state.linear_velocity
 	state.linear_velocity += dv.limit_length(GameConfig.move_accel * step)
@@ -134,6 +134,25 @@ func _update_hit_points() -> void:
 	var l: float = GameConfig.player_half_length
 	hit_points[0].position = Vector2(0.0, -l) + hit_zone_offset_local  # 前端 A
 	hit_points[1].position = Vector2(0.0, l) - hit_zone_offset_local   # 后端 B
+
+## 期望的世界移动方向 (默认来自输入；AI 覆写)。
+func _desired_move_dir(_state: PhysicsDirectBodyState2D) -> Vector2:
+	return input_scheme.move_vector() if input_scheme != null else Vector2.ZERO
+
+## 击球计算 (默认走 HitSystem；AI 覆写)。
+func compute_hit(hit_point: HitPoint, b: Ball) -> Dictionary:
+	return HitSystem.compute(self, hit_point, b)
+
+## 发球计算 (默认沿朝向；AI 覆写)。
+func compute_serve(b: Ball) -> Dictionary:
+	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
+	var speed: float = GameConfig.ball_hit_speed
+	return {
+		"velocity": facing * speed, "vz": GameConfig.ball_hit_vz, "strength": 1.0,
+		"ball_speed": speed, "raw_speed": speed, "zone_speed": 0.0,
+		"zone_world": b.global_position, "zone_vel": Vector2.ZERO,
+		"raw_dir": facing, "assisted_dir": facing, "assist_angle": 0.0, "assist_speed_delta": 0.0,
+	}
 
 func reset_to(pos: Vector2, rot: float) -> void:
 	linear_velocity = Vector2.ZERO
