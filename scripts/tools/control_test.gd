@@ -16,6 +16,7 @@ func _ready() -> void:
 	p1 = main_node.players[0]
 	p2 = main_node.players[1]
 	p2.input_scheme = null
+	GameConfig.base_face_enabled = false  # 先关回正，便于隔离测试坐标/移动
 	await _run()
 	print("CONTROL TEST failures=", failures)
 	get_tree().quit()
@@ -106,11 +107,30 @@ func _run() -> void:
 	_check("T3d zones opposite", a_delta.is_equal_approx(off) and b_delta.is_equal_approx(-off),
 		"A=%s B=%s off=%s" % [str(a_delta.round()), str(b_delta.round()), str(off.round())])
 
-	# T4: 鼠标拖动不改变 rotation
+	# T4: 强回正到"面向桌中心"，且与鼠标拖动无关
+	GameConfig.base_face_enabled = true
+	var base_angle: float = (GameConfig.table_center - Vector2(0, 120)).angle()
+	var results: Array = []
+	for dragv in [Vector2(200.0, 50.0), Vector2(-200.0, -50.0)]:
+		_place(Vector2(0, 120), 0.7)
+		_set_drag(true, dragv)
+		await _frames(60)
+		results.append(p1.rotation)
+	var t4a: bool = absf(wrapf(results[0] - base_angle, -PI, PI)) < 0.12
+	var t4b: bool = absf(wrapf(results[0] - results[1], -PI, PI)) < 0.12
+	_check("T4a recenters to table center", t4a, "rot=%.3f base=%.3f" % [results[0], base_angle])
+	_check("T4b recenter independent of mouse", t4b, "A=%.3f B=%.3f" % [results[0], results[1]])
+
+	# T4c: 回正很快 (撞歪 2.27rad，1 秒内回到基准)
 	_place(Vector2(0, 120), 0.7)
-	_set_drag(true, Vector2(200.0, 50.0))
-	await _frames(30)
-	_check("T4 mouse does not rotate body", absf(p1.rotation - 0.7) < 0.02, "rot=%.3f" % p1.rotation)
+	_set_drag(false, Vector2.ZERO)
+	var frames_to_settle: int = 0
+	for i in 120:
+		await get_tree().physics_frame
+		frames_to_settle += 1
+		if absf(wrapf(p1.rotation - base_angle, -PI, PI)) < 0.05:
+			break
+	_check("T4c recenter is fast (<0.5s)", frames_to_settle < 60, "frames=%d" % frames_to_settle)
 
 	# T5: 松开后击球区回到默认位置
 	_set_drag(false, Vector2.ZERO)

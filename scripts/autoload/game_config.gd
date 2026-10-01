@@ -32,13 +32,19 @@ var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [
 var move_speed: float = 360.0
 var move_accel: float = 3200.0         ## 速度变化最大加速度 (惯性/手感)
 
-# 旋转：玩家1 的 rotation 完全交给物理 (撞桌/墙/角色会自然转)；
-# 初始朝向 = 面向桌中心。以下参数只给键盘方案(玩家2 临时)使用。
-var max_angular_velocity: float = 80.0   ## rad/s 最大角速度 (仅键盘方案)
-var rotation_acceleration: float = 300.0 ## rad/s^2 角速度变化上限 (仅键盘方案)
-var rotation_response: float = 6.0       ## 角度误差 -> 目标角速度的增益 (仅键盘方案)
-var rotation_damping: float = 6.0        ## 无有效目标时的角速度衰减 (仅键盘方案)
-var player_angular_damp: float = 3.0     ## 物理角阻尼：撞击旋转后逐渐停下
+# 旋转
+# 玩家1: 强回正到"面向桌中心"——撞歪后快速转回，但仍是物理刚体 (不硬锁死)。
+var base_face_enabled: bool = true
+var base_face_response: float = 30.0             ## 角度误差 -> 目标角速度
+var base_face_max_angular_velocity: float = 25.0 ## rad/s (强)
+var base_face_acceleration: float = 600.0        ## rad/s^2 (快速起转)
+var player_angular_damp: float = 3.0             ## 物理角阻尼
+
+# 玩家2 键盘临时方案专用
+var max_angular_velocity: float = 80.0   ## rad/s 最大角速度
+var rotation_acceleration: float = 300.0 ## rad/s^2 角速度变化上限
+var rotation_response: float = 6.0       ## 角度误差 -> 目标角速度的增益
+var rotation_damping: float = 6.0        ## 无有效目标时的角速度衰减
 
 # 鼠标：按住建立锚点。鼠标在世界/屏幕中的 2D 拖动向量，**原样**作为
 # 击球判定区在角色**局部坐标系**中的位移 (故意不做 world->local 转换)。

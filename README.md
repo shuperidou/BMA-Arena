@@ -35,7 +35,7 @@ WASD 移动身体；鼠标控制两个击球判定区；身体 rotation 由物�
 
 ```
 WASD     -> 世界坐标移动 (与 rotation 无关；被撞歪 45° 按 W 仍向世界上方)
-初始朝向 -> 面向桌中心；之后 rotation 完全交给物理 (撞桌/墙/角色自然旋转)
+rotation -> 强回正到"面向桌中心" (撞歪后快速转回) + 物理碰撞可短暂影响
 按住鼠标 -> 记录锚点; mouse_delta = 当前鼠标 - 锚点 (屏幕/世界 2D 向量)
     hit_zone_local_delta = mouse_delta          # 数值原样复用，不做 world->local 转换
     A(前端) 局部位置 = (0,-L) + delta
@@ -45,7 +45,7 @@ WASD     -> 世界坐标移动 (与 rotation 无关；被撞歪 45° 按 W 仍�
 ```
 
 - **核心坐标系规则**：鼠标拖动得到的**世界/屏幕向量**，**数值原样**作为击球区的**局部**位移。Godot 的节点 Transform 再把局部位置转成世界位置 —— 所以**角色当前 rotation 会决定击球区最终世界移动方向**（这是刻意的，不是 bug）。
-- 鼠标**不改变 rotation**（不做 `rotation = ...`）。玩家1 的 rotation 只来自物理碰撞。
+- 鼠标**不改变 rotation**。玩家1 的 rotation = 物理碰撞(可短暂撞歪) + **强回正弹簧**快速转回"面向桌中心"（`base_face_enabled` / `base_face_response` / `base_face_max_angular_velocity` / `base_face_acceleration`；默认较强较快）。
 - 只用屏幕/视口拖动向量（X、Y 都用），固定映射，不按球/角色位置重解释，无角度累计。
 - 参数：`hit_zone_max_offset`（局部偏移上限）/ `hit_zone_drag_scale`（1.0 = 数值相同）/ `hit_zone_return_speed` / `mouse_drag_deadzone`（默认 0）/ `player_angular_damp`（物理角阻尼）/ `aim_mouse_button`。旋转类参数仅供玩家2 键盘临时方案。
 - 已删除 Q/E，无绝对瞄准/投影/自动朝球/角度累计。玩家2 的键盘旋转只是本地双人测试的临时方案 [TEMP]。

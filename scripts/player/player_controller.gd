@@ -115,6 +115,14 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 		GameConfig.hit_zone_return_speed * step)
 	_update_hit_points()
 	debug_hit_zone_local_delta = target_local
+	# 强回正：快速转向"面向桌中心" (仍是物理刚体，撞歪会被物理短暂影响后拉回)
+	if GameConfig.base_face_enabled:
+		var base: float = (GameConfig.table_center - state.transform.origin).angle()
+		var err: float = wrapf(base - state.transform.get_rotation(), -PI, PI)
+		var desired_w: float = clampf(err * GameConfig.base_face_response,
+			-GameConfig.base_face_max_angular_velocity, GameConfig.base_face_max_angular_velocity)
+		var face_accel: float = GameConfig.base_face_acceleration * step
+		state.angular_velocity += clampf(desired_w - state.angular_velocity, -face_accel, face_accel)
 
 ## 两个击球区在角色局部坐标系中反向位移 (A=+delta, B=-delta)，再经 Transform 转世界。
 func _update_hit_points() -> void:
