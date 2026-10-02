@@ -14,12 +14,19 @@ extends RefCounted
 
 static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dictionary:
 	var facing: Vector2 = Vector2.RIGHT.rotated(player.rotation)  # 面向桌中心 (基准方向)
+	var perp: Vector2 = facing.rotated(PI * 0.5)                  # 垂直于朝向 (角色局部 +y)
 	var zone_world: Vector2 = zone.global_position
 	var zone_vel: Vector2 = zone.velocity
 	var speed: float = zone_vel.length()
+	var ref: float = maxf(GameConfig.hit_zone_speed_ref, 1.0)
+	# 把判定区世界速度分解成"沿朝向"和"垂直朝向"两个正交分量:
+	#   v_along (沿朝向)   -> 球速 (主要影响因素)
+	#   v_perp  (垂直朝向) -> vy/弧线 (鼠标向下=增大, 向上=减小)
+	var v_along: float = zone_vel.dot(facing)
+	var v_perp: float = zone_vel.dot(perp)
 
-	# --- 力度：世界速度 -> 曲线 -> 球速 ---
-	var t: float = clampf(speed / maxf(GameConfig.hit_zone_speed_ref, 1.0), 0.0, 1.0)
+	# --- 力度：沿朝向的分速度 -> 曲线 -> 球速 ---
+	var t: float = clampf(maxf(v_along, 0.0) / ref, 0.0, 1.0)
 	var strength: float = pow(t, maxf(GameConfig.hit_speed_curve, 0.05))
 	var ball_speed: float = lerpf(GameConfig.hit_speed_min, GameConfig.hit_speed_max, strength)
 
@@ -36,7 +43,10 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	#   assist=1 -> 只要触球就保证回桌 (方向+力度都拉到"瞄准桌中心并落桌"的解)
 	#   0..1    -> 按比例混合
 	var p: Vector2 = ball.global_position
-	var vz: float = GameConfig.hit_vz_v0
+	# vy/弧线：由"垂直于朝向的分速度"决定 (鼠标向下 -> v_perp>0 -> vy增大)
+	var perp_t: float = clampf(v_perp / ref, -1.0, 1.0)
+	var vz: float = clampf(GameConfig.hit_vz_v0 + perp_t * GameConfig.hit_vz_perp_gain,
+		GameConfig.hit_vz_min, GameConfig.hit_vz_max)
 	var g: float = GameConfig.ball_gravity
 	var assist: float = clampf(GameConfig.assist_strength, 0.0, 1.0)
 	var assisted_dir: Vector2 = raw_dir

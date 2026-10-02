@@ -152,6 +152,7 @@ func _run() -> void:
 		"state=%d reason=%d" % [ball.state, _last_death])
 
 	# T9: AI 击球力度/vz 必须落在"玩家的上下限"内, 且角度有变化
+	GameConfig.ai_error_chance = 0.0  # 失误会故意越界, 这里先关掉
 	var ai: AiPlayer = main_node.players[1]
 	var in_limits := true
 	var angle0: float = 999.0
@@ -173,3 +174,16 @@ func _run() -> void:
 		"speed=[%.0f,%.0f] vz=[%.0f,%.0f]" % [GameConfig.hit_speed_min, GameConfig.hit_speed_max,
 			GameConfig.hit_vz_min, GameConfig.hit_vz_max])
 	_check("T9 AI varies hit angle", varied, "angle0=%.2f" % angle0)
+
+	# T10: 判定区速度分解 —— 沿朝向分量 -> 球速; 垂直分量 -> vy (两者垂直)
+	p1.global_position = Vector2(0.0, -14.0)
+	p1.rotation = -PI / 2.0          # 面向桌(上), facing=(0,-1), perp=(1,0)
+	ball.global_position = Vector2(0.0, -60.0)
+	zone.velocity = Vector2(0.0, -1000.0)   # 沿朝向的挥动
+	var oa: Dictionary = HitSystem.compute(p1, zone, ball)
+	zone.velocity = Vector2(1000.0, 0.0)    # 垂直朝向的挥动 (鼠标向下)
+	var ob: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T10 沿朝向挥动 -> 球速更大", oa.ball_speed > ob.ball_speed,
+		"along=%.0f perp=%.0f" % [oa.ball_speed, ob.ball_speed])
+	_check("T10 垂直挥动 -> vy 更大", ob.vz > oa.vz,
+		"along_vz=%.0f perp_vz=%.0f" % [oa.vz, ob.vz])

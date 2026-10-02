@@ -107,6 +107,9 @@ var hit_speed_min: float = 600.0        ## 轻击球速
 var hit_speed_max: float = 2000.0       ## 强击球速
 var hit_speed_curve: float = 1.4        ## 力度响应曲线指数 (>1 需要更快才到强)
 var hit_zone_speed_ref: float = 1500.0  ## 击球区速度归一化基准 (世界单位/秒)
+## vy/弧线 = hit_vz_v0 + (垂直于朝向的分速度 / hit_zone_speed_ref) * 此增益。
+## 鼠标向下 -> 垂直分速度为正 -> vy 增大; 鼠标向上 -> vy 减小。结果夹在 [hit_vz_min, hit_vz_max]。
+var hit_vz_perp_gain: float = 100.0
 
 ## 方向：基础方向=面向桌中心；叠加"击球区位置 + 挥动方向"的偏置。
 var hit_direction_strength: float = 0.6 ## 偏置对方向的影响程度 (0=永远朝桌, 1=完全由挥动决定)
@@ -154,9 +157,9 @@ var block_sector_radius: float = 260.0      ## 扇区半径 (世界单位)
 var block_require_time_reachable: bool = false
 var block_reach_slack: float = 0.12
 ## 可选门槛2: 对手 B 必须在接球方的"球侧"(不在正后方), 防止背后推人也算阻挡。默认关。
-var block_require_opponent_in_front: bool = false
+var block_require_opponent_in_front: bool = true
 ## 碰撞持续时间门槛: 至少要接触这么久才算阻挡
-var block_min_contact_time: float = 0.03
+var block_min_contact_time: float = 0.2
 
 # ============================================================
 #  J. 调试显示开关 (F1 总开关; 打开后按 1~6 分类)
