@@ -78,8 +78,9 @@ var position_bias_weight: float = 0.5   ## 偏置里"击球区位置"的权重 (
 var assist_strength: float = 0.7       ## 辅助程度 0..1
 var max_assist_angle: float = 180.0     ## 修正角硬上限(度)。180=不限制 (让 assist=1 能完全回正)
 var assist_good_margin: float = 40.0    ## 好区=桌面内缩这么多像素。越大越容易触发(越少很偏的球)
-## 救球辅助能压到的最低球速。设为 = hit_speed_min 可让"玩家被辅助后的球速"与 AI 的下限一致。
-var assist_min_speed: float = 820.0
+## 救球辅助能压到的最低球速 = hit_speed_min * 这个比例 (0~1)。
+## 1.0 = 下限等于 hit_speed_min (与 AI 一致, 但辅助无法再压速落桌)；0 = 不设下限。
+var assist_min_speed_ratio: float = 1.0
 
 # ============================================================
 #  球：伪 Z 轴 (高度) 系统
