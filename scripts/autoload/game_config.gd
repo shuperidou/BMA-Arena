@@ -75,12 +75,12 @@ var position_bias_weight: float = 0.5   ## 偏置里"击球区位置"的权重 (
 ##   0 = 完全关闭辅助：完全按玩家击球
 ## 0..1 = 部分辅助，值越大辅助越强
 ## 触发条件：原始落点若不在"好区"(桌面内缩 assist_good_margin 像素) 就介入。
-var assist_strength: float = 0.5       ## 辅助程度 0..1
+var assist_strength: float = 1.0       ## 辅助程度 0..1
 var max_assist_angle: float = 150.0     ## 修正角硬上限(度)。180=不限制 (让 assist=1 能完全回正)
 var assist_good_margin: float = 40.0    ## 好区=桌面内缩这么多像素。越大越容易触发(越少很偏的球)
 ## 救球辅助能压到的最低球速 = hit_speed_min * 这个比例 (0~1)。
 ## 1.0 = 下限等于 hit_speed_min (与 AI 一致, 但辅助无法再压速落桌)；0 = 不设下限。
-var assist_min_speed_ratio: float = 0.7
+var assist_min_speed_ratio: float = 1.0
 # ============================================================
 #  球：伪 Z 轴 (高度) 系统
 # ============================================================
@@ -142,13 +142,17 @@ var ai_avoid_distance: float = 160.0
 #  阻挡判定 (全部临时阈值) [TEMP]
 # ============================================================
 var block_collision_window: float = 0.4     ## 碰撞后多久内仍算阻挡窗口
-var block_pursuit_max_dist: float = 360.0   ## 接球方离预计接球点多远仍算"有机会"
-var block_corridor_width: float = 46.0      ## 危险走廊宽度
-var block_pursuit_speed: float = 40.0       ## 判定"正在移动"的最小速度
-var block_pursuit_dot: float = 0.3          ## 速度方向与接球方向的最小点积
-## 时间可达判定 (忽略对手)：接球方要在球到达"可接住点"前赶到，否则不算有机会。
-var block_require_time_reachable: bool = true  ## 开关
-var block_reach_slack: float = 0.12            ## 允许的宽限时间 (秒)
+var block_pursuit_speed: float = 40.0       ## 接球方低于此速度视为"静止"(无意图, 不构成阻挡)
+## 扇区判定：以接球方速度方向为轴，半角内 + 半径内的球才算"他正冲过去要接的球"
+var block_sector_half_angle: float = 55.0   ## 扇区半角 (度)
+var block_sector_radius: float = 260.0      ## 扇区半径 (世界单位)
+## 可选门槛1: 时间可达 (球到达可接住点前, 接球方能否赶到)。默认关。
+var block_require_time_reachable: bool = false
+var block_reach_slack: float = 0.12
+## 可选门槛2: 对手 B 必须在接球方的"球侧"(不在正后方), 防止背后推人也算阻挡。默认关。
+var block_require_opponent_in_front: bool = false
+## 碰撞持续时间门槛: 至少要接触这么久才算阻挡
+var block_min_contact_time: float = 0.03
 var show_hints: bool = true                 ## 是否显示接球/阻挡空间提示
 
 # ============================================================

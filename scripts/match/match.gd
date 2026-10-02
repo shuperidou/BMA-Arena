@@ -31,6 +31,8 @@ var _blocked_receiver: PlayerController = null      ## 被阻挡的接球方 (�
 var _match_over_pending: bool = false
 var _collision_time: float = -10.0
 var _collision_pos: Vector2 = Vector2.ZERO
+var _collided_flag: bool = false
+var _contact_start: float = -1.0
 var _last_block_state: int = GameTypes.Interference.NONE
 
 func setup(p_players: Array[PlayerController], p_ball: Ball, p_block: BlockSystem, p_arena: Arena) -> void:
@@ -243,9 +245,20 @@ func _update_block() -> void:
 		block_system.active = false
 		_set_block_state(GameTypes.Interference.NONE)
 		return
+	# 接触持续时间 (至少几毫秒的碰撞才算阻挡)
+	var now: float = _now()
+	var contact_duration: float = 0.0
+	if _collided_flag:
+		if _contact_start < 0.0:
+			_contact_start = now
+		_collided_flag = false
+	else:
+		_contact_start = -1.0
+	if _contact_start >= 0.0:
+		contact_duration = now - _contact_start
 	block_system.active = true
 	block_system.update(0.0, ball, expected_receiver, _other(expected_receiver),
-		_collision_time, _collision_pos, _now())
+		_collision_time, _collision_pos, now, contact_duration)
 	_set_block_state(block_system.state)
 	# 阻挡不立即判罚：先记下，等球真的死了(接球方没救起来)才生效 (点一)
 	if block_system.state == GameTypes.Interference.CONFIRMED and not _block_pending:
@@ -278,6 +291,7 @@ func _begin_interference() -> void:
 func _on_players_collided(_other_player: PlayerController, world_pos: Vector2) -> void:
 	_collision_time = _now()
 	_collision_pos = world_pos
+	_collided_flag = true
 
 # ------------------------------------------------------------
 #  工具

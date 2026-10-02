@@ -1,13 +1,17 @@
 class_name BlockSystem
 extends Node
-## 阻挡 / Interference 判定系统 (独立模块，不硬编码进角色或球)。
+## 阻挡 / Interference 判定系统 (独立模块)。
 ##
-## 规则 (方案 A)：
-##   1) 预测球的"可接住位置 P"和到达时间 T (撞墙后落桌、可击球高度内)
-##   2) 机会判定 (忽略对手 A)：接球方 B 能否在 T 之前赶到 P
-##      -> 不能则无阻挡 (B 本来就没机会)；这一步可用 block_require_time_reachable 开关
-##   3) 妨碍判定：0.4s 内发生实际碰撞, 且碰撞点落在 B->P 走廊内 -> CONFIRMED
-##      仅"A 正在追球 + A 在走廊内" -> POSSIBLE (提示，无判罚)
+## 规则 (扇区模型)：
+##   1) 接球方 A 必须有移动意图：速度低于 block_pursuit_speed 视为静止 -> 不构成阻挡
+##   2) 球必须在 A 的"速度扇区"内：以 A 的速度方向为轴，半角 block_sector_half_angle 内,
+##      且在半径 block_sector_radius 内
+##   3) 发生了实际碰撞, 且接触持续时间 >= block_min_contact_time
+##   4) (可选, 默认关) 忽略对手的时间可达判定
+##   5) (可选, 默认关) 对手 B 必须在 A 的"球侧"(不在正后方)
+##
+## 命中 2) 但未满足 3) -> POSSIBLE(提示); 满足 2)+3) -> CONFIRMED(判罚)。
+## 是否真的判罚由 Match 决定 (点一: 只有球死了才结算)。
 ##
 ## 阈值全部可调 (TEMP)。
 
@@ -16,70 +20,66 @@ var receiver: PlayerController = null
 var opponent: PlayerController = null
 
 var state: int = GameTypes.Interference.NONE
-var intercept_point: Vector2 = Vector2.ZERO
+var intercept_point: Vector2 = Vector2.ZERO  ## 仅供 Debug 画"预计接球点"
 var intercept_time: float = 0.0
+var sector_axis: Vector2 = Vector2.ZERO      ## 扇区轴 (= 接球方速度方向)
 var active: bool = false
 
 func update(dt: float, current_ball: Ball, current_receiver: PlayerController,
 		current_opponent: PlayerController, collision_time: float,
-		collision_pos: Vector2, now: float) -> void:
+		collision_pos: Vector2, now: float, contact_duration: float) -> void:
 	ball = current_ball
 	receiver = current_receiver
 	opponent = current_opponent
 	state = GameTypes.Interference.NONE
+	sector_axis = Vector2.ZERO
 
 	if not active or ball == null or receiver == null or opponent == null:
-		intercept_point = ball.global_position if ball != null else Vector2.ZERO
 		return
 
-	# 1) 预测可接住点 (由 Ball 提供)
+	# Debug 用: 预测可接住点
 	var pred: Dictionary = ball.predict_catchable()
 	intercept_point = pred.point
 	intercept_time = pred.time
 	if not pred.found:
-		intercept_point = _closest_approach(ball, receiver)
+		intercept_point = ball.global_position
 
-	var to_r: Vector2 = intercept_point - receiver.global_position
-	var dist: float = to_r.length()
-	if dist > GameConfig.block_pursuit_max_dist:
+	# 1) 移动意图: 静止的接球方不构成阻挡
+	var vel: Vector2 = receiver.linear_velocity
+	var speed: float = vel.length()
+	if speed < GameConfig.block_pursuit_speed:
+		return
+	var axis: Vector2 = vel / speed
+	sector_axis = axis
+
+	var to_ball: Vector2 = ball.global_position - receiver.global_position
+	var bdist: float = to_ball.length()
+	if bdist < 1.0:
 		return
 
-	# 2) 机会判定 (忽略对手)。time<0 表示预测不确定 -> 跳过该检查。
+	# 4) (可选) 时间可达：忽略对手, 接球方要赶得上
 	if GameConfig.block_require_time_reachable and intercept_time >= 0.0:
 		var reach: float = GameConfig.move_speed * (intercept_time + GameConfig.block_reach_slack)
-		if dist > reach:
+		if bdist > reach:
 			return
 
-	# 3) 妨碍判定
-	var pursuing: bool = false
-	if receiver.linear_velocity.length() > GameConfig.block_pursuit_speed and to_r.length() > 1.0:
-		pursuing = receiver.linear_velocity.normalized().dot(to_r.normalized()) > GameConfig.block_pursuit_dot
+	# 2) 扇区: 球在半角 + 半径内 = "A 正冲过去要接的球"
+	if bdist > GameConfig.block_sector_radius:
+		return
+	var ang: float = absf(wrapf(axis.angle() - to_ball.angle(), -PI, PI))
+	if ang > deg_to_rad(GameConfig.block_sector_half_angle):
+		return
 
+	# 5) (可选) 对手必须在 A 的球侧
+	if GameConfig.block_require_opponent_in_front:
+		var to_b: Vector2 = opponent.global_position - receiver.global_position
+		if to_b.dot(axis) <= 0.0:
+			return
+
+	# 扇区满足 -> 至少是 POSSIBLE(危险提示)
+	state = GameTypes.Interference.POSSIBLE
+
+	# 3) 实际碰撞 + 持续时间
 	var recent_collision: bool = (now - collision_time) <= GameConfig.block_collision_window
-
-	if recent_collision and _near_segment(receiver.global_position, intercept_point, collision_pos):
+	if recent_collision and contact_duration >= GameConfig.block_min_contact_time:
 		state = GameTypes.Interference.CONFIRMED
-	elif pursuing and _near_segment(receiver.global_position, intercept_point, opponent.global_position):
-		state = GameTypes.Interference.POSSIBLE
-
-# ------------------------------------------------------------
-#  球将来最接近接球者的位置 (预测不确定时的兜底)。
-func _closest_approach(b: Ball, a: PlayerController) -> Vector2:
-	var v: Vector2 = b.vel
-	if v.length_squared() < 1.0:
-		return b.global_position
-	var d: Vector2 = a.global_position - b.global_position
-	var t: float = clampf(d.dot(v) / v.length_squared(), 0.0, 0.6)
-	return b.global_position + v * t
-
-## q 是否落在 a->p 这条走廊内。
-func _near_segment(a: Vector2, p: Vector2, q: Vector2) -> bool:
-	var ap: Vector2 = p - a
-	var l2: float = ap.length_squared()
-	if l2 < 1.0:
-		return false
-	var t: float = (q - a).dot(ap) / l2
-	if t <= 0.05 or t >= 0.95:
-		return false
-	var proj: Vector2 = a + ap * t
-	return (q - proj).length() <= GameConfig.block_corridor_width

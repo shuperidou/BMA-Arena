@@ -24,7 +24,6 @@ func _draw_hints() -> void:
 	if bs == null or not bs.active or bs.receiver == null or bs.opponent == null:
 		return
 	var a: Vector2 = bs.receiver.global_position
-	var p: Vector2 = bs.intercept_point
 	# 安全=蓝; 即将阻挡(POSSIBLE)=红; 阻挡成立(CONFIRMED)=亮红
 	var col := Color(0.3, 0.8, 1.0)
 	match bs.state:
@@ -32,13 +31,25 @@ func _draw_hints() -> void:
 			col = Color(1.0, 0.1, 0.1)
 		GameTypes.Interference.POSSIBLE:
 			col = Color(1.0, 0.35, 0.2)
-	# 危险走廊 (接球者 -> 预计接球点)
-	draw_line(a, p, Color(col, 0.16), GameConfig.block_corridor_width * 2.0, true)
-	draw_line(a, p, Color(col, 0.5), 2.0, true)
-	# 预计接球点
-	draw_circle(p, 16.0, Color(col, 0.18))
-	draw_arc(p, 16.0, 0.0, TAU, 28, col, 2.0)
-	# 对手是否在走廊里
+	# 接球方速度扇区 (以速度方向为轴, 半角内, 半径内)
+	if bs.sector_axis.length_squared() > 0.001:
+		var center_ang: float = bs.sector_axis.angle()
+		var half: float = deg_to_rad(GameConfig.block_sector_half_angle)
+		var r: float = GameConfig.block_sector_radius
+		var pts: PackedVector2Array = PackedVector2Array()
+		pts.append(a)
+		var steps: int = 24
+		for i in steps + 1:
+			var ang: float = center_ang - half + (2.0 * half) * float(i) / float(steps)
+			pts.append(a + Vector2.RIGHT.rotated(ang) * r)
+		draw_colored_polygon(pts, Color(col, 0.12))
+		draw_line(a, a + Vector2.RIGHT.rotated(center_ang - half) * r, Color(col, 0.6), 1.5)
+		draw_line(a, a + Vector2.RIGHT.rotated(center_ang + half) * r, Color(col, 0.6), 1.5)
+		draw_line(a, a + bs.sector_axis * r, Color(col, 0.8), 2.0)
+	# 预计接球点 (参考)
+	draw_circle(bs.intercept_point, 12.0, Color(col, 0.15))
+	draw_arc(bs.intercept_point, 12.0, 0.0, TAU, 20, Color(col, 0.7), 2.0)
+	# 对手高亮
 	if bs.state != GameTypes.Interference.NONE:
 		draw_arc(bs.opponent.global_position, GameConfig.player_radius + 22.0, 0.0, TAU, 28, Color(col, 0.9), 3.0)
 
