@@ -1,6 +1,6 @@
 # AGENTS.md — 工程约定
 
-Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Desktop\PROJECT_CONTEXT.txt`。
+Godot 4.7 项目，GDScript，俯视角 2D。设计总纲在 `C:\Users\shupe\Desktop\历史对话文件\PROJECT_CONTEXT.txt`。
 
 ## 命令
 

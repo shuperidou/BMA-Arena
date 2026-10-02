@@ -106,7 +106,7 @@ func _step(dt: float) -> void:
 			_die(GameTypes.DeathReason.BAD_BOUNCE)
 			return
 		position.y = wall_y + radius
-		vel.y = -vel.y * GameConfig.ball_wall_rest
+		vel.y = -vel.y * GameConfig.wall_bounce_factor
 		wall_since_hit = true
 		_last_surface = 2
 		_apply_wall_return_assist()
@@ -211,7 +211,7 @@ func predict_catchable(horizon: float = 2.0) -> Dictionary:
 		vzz -= g * dt
 		if p.y - radius <= wall_y and v.y < 0.0 and zz <= GameConfig.wall_max_height:
 			p.y = wall_y + radius
-			v.y = -v.y * GameConfig.ball_wall_rest
+			v.y = -v.y * GameConfig.wall_bounce_factor
 			wall = true
 			bounced_after_wall = false
 			var vy_ret: float = v.y

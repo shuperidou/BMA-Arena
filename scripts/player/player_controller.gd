@@ -152,9 +152,9 @@ func compute_hit(hit_point: HitPoint, b: Ball) -> Dictionary:
 ## 发球计算 (默认沿朝向；AI 覆写)。
 func compute_serve(b: Ball) -> Dictionary:
 	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
-	var speed: float = GameConfig.ball_hit_speed
+	var speed: float = GameConfig.hit_speed_v0
 	return {
-		"velocity": facing * speed, "vz": GameConfig.ball_hit_vz, "strength": 1.0,
+		"velocity": facing * speed, "vz": GameConfig.hit_vz_v0, "strength": 1.0,
 		"ball_speed": speed, "raw_speed": speed, "zone_speed": 0.0,
 		"zone_world": b.global_position, "zone_vel": Vector2.ZERO,
 		"raw_dir": facing, "assisted_dir": facing, "assist_angle": 0.0, "assist_speed_delta": 0.0,

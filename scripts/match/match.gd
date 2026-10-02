@@ -181,11 +181,13 @@ func _apply_hit(player: PlayerController, hit_point: HitPoint) -> void:
 func _on_ball_died(reason: int) -> void:
 	if state != GameTypes.MatchState.RALLY:
 		return
-	# 点一：球已经落地(死球) 且这球过程中出现过阻挡 -> 不判分, 改为阻挡重发
-	if _block_pending:
+	var winner: int = _decide_winner(reason)
+	# 阻挡只在"接球方没接到"(正常判给击球方) 时才生效, 改为重发。
+	# 若正常判给的是接球方(即击球方自己失误), 不因阻挡改判 —— 防止击球方靠阻挡规避输球。
+	if _block_pending and last_hitter != null and winner == last_hitter.player_index:
 		_begin_interference()
 		return
-	_award_point(_decide_winner(reason), reason)
+	_award_point(winner, reason)
 
 func _decide_winner(reason: int) -> int:
 	var hitter_index: int = last_hitter.player_index if last_hitter != null else expected_receiver.player_index

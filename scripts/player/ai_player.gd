@@ -86,7 +86,7 @@ func _smart_shot(from: Vector2) -> Dictionary:
 	var dist: float = maxf(d.length(), 1.0)
 	var dir: Vector2 = d / dist
 	# vz 与力度都限制在"玩家的上下限"内 (AI 不作弊)
-	var vz: float = randf_range(GameConfig.ball_hit_vz_min, GameConfig.ball_hit_vz_max)
+	var vz: float = randf_range(GameConfig.hit_vz_min, GameConfig.hit_vz_max)
 	var speed: float = clampf(dist * GameConfig.ball_gravity / (2.0 * vz),
 		GameConfig.hit_speed_min, GameConfig.hit_speed_max)
 	return {

@@ -162,7 +162,7 @@ func _run() -> void:
 		var spd: float = oa.ball_speed
 		var vz: float = oa.vz
 		if spd < GameConfig.hit_speed_min - 1.0 or spd > GameConfig.hit_speed_max + 1.0 \
-				or vz < GameConfig.ball_hit_vz_min - 1.0 or vz > GameConfig.ball_hit_vz_max + 1.0:
+				or vz < GameConfig.hit_vz_min - 1.0 or vz > GameConfig.hit_vz_max + 1.0:
 			in_limits = false
 		var d: Vector2 = oa.velocity.normalized()
 		if i == 0:
@@ -171,5 +171,5 @@ func _run() -> void:
 			varied = true
 	_check("T9 AI strength/vz within player limits", in_limits,
 		"speed=[%.0f,%.0f] vz=[%.0f,%.0f]" % [GameConfig.hit_speed_min, GameConfig.hit_speed_max,
-			GameConfig.ball_hit_vz_min, GameConfig.ball_hit_vz_max])
+			GameConfig.hit_vz_min, GameConfig.hit_vz_max])
 	_check("T9 AI varies hit angle", varied, "angle0=%.2f" % angle0)

@@ -36,7 +36,7 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	#   assist=1 -> 只要触球就保证回桌 (方向+力度都拉到"瞄准桌中心并落桌"的解)
 	#   0..1    -> 按比例混合
 	var p: Vector2 = ball.global_position
-	var vz: float = GameConfig.ball_hit_vz
+	var vz: float = GameConfig.hit_vz_v0
 	var g: float = GameConfig.ball_gravity
 	var assist: float = clampf(GameConfig.assist_strength, 0.0, 1.0)
 	var assisted_dir: Vector2 = raw_dir
@@ -87,46 +87,3 @@ static func _lands_in_good_zone(p: Vector2, dir: Vector2, dist: float) -> bool:
 static func mirror_of_table_center() -> Vector2:
 	var tc := GameConfig.table_center
 	return Vector2(tc.x, 2.0 * GameConfig.wall_inner_y() - tc.y)
-
-## 恢复力度 (选项2：优先保留玩家力量 / 救球)。
-## 沿恢复方向，只要"玩家原本的球速"就能让第一次落桌落在好区内 -> 原速保留；
-## 只有当该速度打不到好区 (太快或太慢) 时，才把它夹到"最快能落进好区"的距离。
-static func _recovery_speed(p: Vector2, dir: Vector2, vz: float, g: float, raw_speed: float) -> float:
-	var good := GameConfig.table_rect().grow(-GameConfig.assist_good_margin)
-	var seg: Array = _ray_rect_segment(p, dir, good)
-	if seg.is_empty():
-		seg = _ray_rect_segment(p, dir, GameConfig.table_rect())
-	if seg.size() != 2:
-		return raw_speed  # 判断不了就保留原力量
-	var t0: float = seg[0]
-	var t1: float = seg[1]
-	var d_raw: float = 2.0 * raw_speed * vz / g      # 玩家原力量对应的落点距离
-	var d: float = clampf(d_raw, t0, t1)             # 在好区内就保留, 否则夹到最近一端
-	# 速度下限: hit_speed_min * assist_min_speed_ratio (1.0 = 与 AI 下限一致)
-	var floor_speed: float = GameConfig.hit_speed_min * GameConfig.assist_min_speed_ratio
-	return clampf(d * g / (2.0 * vz), floor_speed, GameConfig.hit_speed_max)
-
-## 射线 p+dir*t 与矩形相交的参数区间 [t0,t1] (t>=0)；不相交返回 []。
-static func _ray_rect_segment(p: Vector2, dir: Vector2, rect: Rect2) -> Array:
-	var tmin: float = -INF
-	var tmax: float = INF
-	if absf(dir.x) < 1e-6:
-		if p.x < rect.position.x or p.x > rect.end.x:
-			return []
-	else:
-		var ta: float = (rect.position.x - p.x) / dir.x
-		var tb: float = (rect.end.x - p.x) / dir.x
-		tmin = maxf(tmin, minf(ta, tb))
-		tmax = minf(tmax, maxf(ta, tb))
-	if absf(dir.y) < 1e-6:
-		if p.y < rect.position.y or p.y > rect.end.y:
-			return []
-	else:
-		var tc2: float = (rect.position.y - p.y) / dir.y
-		var td: float = (rect.end.y - p.y) / dir.y
-		tmin = maxf(tmin, minf(tc2, td))
-		tmax = minf(tmax, maxf(tc2, td))
-	var lo: float = maxf(tmin, 0.0)
-	if tmax < lo:
-		return []
-	return [lo, tmax]
