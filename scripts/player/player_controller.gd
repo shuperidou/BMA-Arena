@@ -23,6 +23,8 @@ var hit_zone_offset_local: Vector2 = Vector2.ZERO
 var debug_mouse_world_delta: Vector2 = Vector2.ZERO    ## 鼠标原始拖动向量
 var debug_hit_zone_local_delta: Vector2 = Vector2.ZERO ## 限幅后的目标局部偏移
 var _last_touch_time: float = -10.0
+var _prev_drag: Vector2 = Vector2.ZERO
+var _prev_drag_valid: bool = false
 var _body_color: Color = Color(0.31, 0.82, 0.77)
 
 func setup(index: int, scheme: InputScheme) -> void:
@@ -104,14 +106,32 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 			drag = Vector2.ZERO
 		else:
 			drag = drag - drag.normalized() * dead
+	var dragging: bool = input_scheme.is_dragging()
+	# 挥动速度 = 未夹制的鼠标拖动速度 (经 hit_zone_drag_scale)，用于击球力度。
+	# 这样判定区即使被 hit_zone_max_offset 夹住，继续甩鼠标仍有力度。
+	var drag_vel: Vector2 = Vector2.ZERO
+	if dragging:
+		if _prev_drag_valid:
+			drag_vel = (drag - _prev_drag) / maxf(step, 0.0001)
+		_prev_drag = drag
+		_prev_drag_valid = true
+	else:
+		_prev_drag_valid = false
+	var swing_local: Vector2 = drag_vel * GameConfig.hit_zone_drag_scale
+
 	var target_local: Vector2 = (drag * GameConfig.hit_zone_drag_scale) \
 		.limit_length(GameConfig.hit_zone_max_offset)
-	if input_scheme.is_dragging():
-		hit_zone_offset_local = target_local  # 拖动中 1:1 跟随 (速度=挥动速度)
+	if dragging:
+		hit_zone_offset_local = target_local  # 拖动中 1:1 跟随 (位置被 max_offset 夹)
 	else:
 		hit_zone_offset_local = hit_zone_offset_local.move_toward(Vector2.ZERO,
 			GameConfig.hit_zone_return_speed * step)
 	_update_hit_points()
+	# 两个判定区反向移动 -> 挥动速度方向相反 (A=+swing, B=-swing)
+	if hit_points.size() >= 2:
+		var sw: Vector2 = swing_local.rotated(rotation)
+		hit_points[0].swing_velocity = sw
+		hit_points[1].swing_velocity = -sw
 	debug_hit_zone_local_delta = target_local
 	# 强回正：快速转向"面向桌中心" (仍是物理刚体，撞歪会被物理短暂影响后拉回)
 	if GameConfig.base_face_enabled:

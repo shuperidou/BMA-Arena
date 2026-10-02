@@ -6,7 +6,8 @@ extends Node2D
 ## 改变半径、方向或触发特殊击球。
 
 var reach: float = 22.0
-var velocity: Vector2 = Vector2.ZERO  ## 世界空间实际速度 (击球力度依据)
+var velocity: Vector2 = Vector2.ZERO        ## 世界空间实际速度 (有限差分)
+var swing_velocity: Vector2 = Vector2.ZERO  ## 判定区"挥动"速度 (未夹制, 经身体 rotation; 击球力度依据)
 var _prev_world: Vector2 = Vector2.ZERO
 var _has_prev: bool = false
 

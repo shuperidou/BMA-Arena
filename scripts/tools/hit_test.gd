@@ -5,6 +5,7 @@ extends Node
 var main_node: Node
 var p1: PlayerController
 var ball: Ball
+var zone: HitPoint
 var failures: int = 0
 var _last_death: int = -1
 
@@ -14,6 +15,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	p1 = main_node.players[0]
 	ball = main_node.ball
+	zone = p1.hit_points[0]
 	p1.input_scheme = null
 	ball.died.connect(func(r: int) -> void: _last_death = r)
 	_run()
@@ -52,22 +54,26 @@ func _post_wall_center_dist(p: Vector2, dir: Vector2) -> float:
 		return 999.0
 	return (to_c - rd * proj).length()
 
+## 设置判定区速度 (同时写 velocity 和 swing_velocity, HitSystem 用后者)。
+func _setv(v: Vector2) -> void:
+	zone.velocity = v
+	zone.swing_velocity = v
+
 func _run() -> void:
-	var zone: HitPoint = p1.hit_points[0]
 	p1.global_position = Vector2(0.0, -14.0)
 	p1.rotation = -PI / 2.0  # 面向桌中心 (局部 +x = 世界上方)
 	GameConfig.assist_strength = 0.0  # 先关辅助, 单独测力度/方向映射
 
 	# T1: 击球区静止 -> 力度最低, 球速=min, 方向≈面向
 	ball.global_position = Vector2(0.0, -60.0)
-	zone.velocity = Vector2.ZERO
+	_setv(Vector2.ZERO)
 	var o0: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T1 min strength", o0.strength < 0.01, "strength=%.3f" % o0.strength)
 	_check("T1 ball speed == min", absf(o0.ball_speed - GameConfig.hit_speed_min) < 1.0, "spd=%.0f" % o0.ball_speed)
 	_check("T1 raw dir ≈ facing(up)", o0.raw_dir.dot(Vector2(0.0, -1.0)) > 0.9, str(o0.raw_dir))
 
 	# T2: 快速挥动 -> 力度高, 球速=min~max 之间且更大
-	zone.velocity = Vector2(0.0, -1500.0)
+	_setv(Vector2(0.0, -1500.0))
 	var o1: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T2 high strength", o1.strength > 0.9, "strength=%.3f" % o1.strength)
 	_check("T2 ball speed <= max", o1.ball_speed <= GameConfig.hit_speed_max + 1.0, "spd=%.0f" % o1.ball_speed)
@@ -76,7 +82,7 @@ func _run() -> void:
 	# T3: assist=1, raw 出界 -> 完全辅助后落桌
 	GameConfig.assist_strength = 1.0
 	ball.global_position = Vector2(0.0, -30.0)
-	zone.velocity = Vector2(1500.0, 0.0)  # 向右挥 -> raw 偏右上, 会飞出远端
+	_setv(Vector2(1500.0, 0.0))  # 向右挥 -> raw 偏右上, 会飞出远端
 	var o2: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T3 raw outside good zone",
 		not _in_good_zone(ball.global_position, o2.raw_dir, o2.raw_speed, o2.vz), "raw=%s" % str(o2.raw_dir))
@@ -88,7 +94,7 @@ func _run() -> void:
 
 	# T3b: 偏心球 -> 无辅助会飞出, 辅助后墙后路径仍经过桌中心 (真正的镜面验证)
 	ball.global_position = Vector2(-120.0, -30.0)
-	zone.velocity = Vector2(1500.0, 0.0)
+	_setv(Vector2(1500.0, 0.0))
 	var o2b: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T3b off-center raw outside good zone",
 		not _in_good_zone(ball.global_position, o2b.raw_dir, o2b.raw_speed, o2b.vz), "raw=%s" % str(o2b.raw_dir))
@@ -110,7 +116,7 @@ func _run() -> void:
 	var checked_valid := false
 	for y0 in [0.0, -10.0, -25.0, -40.0, -55.0, -70.0, -90.0]:
 		ball.global_position = Vector2(0.0, y0)
-		zone.velocity = Vector2.ZERO
+		_setv(Vector2.ZERO)
 		var oc: Dictionary = HitSystem.compute(p1, zone, ball)
 		if _in_good_zone(ball.global_position, oc.raw_dir, oc.raw_speed, oc.vz):
 			_check("T5 no assist when raw already in good zone", absf(oc.assist_angle) < 0.001,
@@ -122,7 +128,7 @@ func _run() -> void:
 
 	# T6: assist=1, 静止触球(不做任何操作)也回桌
 	ball.global_position = Vector2(0.0, -20.0)
-	zone.velocity = Vector2.ZERO
+	_setv(Vector2.ZERO)
 	var o5: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T6 no-input touch speed within limits",
 		o5.ball_speed >= GameConfig.hit_speed_min - 1.0 and o5.ball_speed <= GameConfig.hit_speed_max + 1.0,
@@ -179,9 +185,9 @@ func _run() -> void:
 	p1.global_position = Vector2(0.0, -14.0)
 	p1.rotation = -PI / 2.0          # 面向桌(上), facing=(0,-1), perp=(1,0)
 	ball.global_position = Vector2(0.0, -60.0)
-	zone.velocity = Vector2(0.0, -1000.0)   # 沿朝向的挥动
+	_setv(Vector2(0.0, -1000.0))   # 沿朝向的挥动
 	var oa: Dictionary = HitSystem.compute(p1, zone, ball)
-	zone.velocity = Vector2(1000.0, 0.0)    # 垂直朝向的挥动 (鼠标向下)
+	_setv(Vector2(1000.0, 0.0))    # 垂直朝向的挥动 (鼠标向下)
 	var ob: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T10 沿朝向挥动 -> 球速更大", oa.ball_speed > ob.ball_speed,
 		"along=%.0f perp=%.0f" % [oa.ball_speed, ob.ball_speed])

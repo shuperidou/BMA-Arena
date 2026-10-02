@@ -16,7 +16,8 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var facing: Vector2 = Vector2.RIGHT.rotated(player.rotation)  # 面向桌中心 (基准方向)
 	var perp: Vector2 = facing.rotated(PI * 0.5)                  # 垂直于朝向 (角色局部 +y)
 	var zone_world: Vector2 = zone.global_position
-	var zone_vel: Vector2 = zone.velocity
+	# 用"挥动速度"(未夹制的鼠标拖动, 经身体 rotation)，而不是被 max_offset 夹住的判定区实际速度
+	var zone_vel: Vector2 = zone.swing_velocity
 	var speed: float = zone_vel.length()
 	var ref: float = maxf(GameConfig.hit_zone_speed_ref, 1.0)
 	# 把判定区世界速度分解成"沿朝向"和"垂直朝向"两个正交分量:
