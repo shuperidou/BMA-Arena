@@ -14,6 +14,7 @@ const TOUCH_COOLDOWN := 0.06  ## 防止一帧内反复触发"触及"
 var player_index: int = 1
 var input_scheme: InputScheme = null
 var ball: Ball = null
+var rival: PlayerController = null  ## 对手 (由 Match 设置)
 
 var hit_points: Array[HitPoint] = []
 ## 击球区在角色局部坐标系中的位移 (2D)。

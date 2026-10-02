@@ -47,10 +47,30 @@ func _desired_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
 func _target_point() -> Vector2:
 	if ball == null or ball.state != GameTypes.BallState.LIVE:
 		return global_position  # 球不在场(发球/死球): 原地待命
+	# 自己刚打完这球 -> 切"防阻挡模式": 绕开对手的接球走廊, 避免被判阻挡
+	if ball.last_hitter == self:
+		return _anti_block_target()
+	# 否则我是接球方 -> 追可接住点
 	var pred: Dictionary = ball.predict_catchable()
 	if pred.found:
 		return pred.point
 	return ball.global_position
+
+## 防阻挡：绕到"对手 -> 预计接球点"这条走廊的侧面去。
+func _anti_block_target() -> Vector2:
+	if rival == null:
+		return global_position
+	var pred: Dictionary = ball.predict_catchable()
+	var p: Vector2 = pred.point if pred.found else ball.global_position
+	var h: Vector2 = rival.global_position
+	var mid: Vector2 = (h + p) * 0.5
+	var seg: Vector2 = p - h
+	var perp: Vector2 = Vector2(-seg.y, seg.x).normalized() if seg.length() > 1.0 else Vector2(0.0, 1.0)
+	if (global_position - mid).dot(perp) < 0.0:
+		perp = -perp
+	var target: Vector2 = mid + perp * GameConfig.ai_avoid_distance
+	var ar: Rect2 = GameConfig.arena_rect().grow(-40.0)
+	return Vector2(clampf(target.x, ar.position.x, ar.end.x), clampf(target.y, ar.position.y, ar.end.y))
 
 # ------------------------------------------------------------
 #  智能击球 / 发球 (保证落桌, 角度随机变化)

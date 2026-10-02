@@ -39,6 +39,7 @@ func setup(p_players: Array[PlayerController], p_ball: Ball, p_block: BlockSyste
 	arena = p_arena
 	for p in players:
 		p.ball = ball
+		p.rival = _other(p)
 		p.ball_touched.connect(_on_ball_touched)
 		p.collided_with_player.connect(_on_players_collided)
 	ball.died.connect(_on_ball_died)
@@ -183,8 +184,9 @@ func _decide_winner(reason: int) -> int:
 		GameTypes.DeathReason.BAD_BOUNCE:
 			return receiver_index  # 同一面连弹/跳弹 -> 击球方失误
 		GameTypes.DeathReason.FLOOR, GameTypes.DeathReason.OUT_OF_BOUNDS:
-			# 撞墙过且有桌弹 => 接球方没接到，击球方得分；否则击球方失误，接球方得分
-			if ball.wall_since_hit and ball.table_bounces >= 1:
+			# 墙后已经落过桌(receiver_bounces>=1) => 接球方没接到, 击球方得分;
+			# 否则(只撞墙没落桌/只弹桌没到墙) => 击球方失误, 接球方得分 (文档 93-99 行)
+			if ball.wall_since_hit and ball.receiver_bounces >= 1:
 				return hitter_index
 			return receiver_index
 	return receiver_index

@@ -98,8 +98,9 @@ func _step(dt: float) -> void:
 	# --- 墙 (顶边)：XY 反弹，仅在有效高度内 ---
 	var wall_y: float = GameConfig.wall_inner_y()
 	if position.y - radius <= wall_y and vel.y < 0.0 and z <= GameConfig.wall_max_height:
-		if _last_surface == 2:
-			_die(GameTypes.DeathReason.BAD_BOUNCE)  # 墙连弹 -> 直接结算
+		# 墙连弹, 或"没先弹桌就撞墙"(违反 桌->墙 顺序) -> 击球方失误, 直接结算
+		if _last_surface == 2 or table_bounces == 0:
+			_die(GameTypes.DeathReason.BAD_BOUNCE)
 			return
 		position.y = wall_y + radius
 		vel.y = -vel.y * GameConfig.ball_wall_rest
