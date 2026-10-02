@@ -91,12 +91,6 @@ func _physics_process(_dt: float) -> void:
 func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 	if input_scheme == null:
 		return
-	if input_scheme.aim_mode == InputScheme.AimMode.KEYBOARD:
-		# 仅玩家2 临时方案：键盘主动旋转
-		var accel: float = GameConfig.rotation_acceleration * step
-		var target_w: float = input_scheme.turn_axis() * GameConfig.max_angular_velocity
-		state.angular_velocity += clampf(target_w - state.angular_velocity, -accel, accel)
-		return
 	if input_scheme.aim_mode != InputScheme.AimMode.MOUSE:
 		return
 	input_scheme.update_mouse(self)

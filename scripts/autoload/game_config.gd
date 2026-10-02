@@ -62,7 +62,6 @@ var hit_speed_v0: float = 420.0        ## 水平初速度 (发球用) [TUNED]
 var hit_vz_v0: float = 450.0           ## 垂直初速度 (击球/发球弧线) [TUNED]
 var hit_vz_min: float = 450.0          ## 允许的垂直初速度下限 (AI/变化用)
 var hit_vz_max: float = 550.0          ## 允许的垂直初速度上限
-var hit_player_vel_influence: float = 0.5
 ## 可击球的高度范围 (第一阶段宽松)
 var hit_height_min: float = 0.0
 var hit_height_max: float = 150.0
@@ -88,12 +87,6 @@ var player_angular_damp: float = 3.0             ## 物理角阻尼
 var drag_rot_sensitivity: float = 0.0016         ## 每像素 -> 弧度
 var drag_rot_max: float = 0.25                   ## 最大角度 (弧度, ~14°)
 
-## 玩家2 键盘临时方案专用 (现在 P2 是 AI, 以下基本不用)
-var max_angular_velocity: float = 80.0   ## rad/s 最大角速度
-var rotation_acceleration: float = 300.0 ## rad/s^2 角速度变化上限
-var rotation_response: float = 6.0       ## 角度误差 -> 目标角速度的增益
-var rotation_damping: float = 6.0        ## 无有效目标时的角速度衰减
-
 # ============================================================
 #  E. 玩家1 鼠标控制 (按住建立锚点, 拖动决定击球区局部位移)
 # ============================================================
@@ -111,7 +104,7 @@ var hit_zone_return_speed: float = 300.0     ## 松开后的回位速度 (单位
 # ============================================================
 ## 力度：由"击球区在世界空间中的实际速度"决定，经过曲线映射到球速区间。
 var hit_speed_min: float = 400.0        ## 轻击球速
-var hit_speed_max: float = 4800.0       ## 强击球速
+var hit_speed_max: float = 1000.0       ## 强击球速
 var hit_speed_curve: float = 1.2        ## 力度响应曲线指数 (>1 需要更快才到强)
 var hit_zone_speed_ref: float = 1500.0  ## 击球区速度归一化基准 (世界单位/秒)
 
@@ -143,6 +136,11 @@ var hit_cooldown: float = 0.15
 var ai_serve_delay: float = 1.5
 ## AI 打出球后, 为了避开"阻挡嫌疑"而绕开对手接球走廊的偏移距离
 var ai_avoid_distance: float = 160.0
+## AI 失误概率 (0~1)。每次击球/发球按此概率触发一次"失误表现" (0=永不失误)。
+var ai_error_chance: float = 0.0
+var ai_error_aim_deg: float = 40.0     ## 失误表现-瞄偏: 最大偏角(度)
+var ai_error_power_min: float = 0.4    ## 失误表现-太轻: 力度缩放
+var ai_error_power_max: float = 1.5    ## 失误表现-太重: 力度缩放
 
 # ============================================================
 #  I. 阻挡判定 (全部临时阈值) [TEMP]
@@ -178,12 +176,7 @@ var p1_move: Dictionary = {"up": KEY_W, "down": KEY_S, "left": KEY_A, "right": K
 var p1_serve: int = KEY_SPACE
 var p1_aim_mode: int = InputScheme.AimMode.MOUSE
 
-## 玩家2 键盘方案 (现在 P2 是 AI, 保留备用)
-var p2_move: Dictionary = {"up": KEY_UP, "down": KEY_DOWN, "left": KEY_LEFT, "right": KEY_RIGHT}
-var p2_serve: int = KEY_ENTER
-var p2_aim_mode: int = InputScheme.AimMode.KEYBOARD
-var p2_rot_ccw: int = KEY_COMMA
-var p2_rot_cw: int = KEY_PERIOD
+# (玩家2 现在是 AI, 不再需要键盘输入变量。)
 
 # ============================================================
 #  L. UI 字体 (Godot 默认字体不含中文，用系统字体)

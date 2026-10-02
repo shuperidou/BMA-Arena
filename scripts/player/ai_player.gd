@@ -9,6 +9,7 @@ extends PlayerController
 var ai_radius: float = 20.0
 var ai_hit_radius: float = 72.0
 var _home: Vector2 = Vector2(0.0, 40.0)
+var debug_last_error: String = ""   ## 最近一次失误表现 (Debug 用)
 
 func _ready() -> void:
 	gravity_scale = 0.0
@@ -89,6 +90,22 @@ func _smart_shot(from: Vector2) -> Dictionary:
 	var vz: float = randf_range(GameConfig.hit_vz_min, GameConfig.hit_vz_max)
 	var speed: float = clampf(dist * GameConfig.ball_gravity / (2.0 * vz),
 		GameConfig.hit_speed_min, GameConfig.hit_speed_max)
+	# 失误表现：按 ai_error_chance 概率触发 (0=永不失误)
+	debug_last_error = ""
+	if randf() < GameConfig.ai_error_chance:
+		match randi() % 4:
+			0:  # 瞄偏
+				dir = dir.rotated(deg_to_rad(randf_range(-GameConfig.ai_error_aim_deg, GameConfig.ai_error_aim_deg)))
+				debug_last_error = "瞄偏"
+			1:  # 太轻
+				speed *= GameConfig.ai_error_power_min
+				debug_last_error = "太轻"
+			2:  # 太重
+				speed *= GameConfig.ai_error_power_max
+				debug_last_error = "太重"
+			3:  # 打反
+				dir = -dir
+				debug_last_error = "打反"
 	return {
 		"velocity": dir * speed, "vz": vz, "strength": 1.0,
 		"ball_speed": speed, "raw_speed": speed, "zone_speed": 0.0,

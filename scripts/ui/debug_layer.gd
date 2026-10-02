@@ -93,6 +93,9 @@ func _draw_shapes() -> void:
 		if pl is AiPlayer:
 			draw_arc(c, (pl as AiPlayer).ai_radius, 0.0, TAU, 32, Color(0.4, 1, 0.4, 0.8), 1.5)
 			draw_circle(c, 3.0, Color(0.4, 1, 0.4, 0.9))
+			if font != null and (pl as AiPlayer).debug_last_error != "":
+				draw_string(font, c + Vector2(10, 36), "AI失误: " + (pl as AiPlayer).debug_last_error,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1.0, 0.5, 0.5, 0.95))
 		else:
 			_draw_capsule(c, pl.rotation, GameConfig.player_half_length, GameConfig.player_radius, Color(0.4, 1, 0.4, 0.8))
 		draw_line(c, c + pl.linear_velocity * 0.15, Color(1, 1, 0.2, 0.9), 2.0)
