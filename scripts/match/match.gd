@@ -26,7 +26,8 @@ var solo_mode: bool = false  ## 调试：玩家2 消失，玩家1 自己发球�
 var _timer: float = 0.0
 var _serve_timer: float = 0.0
 var _serve_latch: bool = false
-var _interference_fired: bool = false
+var _block_pending: bool = false                    ## 本次对拉中出现过阻挡(未立即判罚)
+var _blocked_receiver: PlayerController = null      ## 被阻挡的接球方 (重发时由其发球)
 var _match_over_pending: bool = false
 var _collision_time: float = -10.0
 var _collision_pos: Vector2 = Vector2.ZERO
@@ -82,7 +83,8 @@ func _physics_process(dt: float) -> void:
 # ------------------------------------------------------------
 func _begin_serve() -> void:
 	state = GameTypes.MatchState.SERVE
-	_interference_fired = false
+	_block_pending = false
+	_blocked_receiver = null
 	_serve_latch = _server_serve_pressed(players[server_index - 1])
 	_serve_timer = GameConfig.ai_serve_delay
 	last_hitter = null
@@ -160,6 +162,8 @@ func _on_ball_touched(player: PlayerController, hit_point: HitPoint) -> void:
 	_apply_hit(player, hit_point)
 
 func _apply_hit(player: PlayerController, hit_point: HitPoint) -> void:
+	# 接球方成功救起了球 -> 之前的阻挡没有影响进程, 清除待判罚 (点一)
+	_block_pending = false
 	var info: Dictionary = player.compute_hit(hit_point, ball)
 	ball.launch_velocity(info.velocity, info.vz)
 	ball.serve_shot = false
@@ -174,6 +178,10 @@ func _apply_hit(player: PlayerController, hit_point: HitPoint) -> void:
 # ------------------------------------------------------------
 func _on_ball_died(reason: int) -> void:
 	if state != GameTypes.MatchState.RALLY:
+		return
+	# 点一：球已经落地(死球) 且这球过程中出现过阻挡 -> 不判分, 改为阻挡重发
+	if _block_pending:
+		_begin_interference()
 		return
 	_award_point(_decide_winner(reason), reason)
 
@@ -239,9 +247,10 @@ func _update_block() -> void:
 	block_system.update(0.0, ball, expected_receiver, _other(expected_receiver),
 		_collision_time, _collision_pos, _now())
 	_set_block_state(block_system.state)
-	if block_system.state == GameTypes.Interference.CONFIRMED and not _interference_fired:
-		_interference_fired = true
-		_begin_interference()
+	# 阻挡不立即判罚：先记下，等球真的死了(接球方没救起来)才生效 (点一)
+	if block_system.state == GameTypes.Interference.CONFIRMED and not _block_pending:
+		_block_pending = true
+		_blocked_receiver = expected_receiver
 
 func _set_block_state(s: int) -> void:
 	if s == _last_block_state:
@@ -257,7 +266,7 @@ func _begin_interference() -> void:
 	_timer = GameConfig.interference_pause
 	# 故意不关 active：让 CONFIRMED(红) 在重发停顿期间一直可见
 	ball.state = GameTypes.BallState.INACTIVE
-	var victim: PlayerController = expected_receiver
+	var victim: PlayerController = _blocked_receiver if _blocked_receiver != null else expected_receiver
 	server_index = victim.player_index  # 被阻挡方重发
 	EventBus.notify("阻挡！ 玩家%d 重发" % victim.player_index, GameConfig.interference_pause)
 	EventBus.match_state_changed.emit(state)

@@ -76,8 +76,13 @@ func _anti_block_target() -> Vector2:
 #  智能击球 / 发球 (保证落桌, 角度随机变化)
 # ------------------------------------------------------------
 func _smart_shot(from: Vector2) -> Dictionary:
-	var target: Vector2 = _pick_target()
-	var d: Vector2 = target - from
+	# 目标: 桌面内随机 x (角度变化); 瞄准它关于墙的镜像点 ->
+	#   球直接撞墙(回击不先弹桌), 撞墙后水平线经过桌面上该 x, 再由"墙弹回桌"辅助落桌。
+	var tr := GameConfig.table_rect()
+	var m: float = maxf(GameConfig.assist_good_margin, 20.0)
+	var tx: float = randf_range(tr.position.x + m, tr.end.x - m)
+	var aim := Vector2(tx, 2.0 * GameConfig.wall_inner_y() - GameConfig.table_center.y)
+	var d: Vector2 = aim - from
 	var dist: float = maxf(d.length(), 1.0)
 	var dir: Vector2 = d / dist
 	# vz 与力度都限制在"玩家的上下限"内 (AI 不作弊)
@@ -96,14 +101,6 @@ func compute_hit(_hit_point: HitPoint, b: Ball) -> Dictionary:
 
 func compute_serve(b: Ball) -> Dictionary:
 	return _smart_shot(b.global_position)
-
-## 在桌面"好区"的靠墙半区随机取一个落点 -> 角度变化但一定先落桌。
-func _pick_target() -> Vector2:
-	var tr := GameConfig.table_rect()
-	var m: float = maxf(GameConfig.assist_good_margin, 20.0)
-	var x: float = randf_range(tr.position.x + m, tr.end.x - m)
-	var y: float = randf_range(tr.position.y + m, tr.position.y + tr.size.y * 0.5)
-	return Vector2(x, y)
 
 func _draw() -> void:
 	draw_circle(Vector2.ZERO, ai_radius, _body_color)

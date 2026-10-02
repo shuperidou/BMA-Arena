@@ -99,9 +99,10 @@ func _step(dt: float) -> void:
 	# --- 墙 (顶边)：XY 反弹，仅在有效高度内 ---
 	var wall_y: float = GameConfig.wall_inner_y()
 	if position.y - radius <= wall_y and vel.y < 0.0 and z <= GameConfig.wall_max_height:
-		# 墙连弹 -> 直接结算; 发球没先弹桌就撞墙(违反 桌->墙)也算失误。
-		# 注意: 回击不需要先碰桌 (只需 墙->桌), 所以 table_bounces==0 只对发球判罚。
-		if _last_surface == 2 or (serve_shot and table_bounces == 0):
+		# 墙连弹 -> 直接结算。
+		# 发球: 撞墙前碰不碰桌无所谓。
+		# 回击: 撞墙前**一定不能先碰桌**, 否则回击方输 (设计文档新规)。
+		if _last_surface == 2 or (not serve_shot and table_bounces >= 1):
 			_die(GameTypes.DeathReason.BAD_BOUNCE)
 			return
 		position.y = wall_y + radius
