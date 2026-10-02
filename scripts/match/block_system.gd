@@ -25,6 +25,15 @@ var intercept_time: float = 0.0
 var sector_axis: Vector2 = Vector2.ZERO      ## 扇区轴 (= 接球方速度方向)
 var active: bool = false
 
+# Debug 因子
+var dbg_speed: float = 0.0
+var dbg_has_intent: bool = false
+var dbg_dist: float = 0.0
+var dbg_angle_deg: float = 0.0
+var dbg_in_sector: bool = false
+var dbg_contact: float = 0.0
+var dbg_collided: bool = false
+
 func update(dt: float, current_ball: Ball, current_receiver: PlayerController,
 		current_opponent: PlayerController, collision_time: float,
 		collision_pos: Vector2, now: float, contact_duration: float) -> void:
@@ -52,10 +61,16 @@ func update(dt: float, current_ball: Ball, current_receiver: PlayerController,
 	var axis: Vector2 = vel / speed
 	sector_axis = axis
 
+	dbg_speed = speed
+	dbg_has_intent = speed >= GameConfig.block_pursuit_speed
+
 	var to_ball: Vector2 = ball.global_position - receiver.global_position
 	var bdist: float = to_ball.length()
-	if bdist < 1.0:
-		return
+	dbg_dist = bdist
+	var ang: float = absf(wrapf(axis.angle() - to_ball.angle(), -PI, PI))
+	dbg_angle_deg = rad_to_deg(ang)
+	dbg_in_sector = bdist <= GameConfig.block_sector_radius \
+		and ang <= deg_to_rad(GameConfig.block_sector_half_angle)
 
 	# 4) (可选) 时间可达：忽略对手, 接球方要赶得上
 	if GameConfig.block_require_time_reachable and intercept_time >= 0.0:
@@ -64,10 +79,7 @@ func update(dt: float, current_ball: Ball, current_receiver: PlayerController,
 			return
 
 	# 2) 扇区: 球在半角 + 半径内 = "A 正冲过去要接的球"
-	if bdist > GameConfig.block_sector_radius:
-		return
-	var ang: float = absf(wrapf(axis.angle() - to_ball.angle(), -PI, PI))
-	if ang > deg_to_rad(GameConfig.block_sector_half_angle):
+	if not dbg_in_sector:
 		return
 
 	# 5) (可选) 对手必须在 A 的球侧
@@ -81,5 +93,7 @@ func update(dt: float, current_ball: Ball, current_receiver: PlayerController,
 
 	# 3) 实际碰撞 + 持续时间
 	var recent_collision: bool = (now - collision_time) <= GameConfig.block_collision_window
-	if recent_collision and contact_duration >= GameConfig.block_min_contact_time:
+	dbg_contact = contact_duration
+	dbg_collided = recent_collision and contact_duration >= GameConfig.block_min_contact_time
+	if dbg_collided:
 		state = GameTypes.Interference.CONFIRMED

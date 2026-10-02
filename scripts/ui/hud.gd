@@ -10,6 +10,7 @@ var _state_label: Label
 var _controls_label: Label
 var _message_label: Label
 var _block_label: Label
+var _debug_menu_label: Label
 var _msg_timer: float = 0.0
 
 func _ready() -> void:
@@ -31,12 +32,36 @@ func _ready() -> void:
 	_controls_label = _make_label(Vector2(24, 596), 18, Color(0.7, 0.74, 0.82))
 	_controls_label.size = Vector2(900, 110)
 	_controls_label.text = "玩家1  WASD 世界移动 / 鼠标 朝向 / 空格 发球\n" \
-		+ "玩家2  方向键 世界移动 / , . 旋转 / 回车 发球 (测试用)\n" \
-		+ "F1 调试显示   F2 空间提示   R 重开   Esc 退出"
+		+ "玩家2  (圆形 AI, 自动跑动/发球/击球)\n" \
+		+ "F1 调试菜单   R 重开   Esc 退出"
+
+	_debug_menu_label = _make_label(Vector2(24, 96), 18, Color(0.6, 0.95, 1.0))
+	_debug_menu_label.size = Vector2(560, 220)
+	_debug_menu_label.visible = false
 
 	EventBus.message.connect(_on_message)
 	EventBus.score_changed.connect(_on_score)
 	EventBus.match_state_changed.connect(_on_state)
+	update_debug_menu()
+
+func set_debug_menu(is_visible: bool) -> void:
+	_debug_menu_label.visible = is_visible
+	update_debug_menu()
+
+func update_debug_menu() -> void:
+	if _debug_menu_label == null:
+		return
+	var solo: bool = match_ref != null and match_ref.solo_mode
+	_debug_menu_label.text = "[F1 调试菜单]  (再按一次关闭)\n" \
+		+ " 1  单人(玩家2消失): %s\n" % _mark(solo) \
+		+ " 2  阻挡扇区+因子: %s\n" % _mark(GameConfig.debug_show_block) \
+		+ " 3  鼠标/击球: %s\n" % _mark(GameConfig.debug_show_aim) \
+		+ " 4  球状态: %s\n" % _mark(GameConfig.debug_show_ball) \
+		+ " 5  碰撞体/速度: %s\n" % _mark(GameConfig.debug_show_shapes) \
+		+ " 6  场地/桌/墙: %s" % _mark(GameConfig.debug_show_zones)
+
+func _mark(b: bool) -> String:
+	return "开" if b else "关"
 
 func _make_label(pos: Vector2, size: int, color: Color) -> Label:
 	var l := Label.new()

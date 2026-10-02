@@ -78,9 +78,7 @@ var position_bias_weight: float = 0.5   ## 偏置里"击球区位置"的权重 (
 var assist_strength: float = 1.0       ## 辅助程度 0..1
 var max_assist_angle: float = 150.0     ## 修正角硬上限(度)。180=不限制 (让 assist=1 能完全回正)
 var assist_good_margin: float = 40.0    ## 好区=桌面内缩这么多像素。越大越容易触发(越少很偏的球)
-## 救球辅助能压到的最低球速 = hit_speed_min * 这个比例 (0~1)。
-## 1.0 = 下限等于 hit_speed_min (与 AI 一致, 但辅助无法再压速落桌)；0 = 不设下限。
-var assist_min_speed_ratio: float = 1.0
+## (已移除 assist_min_speed_ratio：辅助现在只修正方向, 不改球速, 和 AI 击球一致)
 # ============================================================
 #  球：伪 Z 轴 (高度) 系统
 # ============================================================
@@ -153,7 +151,14 @@ var block_reach_slack: float = 0.12
 var block_require_opponent_in_front: bool = false
 ## 碰撞持续时间门槛: 至少要接触这么久才算阻挡
 var block_min_contact_time: float = 0.03
-var show_hints: bool = true                 ## 是否显示接球/阻挡空间提示
+# ============================================================
+#  调试显示开关 (F1 总开关; 打开后按 2~6 分类开关)
+# ============================================================
+var debug_show_block: bool = true    ## 2: 阻挡扇区 + 判定因子
+var debug_show_aim: bool = true      ## 3: 鼠标瞄准 / 击球调试
+var debug_show_ball: bool = true     ## 4: 球状态
+var debug_show_shapes: bool = true   ## 5: 碰撞体 / 速度
+var debug_show_zones: bool = true    ## 6: 场地 / 桌 / 墙
 
 # ============================================================
 #  输入 (physical keycodes)

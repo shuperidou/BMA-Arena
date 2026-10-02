@@ -69,8 +69,22 @@ func _unhandled_input(event: InputEvent) -> void:
 	match event.physical_keycode:
 		KEY_F1:
 			debug_layer.enabled = not debug_layer.enabled
-		KEY_F2:
-			GameConfig.show_hints = not GameConfig.show_hints
+			hud.set_debug_menu(debug_layer.enabled)
+		KEY_2:
+			if debug_layer.enabled:
+				_toggle_flag("debug_show_block")
+		KEY_3:
+			if debug_layer.enabled:
+				_toggle_flag("debug_show_aim")
+		KEY_4:
+			if debug_layer.enabled:
+				_toggle_flag("debug_show_ball")
+		KEY_5:
+			if debug_layer.enabled:
+				_toggle_flag("debug_show_shapes")
+		KEY_6:
+			if debug_layer.enabled:
+				_toggle_flag("debug_show_zones")
 		KEY_R:
 			match_ref.restart()
 		KEY_1:
@@ -79,6 +93,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_toggle_solo()
 		KEY_ESCAPE:
 			get_tree().quit()
+
+func _toggle_flag(prop: String) -> void:
+	GameConfig.set(prop, not GameConfig.get(prop))
+	hud.update_debug_menu()
 
 func _toggle_solo() -> void:
 	var on: bool = not match_ref.solo_mode

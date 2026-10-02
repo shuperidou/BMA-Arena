@@ -44,23 +44,21 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var assist_angle: float = 0.0
 	var assist_speed_delta: float = 0.0
 	if assist > 0.0 and not _lands_in_good_zone(p, raw_dir, 2.0 * ball_speed * vz / g):
-		# 恢复解 (镜面法)：
-		#   方向 = 指向"桌中心关于墙的镜像点" -> 球撞墙反弹后水平路径经过桌中心
-		#   力度 = 单独选，让第一次落桌仍在桌面内 (镜像点在墙外，不能当落点)
+		# 恢复解 (和 AI 一致)：瞄准"桌中心关于墙的镜像点"。
+		#   球直接撞墙(回击不先弹桌), 撞墙后水平路径经过桌中心, 再由"墙弹回桌"辅助落桌。
+		#   力度不变(只修方向)。
 		var tc: Vector2 = GameConfig.table_center
 		var wall_y: float = GameConfig.wall_inner_y()
 		var mirror := Vector2(tc.x, 2.0 * wall_y - tc.y)
 		var to_m: Vector2 = mirror - p
 		var recov_dir: Vector2 = to_m.normalized() if to_m.length() > 1.0 else raw_dir
-		var recov_speed: float = _recovery_speed(p, recov_dir, vz, g, ball_speed)
 		var da: float = wrapf(recov_dir.angle() - raw_dir.angle(), -PI, PI)
 		var cap: float = deg_to_rad(GameConfig.max_assist_angle)
 		da = clampf(da, -cap, cap)
 		assist_angle = da * assist
 		assisted_dir = raw_dir.rotated(assist_angle)
-		var new_speed: float = lerpf(ball_speed, recov_speed, assist)
-		assist_speed_delta = new_speed - ball_speed
-		final_speed = new_speed
+		assist_speed_delta = 0.0
+		final_speed = ball_speed
 
 	return {
 		"velocity": assisted_dir * final_speed,
