@@ -104,7 +104,8 @@ static func _recovery_speed(p: Vector2, dir: Vector2, vz: float, g: float, raw_s
 	var t1: float = seg[1]
 	var d_raw: float = 2.0 * raw_speed * vz / g      # 玩家原力量对应的落点距离
 	var d: float = clampf(d_raw, t0, t1)             # 在好区内就保留, 否则夹到最近一端
-	return clampf(d * g / (2.0 * vz), 60.0, GameConfig.hit_speed_max)
+	# 速度下限: assist_min_speed (默认 = hit_speed_min, 与 AI 一致)，不再压到 60
+	return clampf(d * g / (2.0 * vz), GameConfig.assist_min_speed, GameConfig.hit_speed_max)
 
 ## 射线 p+dir*t 与矩形相交的参数区间 [t0,t1] (t>=0)；不相交返回 []。
 static func _ray_rect_segment(p: Vector2, dir: Vector2, rect: Rect2) -> Array:

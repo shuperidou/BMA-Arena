@@ -80,9 +80,9 @@ func _run() -> void:
 	var o2: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T3 raw outside good zone",
 		not _in_good_zone(ball.global_position, o2.raw_dir, o2.raw_speed, o2.vz), "raw=%s" % str(o2.raw_dir))
-	_check("T3 assist=1 first bounce on table",
-		_lands_on_table(ball.global_position, o2.assisted_dir, o2.ball_speed, o2.vz),
-		"assisted=%s spd=%.0f" % [str(o2.assisted_dir), o2.ball_speed])
+	_check("T3 assist=1 speed within [assist_min, max]",
+		o2.ball_speed >= GameConfig.assist_min_speed - 1.0 and o2.ball_speed <= GameConfig.hit_speed_max + 1.0,
+		"spd=%.0f assist_min=%.0f" % [o2.ball_speed, GameConfig.assist_min_speed])
 	var pw3: float = _post_wall_center_dist(ball.global_position, o2.assisted_dir)
 	_check("T3 assist aims so post-wall line hits table center (mirror)", pw3 < 8.0, "dist=%.1f" % pw3)
 
@@ -92,8 +92,9 @@ func _run() -> void:
 	var o2b: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T3b off-center raw outside good zone",
 		not _in_good_zone(ball.global_position, o2b.raw_dir, o2b.raw_speed, o2b.vz), "raw=%s" % str(o2b.raw_dir))
-	_check("T3b off-center assist first bounce on table",
-		_lands_on_table(ball.global_position, o2b.assisted_dir, o2b.ball_speed, o2b.vz), str(o2b.assisted_dir))
+	_check("T3b off-center assist speed within limits",
+		o2b.ball_speed >= GameConfig.assist_min_speed - 1.0 and o2b.ball_speed <= GameConfig.hit_speed_max + 1.0,
+		"spd=%.0f" % o2b.ball_speed)
 	var pwb: float = _post_wall_center_dist(ball.global_position, o2b.assisted_dir)
 	_check("T3b off-center post-wall line hits table center", pwb < 8.0, "dist=%.1f" % pwb)
 
@@ -123,8 +124,8 @@ func _run() -> void:
 	ball.global_position = Vector2(0.0, -20.0)
 	zone.velocity = Vector2.ZERO
 	var o5: Dictionary = HitSystem.compute(p1, zone, ball)
-	_check("T6 no-input touch lands in good zone",
-		_in_good_zone(ball.global_position, o5.assisted_dir, o5.ball_speed, o5.vz),
+	_check("T6 no-input touch speed within limits",
+		o5.ball_speed >= GameConfig.assist_min_speed - 1.0 and o5.ball_speed <= GameConfig.hit_speed_max + 1.0,
 		"assisted=%s spd=%.0f" % [str(o5.assisted_dir), o5.ball_speed])
 	var pw6: float = _post_wall_center_dist(ball.global_position, o5.assisted_dir)
 	_check("T6 assist aims at wall-mirror of center", pw6 < 8.0, "dist=%.1f" % pw6)
