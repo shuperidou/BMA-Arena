@@ -114,10 +114,10 @@ var wall_return_assist: bool = true
 var wall_return_depth_frac: float = 0.8  ## 0=远边, 1=近边。落点=远边+深度*frac [TUNED]
 
 ## 击球赋予的初速度
-var ball_hit_speed: float = 620.0      ## [TUNED]
-var ball_hit_vz: float = 660.0         ## [TUNED]
-var ball_hit_vz_min: float = 650.0
-var ball_hit_vz_max: float = 760.0
+var ball_hit_speed: float = 420.0      ## [TUNED]
+var ball_hit_vz: float = 450.0         ## [TUNED]
+var ball_hit_vz_min: float = 450.0
+var ball_hit_vz_max: float = 550.0
 var hit_player_vel_influence: float = 0.5
 
 ## 可击球的高度范围 (第一阶段宽松)

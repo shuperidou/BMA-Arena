@@ -127,6 +127,7 @@ func _do_serve(server: PlayerController) -> void:
 	ball.z = GameConfig.table_z
 	var info: Dictionary = server.compute_serve(ball)
 	ball.launch_velocity(info.velocity, info.vz)
+	ball.serve_shot = true
 	ball.last_hitter = server
 	last_hitter = server
 	expected_receiver = _other(server)
@@ -161,6 +162,7 @@ func _on_ball_touched(player: PlayerController, hit_point: HitPoint) -> void:
 func _apply_hit(player: PlayerController, hit_point: HitPoint) -> void:
 	var info: Dictionary = player.compute_hit(hit_point, ball)
 	ball.launch_velocity(info.velocity, info.vz)
+	ball.serve_shot = false
 	ball.z = maxf(ball.z, GameConfig.table_z)
 	ball.register_hit(info)
 	ball.last_hitter = player

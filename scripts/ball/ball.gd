@@ -44,6 +44,7 @@ var last_strength: float = 0.0    ## 上次击球力度 (0..1)
 var last_hit_info: Dictionary = {} ## 上次击球调试信息
 var _trail: Array[Vector2] = []   ## 拖尾 (存视觉位置，含高度偏移)
 var _last_surface: int = 0        ## 最近一次弹跳的面 (0=无 1=桌 2=墙) —— 同面连弹即结算
+var serve_shot: bool = false      ## 本次是否为发球 (发球必须先弹桌再撞墙; 回击只需墙->桌)
 
 func _ready() -> void:
 	radius = GameConfig.ball_radius
@@ -98,8 +99,9 @@ func _step(dt: float) -> void:
 	# --- 墙 (顶边)：XY 反弹，仅在有效高度内 ---
 	var wall_y: float = GameConfig.wall_inner_y()
 	if position.y - radius <= wall_y and vel.y < 0.0 and z <= GameConfig.wall_max_height:
-		# 墙连弹, 或"没先弹桌就撞墙"(违反 桌->墙 顺序) -> 击球方失误, 直接结算
-		if _last_surface == 2 or table_bounces == 0:
+		# 墙连弹 -> 直接结算; 发球没先弹桌就撞墙(违反 桌->墙)也算失误。
+		# 注意: 回击不需要先碰桌 (只需 墙->桌), 所以 table_bounces==0 只对发球判罚。
+		if _last_surface == 2 or (serve_shot and table_bounces == 0):
 			_die(GameTypes.DeathReason.BAD_BOUNCE)
 			return
 		position.y = wall_y + radius
