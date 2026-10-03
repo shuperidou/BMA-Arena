@@ -301,3 +301,18 @@ func _draw() -> void:
 			var b: Vector2 = p + dir_v * base_r - tang * (r * 0.28)
 			var c: Vector2 = p + dir_v * tip_r
 			draw_colored_polygon(PackedVector2Array([a, b, c]), col)
+	# 扣杀提示: 球够高且可接 -> 脉动环 + 向下箭头, 提示"现在可以扣杀"
+	if GameConfig.smash_hint_enabled and state == GameTypes.BallState.LIVE \
+			and returnable and z >= GameConfig.smash_height_min and z <= GameConfig.hit_height_max:
+		var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.008)
+		var hr: float = r * (1.9 + 0.6 * pulse)
+		draw_arc(p, hr, 0.0, TAU, 32, Color(1.0, 0.85, 0.25, 0.30 + 0.40 * pulse), 3.0)
+		var chev := Color(1.0, 0.85, 0.25, 0.45 + 0.50 * pulse)
+		for k in 2:
+			var top_y: float = p.y - r * (2.4 + float(k) * 0.9)
+			var cw: float = r * 0.65
+			var pts2 := PackedVector2Array([
+				Vector2(p.x - cw, top_y),
+				Vector2(p.x, top_y + r * 0.6),
+				Vector2(p.x + cw, top_y)])
+			draw_polyline(pts2, chev, 2.5)

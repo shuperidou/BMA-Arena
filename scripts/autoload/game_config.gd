@@ -141,6 +141,7 @@ var smash_success_chance: float = 0.9    ## 扣杀成功概率 0~1
 var smash_vz: float = -900.0             ## 扣杀的向下竖直速度 (负值, 越大越快)
 var smash_speed_mult: float = 1.0        ## 扣杀水平速度微调 (>1 更凶, 可能过桌)
 var ai_smash_height_min: float = 170.0   ## AI 触发扣杀的最低球高 (单独设, 免得它太频繁)
+var smash_hint_enabled: bool = true      ## 球够高且可接时, 在球周围显示"可扣杀"提示
 
 # ============================================================
 #  G. 比赛 (计分/轮换均为临时方案) [TEMP]
