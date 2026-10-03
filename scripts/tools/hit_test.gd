@@ -221,4 +221,44 @@ func _run() -> void:
 	var od3: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T11c 水平太大 -> 不算防守", not od3.is_defense,
 		"defense=%s v_along=%.0f v_perp=%.0f ratio=%.2f" % [str(od3.is_defense), va, vp, GameConfig.defense_max_along_ratio])
+
+	# T12: 旋转不变性 —— 鼠标手势是世界坐标, 应"与身体朝向无关":
+	#   鼠标世界向下 (0,+V)  -> 一定是防守 (v_perp>0, v_along≈0)
+	#   鼠标世界向右 (+V,0)  -> 一定是力度 (v_along>0, v_perp≈0), 不防守
+	# 复刻 PlayerController 的做法: swing = 鼠标世界速度.rotated(rotation), 两端共用。
+	GameConfig.defense_perp_threshold = 400.0
+	GameConfig.defense_save_chance = 1.0
+	ball.global_position = Vector2(0.0, -60.0)
+	var rot_ok := true
+	var rot_detail := ""
+	for rot_dn in [-PI / 2.0, PI / 2.0, 0.0, PI, -PI / 4.0, 2.5]:
+		p1.rotation = rot_dn
+		var fA: Vector2 = Vector2.RIGHT.rotated(rot_dn)
+		var pA: Vector2 = fA.rotated(PI * 0.5)
+		var sw_dn: Vector2 = Vector2(0.0, 1000.0).rotated(rot_dn)
+		_setv(sw_dn)
+		var od_a: Dictionary = HitSystem.compute(p1, zone, ball)
+		var va_a: float = sw_dn.dot(fA)
+		var vp_a: float = sw_dn.dot(pA)
+		if not (od_a.is_defense and absf(va_a) < 1.0 and vp_a > 0.0):
+			rot_ok = false
+			rot_detail = "rot=%.2f va=%.1f vp=%.1f def=%s" % [rot_dn, va_a, vp_a, str(od_a.is_defense)]
+	_check("T12 鼠标世界向下 = 防守 (任意朝向)", rot_ok, rot_detail)
+	rot_ok = true
+	rot_detail = ""
+	for rot_rt in [-PI / 2.0, PI / 2.0, 0.0, -PI / 4.0]:
+		p1.rotation = rot_rt
+		var fB: Vector2 = Vector2.RIGHT.rotated(rot_rt)
+		var pB: Vector2 = fB.rotated(PI * 0.5)
+		var sw_rt: Vector2 = Vector2(1000.0, 0.0).rotated(rot_rt)
+		_setv(sw_rt)
+		var od_b: Dictionary = HitSystem.compute(p1, zone, ball)
+		var va_b: float = sw_rt.dot(fB)
+		var vp_b: float = sw_rt.dot(pB)
+		if not (not od_b.is_defense and va_b > 0.0 and absf(vp_b) < 1.0):
+			rot_ok = false
+			rot_detail = "rot=%.2f va=%.1f vp=%.1f def=%s" % [rot_rt, va_b, vp_b, str(od_b.is_defense)]
+	_check("T12 鼠标世界向右 = 力度不防守 (任意朝向)", rot_ok, rot_detail)
+	p1.rotation = -PI / 2.0
+	GameConfig.defense_perp_threshold = 1e9
 	GameConfig.defense_save_chance = 0.6
