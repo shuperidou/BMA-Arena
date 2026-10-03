@@ -121,6 +121,12 @@ var assist_strength: float = 0.8        ## 辅助程度 0..1
 var max_assist_angle: float = 180.0     ## 修正角硬上限(度)。180=不限制
 var assist_good_margin: float = 50.0    ## 好区=桌面内缩这么多像素。越大越容易触发
 
+## 防守姿态：鼠标向下猛拉(垂直分量 > 阈值) -> vy 很大但水平初速常常不够。
+## 此时按 probability "救球"：成功则完全瞄准墙镜像落桌, 失败则用原始方向(大概率丢分)。
+var defense_perp_threshold: float = 400.0   ## 触发防守的垂直分量阈值 (px/s)
+var defense_save_chance: float = 0.6        ## 防守救球成功概率 0~1
+var defense_vz_mult: float = 1.0            ## 防守时 vy 的额外倍数
+
 # ============================================================
 #  G. 比赛 (计分/轮换均为临时方案) [TEMP]
 # ============================================================

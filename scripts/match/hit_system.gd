@@ -39,10 +39,7 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var bias: Vector2 = outward * GameConfig.position_bias_weight + swing
 	var raw_dir: Vector2 = (facing + bias * GameConfig.hit_direction_strength).normalized()
 
-	# --- 智能回球辅助 (0..1 单一旋钮) ---
-	#   assist=0 -> 完全用原始击球
-	#   assist=1 -> 只要触球就保证回桌 (方向+力度都拉到"瞄准桌中心并落桌"的解)
-	#   0..1    -> 按比例混合
+	# --- vy/弧线 + 智能辅助 + 防守姿态 ---
 	var p: Vector2 = ball.global_position
 	# vy/弧线：由"垂直于朝向的分速度"决定 (鼠标向下 -> v_perp>0 -> vy增大)
 	var perp_t: float = clampf(v_perp / ref, -1.0, 1.0)
@@ -54,21 +51,37 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var final_speed: float = ball_speed
 	var assist_angle: float = 0.0
 	var assist_speed_delta: float = 0.0
-	if assist > 0.0 and not _lands_in_good_zone(p, raw_dir, 2.0 * ball_speed * vz / g):
-		# 恢复解 (和 AI 一致)：瞄准"桌中心关于墙的镜像点"。
-		#   球直接撞墙(回击不先弹桌), 撞墙后水平路径经过桌中心, 再由"墙弹回桌"辅助落桌。
-		#   力度不变(只修方向)。
-		var tc: Vector2 = GameConfig.table_center
-		var wall_y: float = GameConfig.wall_inner_y()
-		var mirror := Vector2(tc.x, 2.0 * wall_y - tc.y)
-		var to_m: Vector2 = mirror - p
-		var recov_dir: Vector2 = to_m.normalized() if to_m.length() > 1.0 else raw_dir
-		var da: float = wrapf(recov_dir.angle() - raw_dir.angle(), -PI, PI)
-		var cap: float = deg_to_rad(GameConfig.max_assist_angle)
-		da = clampf(da, -cap, cap)
+
+	# 防守姿态: 鼠标向下猛拉 (垂直分量 > 阈值) -> vy 很大但水平初速常常不够
+	var is_defense: bool = v_perp > GameConfig.defense_perp_threshold
+	var defense_saved: bool = false
+	if is_defense:
+		vz = clampf(vz * GameConfig.defense_vz_mult, GameConfig.hit_vz_min, GameConfig.hit_vz_max)
+		defense_saved = randf() < GameConfig.defense_save_chance   # 救球成功概率 0~1
+
+	# 墙镜像恢复方向 (桌中心关于墙的镜像)
+	var tc: Vector2 = GameConfig.table_center
+	var wall_y: float = GameConfig.wall_inner_y()
+	var mirror := Vector2(tc.x, 2.0 * wall_y - tc.y)
+	var to_m: Vector2 = mirror - p
+	var recov_dir: Vector2 = to_m.normalized() if to_m.length() > 1.0 else raw_dir
+	var da: float = wrapf(recov_dir.angle() - raw_dir.angle(), -PI, PI)
+	var cap: float = deg_to_rad(GameConfig.max_assist_angle)
+	da = clampf(da, -cap, cap)
+
+	if is_defense:
+		# 防守姿态独占：成功->完全瞄准墙镜像; 失败->不给任何辅助(用原始方向)
+		if defense_saved:
+			assist_angle = da
+			assisted_dir = recov_dir
+		else:
+			assist_angle = 0.0
+			assisted_dir = raw_dir
+		final_speed = ball_speed
+	elif assist > 0.0 and not _lands_in_good_zone(p, raw_dir, 2.0 * ball_speed * vz / g):
+		# 常规辅助：按 assist_strength 混合到镜像方向
 		assist_angle = da * assist
 		assisted_dir = raw_dir.rotated(assist_angle)
-		assist_speed_delta = 0.0
 		final_speed = ball_speed
 
 	return {
@@ -84,6 +97,8 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 		"assisted_dir": assisted_dir,
 		"assist_angle": assist_angle,
 		"assist_speed_delta": assist_speed_delta,
+		"is_defense": is_defense,
+		"defense_saved": defense_saved,
 	}
 
 ## 沿 dir 飞出 dist 后是否落在桌面内。

@@ -63,6 +63,7 @@ func _run() -> void:
 	p1.global_position = Vector2(0.0, -14.0)
 	p1.rotation = -PI / 2.0  # 面向桌中心 (局部 +x = 世界上方)
 	GameConfig.assist_strength = 0.0  # 先关辅助, 单独测力度/方向映射
+	GameConfig.defense_perp_threshold = 1e9  # 先关防守判定, 单独测其它 (T11 再打开)
 
 	# T1: 击球区静止 -> 力度最低, 球速=min, 方向≈面向
 	ball.global_position = Vector2(0.0, -60.0)
@@ -106,6 +107,7 @@ func _run() -> void:
 
 	# T4: assist=0 -> 完全无辅助
 	GameConfig.assist_strength = 0.0
+	_setv(Vector2(0.0, -1500.0))  # 沿朝向(非防守), 单独测 assist=0
 	var o3: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T4 assist=0 -> no correction",
 		absf(o3.assist_angle) < 0.001 and o3.assisted_dir.is_equal_approx(o3.raw_dir),
@@ -193,3 +195,22 @@ func _run() -> void:
 		"along=%.0f perp=%.0f" % [oa.ball_speed, ob.ball_speed])
 	_check("T10 垂直挥动 -> vy 更大", ob.vz > oa.vz,
 		"along_vz=%.0f perp_vz=%.0f" % [oa.vz, ob.vz])
+
+	# T11: 防守姿态 (向下猛拉) -> 按概率救球到墙镜像
+	p1.global_position = Vector2(0.0, -14.0)
+	p1.rotation = -PI / 2.0
+	ball.global_position = Vector2(0.0, -60.0)
+	GameConfig.defense_perp_threshold = 400.0
+	GameConfig.defense_save_chance = 1.0
+	_setv(Vector2(800.0, 0.0))   # v_perp=800 > 阈值 -> 防守
+	var od: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T11 防守(必成功) -> 瞄准墙镜像",
+		od.is_defense and od.defense_saved and _post_wall_center_dist(ball.global_position, od.assisted_dir) < 8.0,
+		"defense=%s saved=%s dir=%s" % [str(od.is_defense), str(od.defense_saved), str(od.assisted_dir)])
+	GameConfig.defense_save_chance = 0.0
+	_setv(Vector2(800.0, 0.0))
+	var od2: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T11 防守(必失败) -> 用原始方向",
+		od2.is_defense and not od2.defense_saved and od2.assisted_dir.is_equal_approx(od2.raw_dir),
+		"defense=%s saved=%s" % [str(od2.is_defense), str(od2.defense_saved)])
+	GameConfig.defense_save_chance = 0.6
