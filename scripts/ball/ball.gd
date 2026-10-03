@@ -41,6 +41,7 @@ var _bounce_threshold: float = 25.0
 # 击球反馈
 var hit_flash: float = 0.0        ## 1->0 的击球闪一下
 var last_strength: float = 0.0    ## 上次击球力度 (0..1)
+var last_was_save: bool = false   ## 上次击球是否是"防守救球"
 var last_hit_info: Dictionary = {} ## 上次击球调试信息
 var _trail: Array[Vector2] = []   ## 拖尾 (存视觉位置，含高度偏移)
 var _last_surface: int = 0        ## 最近一次弹跳的面 (0=无 1=桌 2=墙) —— 同面连弹即结算
@@ -71,6 +72,7 @@ func launch_velocity(v: Vector2, vz0: float) -> void:
 func register_hit(info: Dictionary) -> void:
 	last_hit_info = info
 	last_strength = clampf(info.get("strength", 0.0), 0.0, 1.0)
+	last_was_save = bool(info.get("defense_saved", false))
 	hit_flash = 1.0
 
 ## 弹道发射：让球第一次落桌点尽量落在 target (xy)。高度从桌面起。
@@ -271,8 +273,11 @@ func _draw() -> void:
 	draw_circle(p, r, Color(1, 1, 1))
 	var inner := Color(1.0, 0.83, 0.3)
 	if hit_flash > 0.05:
-		# 力度反馈：弱=蓝，强=橙红
-		inner = Color(0.45, 0.7, 1.0).lerp(Color(1.0, 0.35, 0.15), last_strength)
+		if last_was_save:
+			inner = Color(0.35, 1.0, 0.45)   # 防守救球 -> 绿色球心
+		else:
+			# 力度反馈：弱=蓝，强=橙红
+			inner = Color(0.45, 0.7, 1.0).lerp(Color(1.0, 0.35, 0.15), last_strength)
 	draw_circle(p, r * 0.6, inner)
 	# 击球闪环
 	if hit_flash > 0.01:

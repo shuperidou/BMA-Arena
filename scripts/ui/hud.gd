@@ -10,7 +10,9 @@ var _state_label: Label
 var _controls_label: Label
 var _message_label: Label
 var _block_label: Label
+var _save_label: Label
 var _debug_menu_label: Label
+var _debug_menu_visible: bool = false
 var _msg_timer: float = 0.0
 
 func _ready() -> void:
@@ -23,6 +25,12 @@ func _ready() -> void:
 	_block_label = _make_label(Vector2(0, 78), 26, Color(1, 0.9, 0.4))
 	_block_label.size = Vector2(1280, 40)
 	_block_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_block_label.visible = false
+
+	_save_label = _make_label(Vector2(0, 118), 26, Color(0.4, 1.0, 0.5))
+	_save_label.size = Vector2(1280, 40)
+	_save_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_save_label.visible = false
 
 	_message_label = _make_label(Vector2(0, 300), 46, Color(1, 1, 1))
 	_message_label.size = Vector2(1280, 80)
@@ -45,6 +53,7 @@ func _ready() -> void:
 	update_debug_menu()
 
 func set_debug_menu(is_visible: bool) -> void:
+	_debug_menu_visible = is_visible
 	_debug_menu_label.visible = is_visible
 	update_debug_menu()
 
@@ -58,7 +67,8 @@ func update_debug_menu() -> void:
 		+ " 3  鼠标/击球: %s\n" % _mark(GameConfig.debug_show_aim) \
 		+ " 4  球状态: %s\n" % _mark(GameConfig.debug_show_ball) \
 		+ " 5  碰撞体/速度: %s\n" % _mark(GameConfig.debug_show_shapes) \
-		+ " 6  场地/桌/墙: %s" % _mark(GameConfig.debug_show_zones)
+		+ " 6  场地/桌/墙: %s\n" % _mark(GameConfig.debug_show_zones) \
+		+ " 7  阻挡/救球提示: %s" % _mark(GameConfig.debug_show_block_hud)
 
 func _mark(b: bool) -> String:
 	return "开" if b else "关"
@@ -80,6 +90,18 @@ func _process(dt: float) -> void:
 		if _msg_timer <= 0.0:
 			_message_label.visible = false
 	_update_block_label()
+	_update_hud_prompts()
+
+func _update_hud_prompts() -> void:
+	# 阻挡 / 救球 文字提示：只在 F1 打开且该分类开启时显示
+	var show: bool = _debug_menu_visible and GameConfig.debug_show_block_hud
+	_block_label.visible = show and _block_label.text != ""
+	var saving: bool = false
+	if match_ref != null and match_ref.ball != null:
+		var b: Ball = match_ref.ball
+		saving = b.hit_flash > 0.2 and bool(b.last_hit_info.get("defense_saved", false))
+	_save_label.text = "救球！" if saving else ""
+	_save_label.visible = show and saving
 
 func _update_block_label() -> void:
 	if match_ref == null or match_ref.block_system == null:

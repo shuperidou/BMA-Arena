@@ -123,8 +123,8 @@ var assist_good_margin: float = 50.0    ## 好区=桌面内缩这么多像素。
 
 ## 防守姿态：鼠标向下猛拉(垂直分量 > 阈值) -> vy 很大但水平初速常常不够。
 ## 此时按 probability "救球"：成功则完全瞄准墙镜像落桌, 失败则用原始方向(大概率丢分)。
-var defense_perp_threshold: float = 400.0   ## 触发防守的垂直分量阈值 (px/s)
-var defense_save_chance: float = 0.6        ## 防守救球成功概率 0~1
+var defense_perp_threshold: float = 100.0   ## 触发防守的垂直分量阈值 (px/s)
+var defense_save_chance: float = 1.0        ## 防守救球成功概率 0~1
 var defense_vz_mult: float = 1.0            ## 防守时 vy 的额外倍数
 
 # ============================================================
@@ -175,6 +175,7 @@ var debug_show_aim: bool = true      ## 3: 鼠标瞄准 / 击球调试
 var debug_show_ball: bool = true     ## 4: 球状态
 var debug_show_shapes: bool = true   ## 5: 碰撞体 / 速度
 var debug_show_zones: bool = true    ## 6: 场地 / 桌 / 墙
+var debug_show_block_hud: bool = true ## 7: 屏幕上方 阻挡/救球 文字提示
 
 # ============================================================
 #  K. 输入 (physical keycodes)
