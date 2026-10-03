@@ -20,8 +20,8 @@ func _ready() -> void:
 	p1.input_scheme = null  # 测试里手动摆位
 	p1.ball = null           # 禁用自动触及，改由测试直接 _apply_hit
 
-	# 开启单人模式 (等价于 F1 后按 1)
-	main_node._toggle_solo()
+	# 开启单人模式 (等价于 F1 后按 1；0=普通 -> 1=Solo)
+	main_node._cycle_debug_mode()
 	p1.global_position = Vector2(0.0, -10.0)
 	p1.rotation = -PI / 2.0
 	p1.linear_velocity = Vector2.ZERO

@@ -60,9 +60,9 @@ func set_debug_menu(is_visible: bool) -> void:
 func update_debug_menu() -> void:
 	if _debug_menu_label == null:
 		return
-	var solo: bool = match_ref != null and match_ref.solo_mode
+	var mode_name: String = match_ref.debug_mode_name if match_ref != null else "普通"
 	_debug_menu_label.text = "[F1 调试菜单]  (再按一次关闭)\n" \
-		+ " 1  单人(玩家2消失): %s\n" % _mark(solo) \
+		+ " 1  模式轮换: %s\n" % mode_name \
 		+ " 2  阻挡扇区+因子: %s\n" % _mark(GameConfig.debug_show_block) \
 		+ " 3  鼠标/击球: %s\n" % _mark(GameConfig.debug_show_aim) \
 		+ " 4  球状态: %s\n" % _mark(GameConfig.debug_show_ball) \

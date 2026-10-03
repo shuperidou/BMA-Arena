@@ -22,6 +22,7 @@ var server_index: int = 1
 var last_hitter: PlayerController = null
 var expected_receiver: PlayerController = null
 var solo_mode: bool = false  ## 调试：玩家2 消失，玩家1 自己发球自己接
+var debug_mode_name: String = "普通"  ## 当前调试模式名 (仅用于 HUD 显示)
 
 var _timer: float = 0.0
 var _serve_timer: float = 0.0

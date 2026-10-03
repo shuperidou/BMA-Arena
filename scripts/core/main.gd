@@ -91,9 +91,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_R:
 			match_ref.restart()
 		KEY_1:
-			# 调试：F1 打开调试后，按 1 切换"玩家2 消失"的单人模式
+			# 调试：F1 打开调试后，按 1 轮换调试模式 (普通 / Solo / 万能AI)
 			if debug_layer.enabled:
-				_toggle_solo()
+				_cycle_debug_mode()
 		KEY_ESCAPE:
 			get_tree().quit()
 
@@ -101,14 +101,29 @@ func _toggle_flag(prop: String) -> void:
 	GameConfig.set(prop, not GameConfig.get(prop))
 	hud.update_debug_menu()
 
-func _toggle_solo() -> void:
-	var on: bool = not match_ref.solo_mode
-	match_ref.set_solo(on)
+## F1+1 轮换的调试模式 (互斥)。加模式 = 往 DEBUG_MODES 加名字 + 在 _apply_debug_mode 加一行效果。
+const DEBUG_MODES: Array[String] = ["普通", "Solo (玩家2消失, 自己发接)", "万能AI (接到必落桌)"]
+var debug_mode: int = 0
+
+func _cycle_debug_mode() -> void:
+	debug_mode = (debug_mode + 1) % DEBUG_MODES.size()
+	_apply_debug_mode()
+
+func _apply_debug_mode() -> void:
+	var solo: bool = debug_mode == 1
+	var omni: bool = debug_mode == 2
+	# Solo: 玩家2 消失
+	match_ref.set_solo(solo)
 	var p2: PlayerController = players[1]
-	p2.visible = not on
-	p2.set_physics_process(not on)
-	p2.freeze = on
-	p2.collision_layer = 0 if on else 1
-	p2.collision_mask = 0 if on else 3
-	EventBus.notify("Solo 调试: %s" % ("开 (玩家2 消失, 自己发接)" if on else "关"), 2.0)
+	p2.visible = not solo
+	p2.set_physics_process(not solo)
+	p2.freeze = solo
+	p2.collision_layer = 0 if solo else 1
+	p2.collision_mask = 0 if solo else 3
+	# 万能 AI: 接到必落桌
+	if p2 is AiPlayer:
+		(p2 as AiPlayer).omniscient = omni
+	match_ref.debug_mode_name = DEBUG_MODES[debug_mode]
+	EventBus.notify("调试模式 %d/%d: %s" % [debug_mode + 1, DEBUG_MODES.size(), DEBUG_MODES[debug_mode]], 2.5)
+	hud.update_debug_menu()
 	match_ref.restart()

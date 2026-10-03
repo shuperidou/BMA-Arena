@@ -10,6 +10,7 @@ var ai_radius: float = 20.0
 var ai_hit_radius: float = 72.0
 var _home: Vector2 = Vector2(0.0, 40.0)
 var debug_last_error: String = ""   ## 最近一次失误表现 (Debug 用)
+var omniscient: bool = false        ## 万能模式: 接到球必落桌 (不夹玩家速度上限, 不失误)
 
 func _ready() -> void:
 	gravity_scale = 0.0
@@ -86,13 +87,21 @@ func _smart_shot(from: Vector2) -> Dictionary:
 	var d: Vector2 = aim - from
 	var dist: float = maxf(d.length(), 1.0)
 	var dir: Vector2 = d / dist
-	# vz 与力度都限制在"玩家的上下限"内 (AI 不作弊)
+	# vz 限制在"玩家的上下限"内 (AI 不作弊)
 	var vz: float = randf_range(GameConfig.hit_vz_min, GameConfig.hit_vz_max)
-	var speed: float = clampf(dist * GameConfig.ball_gravity / (2.0 * vz),
-		GameConfig.hit_speed_min, GameConfig.hit_speed_max)
-	# 失误表现：按 ai_error_chance 概率触发 (0=永不失误)
+	# 由 vz 反推水平初速, 使球正好够到镜像点 (z0=桌高时 = dist*g/(2*vz))
+	var z0: float = maxf(ball.z, GameConfig.table_z) if ball != null else GameConfig.table_z
+	var disc: float = vz * vz + 2.0 * GameConfig.ball_gravity * (z0 - GameConfig.table_z)
+	var t_flight: float = (vz + sqrt(maxf(disc, 0.0))) / maxf(GameConfig.ball_gravity, 1.0)
+	var speed: float = dist / maxf(t_flight, 0.0001)
+	if omniscient:
+		# 万能模式: 直接给够速度, 不夹到玩家上限 -> 保证一定能打到桌
+		speed = clampf(speed, 1.0, GameConfig.hit_speed_max * 4.0)
+	else:
+		speed = clampf(speed, GameConfig.hit_speed_min, GameConfig.hit_speed_max)
+	# 失误表现：按 ai_error_chance 概率触发 (0=永不失误; 万能模式不失误)
 	debug_last_error = ""
-	if randf() < GameConfig.ai_error_chance:
+	if not omniscient and randf() < GameConfig.ai_error_chance:
 		match randi() % 4:
 			0:  # 瞄偏
 				dir = dir.rotated(deg_to_rad(randf_range(-GameConfig.ai_error_aim_deg, GameConfig.ai_error_aim_deg)))
