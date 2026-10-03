@@ -29,6 +29,7 @@ var _last_touch_time: float = -10.0
 var _prev_drag: Vector2 = Vector2.ZERO
 var _prev_drag_valid: bool = false
 var _body_color: Color = Color(0.31, 0.82, 0.77)
+var _shape_poly: CollisionPolygon2D = null  ## 形状碰撞体 (与显示完全同步)
 
 func setup(index: int, scheme: InputScheme) -> void:
 	player_index = index
@@ -45,22 +46,34 @@ func _ready() -> void:
 	linear_damp = 0.0
 	angular_damp = GameConfig.player_angular_damp  # 撞击旋转后逐渐停下
 
-	var cap := CapsuleShape2D.new()
-	cap.radius = GameConfig.player_radius
-	cap.height = GameConfig.player_half_length * 2.0
-	var cs := CollisionShape2D.new()
-	cs.name = "CollisionShape2D"
-	cs.shape = cap
-	add_child(cs)
+	# 形状碰撞体 (由形状方程采样成多边形, 与显示完全同步)
+	_shape_poly = CollisionPolygon2D.new()
+	_shape_poly.name = "ShapePoly"
+	add_child(_shape_poly)
 
 	for i in 2:
 		var hp := HitPoint.new()
 		hp.name = "HitPoint%s" % ("Front" if i == 0 else "Back")
 		var s := -1.0 if i == 0 else 1.0
-		hp.position = Vector2(0.0, s * GameConfig.player_half_length)
+		hp.position = Vector2(0.0, s * _shape_half())
 		add_child(hp)
 		hit_points.append(hp)
 
+	rebuild_shape()
+	queue_redraw()
+
+## 形状长轴半长 (判定区间距)。
+func _shape_half() -> float:
+	return GameConfig.player_shape_half()
+
+## 重建碰撞多边形 + 判定区间距 (换形状时调用)。
+func rebuild_shape() -> void:
+	if _shape_poly != null:
+		_shape_poly.polygon = GameConfig.player_shape_points()
+	if hit_points.size() >= 2:
+		var h: float = _shape_half()
+		hit_points[0].position = Vector2(0.0, -h) + hit_zone_offset_local
+		hit_points[1].position = Vector2(0.0, h) - hit_zone_offset_local
 	queue_redraw()
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
@@ -159,7 +172,7 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 func _update_hit_points() -> void:
 	if hit_points.size() < 2:
 		return
-	var l: float = GameConfig.player_half_length
+	var l: float = _shape_half()
 	hit_points[0].position = Vector2(0.0, -l) + hit_zone_offset_local  # 前端 A
 	hit_points[1].position = Vector2(0.0, l) - hit_zone_offset_local   # 后端 B
 
@@ -200,14 +213,14 @@ func _now() -> float:
 	return float(Time.get_ticks_msec()) / 1000.0
 
 func _draw() -> void:
-	var r: float = GameConfig.player_radius
-	var hl: float = GameConfig.player_half_length
-	var seg: float = hl - r
-	draw_rect(Rect2(-r, -seg, 2.0 * r, 2.0 * seg), _body_color)
-	draw_circle(Vector2(0.0, -seg), r, _body_color)
-	draw_circle(Vector2(0.0, seg), r, _body_color)
+	var pts: PackedVector2Array = GameConfig.player_shape_points()
+	if pts.size() >= 3:
+		draw_colored_polygon(pts, _body_color)
+		var outline := pts.duplicate()
+		outline.append(pts[0])
+		draw_polyline(outline, Color(1, 1, 1, 0.35), 2.0)
 	# 朝向标记: 局部 +x 为"前方" (面向桌中心 / 发球方向)
-	draw_line(Vector2.ZERO, Vector2(seg, 0.0), Color(1, 1, 1, 0.6), 4.0)
+	draw_line(Vector2.ZERO, Vector2(_shape_half() * 0.4, 0.0), Color(1, 1, 1, 0.6), 4.0)
 	draw_circle(Vector2.ZERO, 5.0, Color(1, 1, 1, 0.85))
 
 # ------------------------------------------------------------

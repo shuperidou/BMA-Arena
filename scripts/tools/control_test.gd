@@ -108,8 +108,8 @@ func _run() -> void:
 	var a_local: Vector2 = p1.hit_points[0].position
 	var b_local: Vector2 = p1.hit_points[1].position
 	var off: Vector2 = p1.hit_zone_offset_local
-	var a_delta: Vector2 = a_local - Vector2(0.0, -GameConfig.player_half_length)
-	var b_delta: Vector2 = b_local - Vector2(0.0, GameConfig.player_half_length)
+	var a_delta: Vector2 = a_local - Vector2(0.0, -GameConfig.player_shape_half())
+	var b_delta: Vector2 = b_local - Vector2(0.0, GameConfig.player_shape_half())
 	_check("T3d zones opposite", a_delta.is_equal_approx(off) and b_delta.is_equal_approx(-off),
 		"A=%s B=%s off=%s" % [str(a_delta.round()), str(b_delta.round()), str(off.round())])
 
@@ -147,3 +147,35 @@ func _run() -> void:
 	await _frames(40)
 	_check("T5 zones return to default", p1.hit_zone_offset_local.length() < 0.5,
 		str(p1.hit_zone_offset_local))
+
+	# T6: 形状系统 —— 显示多边形 == 碰撞多边形; 判定区间距随形状同步
+	p1.hit_zone_offset_local = Vector2.ZERO
+	var ok_sync := true
+	var ok_spacing := true
+	var detail6 := ""
+	for si in GameConfig.player_shape_count():
+		GameConfig.player_shape_index = si
+		p1.rebuild_shape()
+		var pts: PackedVector2Array = GameConfig.player_shape_points()
+		var poly: PackedVector2Array = p1._shape_poly.polygon
+		if pts.size() < 3 or not _same_pts(pts, poly):
+			ok_sync = false
+			detail6 += " shape%d(pts=%d/poly=%d)" % [si, pts.size(), poly.size()]
+		var half: float = GameConfig.player_shape_half()
+		if absf(p1.hit_points[0].position.y + half) > 0.01 \
+				or absf(p1.hit_points[1].position.y - half) > 0.01 \
+				or absf(p1.hit_points[0].position.x) > 0.01:
+			ok_spacing = false
+			detail6 += " shape%d spacing(half=%.0f)" % [si, half]
+	_check("T6a 显示多边形==碰撞多边形 (所有形状)", ok_sync, detail6)
+	_check("T6b 判定区间距随形状同步", ok_spacing, detail6)
+	GameConfig.player_shape_index = 0
+	p1.rebuild_shape()
+
+func _same_pts(a: PackedVector2Array, b: PackedVector2Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for i in a.size():
+		if not a[i].is_equal_approx(b[i]):
+			return false
+	return true

@@ -91,6 +91,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_8:
 			if debug_layer.enabled:
 				_toggle_flag("debug_ai_smash")
+		KEY_9:
+			if debug_layer.enabled:
+				_cycle_shape(-1)
+		KEY_0:
+			if debug_layer.enabled:
+				_cycle_shape(1)
 		KEY_R:
 			match_ref.restart()
 		KEY_1:
@@ -111,6 +117,15 @@ var debug_mode: int = 0
 func _cycle_debug_mode() -> void:
 	debug_mode = (debug_mode + 1) % DEBUG_MODES.size()
 	_apply_debug_mode()
+
+## F1+9/0: 轮换玩家形状 (显示 + 碰撞 + 判定间距同步)。
+func _cycle_shape(dir: int) -> void:
+	var n: int = GameConfig.player_shape_count()
+	GameConfig.player_shape_index = posmod(GameConfig.player_shape_index + dir, n)
+	for p in players:
+		p.rebuild_shape()
+	EventBus.notify("形状: %s" % GameConfig.player_shape_name(), 1.5)
+	hud.update_debug_menu()
 
 func _apply_debug_mode() -> void:
 	var solo: bool = debug_mode == 1

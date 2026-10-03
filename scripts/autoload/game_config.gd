@@ -69,10 +69,80 @@ var hit_height_max: float = 250.0
 # ============================================================
 #  D. 角色通用 (尺寸 / 移动 / 朝向回正)
 # ============================================================
-var player_half_length: float = 90.0   ## 纺锤半长 (两端到中心)
-var player_radius: float = 14.0        ## 纺锤半径
+var player_half_length: float = 90.0   ## 纺锤半长 (两端到中心) [旧, 形状系统接管后仅备用]
+var player_radius: float = 14.0        ## 纺锤半径 [旧]
 var player_mass: float = 1.0
 var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [TUNED]
+
+## ---- 形状系统 (P4 身体构筑基础) ----
+## 角色的"显示形状 + 碰撞箱 + 判定区间距"由同一条形状方程统一决定, 三者永远同步。
+## 每个形状在 _shape_points() 里采样边界点 -> 同时给 CollisionPolygon2D 和绘制用。
+## 加形状 = player_shape_count/name/half/points 各加一处分支 + 对应参数即可。
+var player_shape_index: int = 0           ## 当前形状: 0 梭形 / 1 圆形 / 2 菱形 / 3 椭圆
+var shape_segments: int = 28              ## 曲边形状(圆/椭圆/梭)的采样段数
+var shape_spindle_half_len: float = 90.0  ## 梭形: 长轴(局部y)半长 = 判定区间距
+var shape_spindle_half_wid: float = 16.0  ## 梭形: 短轴(局部x)半宽
+var shape_circle_radius: float = 48.0     ## 圆形: 半径
+var shape_diamond_half_len: float = 82.0  ## 菱形: 长轴半长
+var shape_diamond_half_wid: float = 34.0  ## 菱形: 短轴半宽
+var shape_ellipse_half_len: float = 82.0  ## 椭圆: 长轴半长
+var shape_ellipse_half_wid: float = 42.0  ## 椭圆: 短轴半宽
+
+func player_shape_count() -> int:
+	return 4
+
+func player_shape_name(idx: int = -1) -> String:
+	var i: int = player_shape_index if idx < 0 else idx
+	var names: Array[String] = ["梭形", "圆形", "菱形", "椭圆"]
+	return names[clampi(i, 0, names.size() - 1)]
+
+## 形状长轴(局部y = 判定区连线方向)半长 -> 判定区间距随形状同步。
+func player_shape_half(idx: int = -1) -> float:
+	var i: int = player_shape_index if idx < 0 else idx
+	match i:
+		0:
+			return shape_spindle_half_len
+		1:
+			return shape_circle_radius
+		2:
+			return shape_diamond_half_len
+		3:
+			return shape_ellipse_half_len
+	return shape_spindle_half_len
+
+## 采样形状边界点 (角色局部坐标, 未旋转), 凸多边形, 顺序绕行。
+func player_shape_points(idx: int = -1) -> PackedVector2Array:
+	var i: int = player_shape_index if idx < 0 else idx
+	var seg: int = maxi(shape_segments, 8)
+	var pts := PackedVector2Array()
+	if i == 0:
+		# 梭形: x = ±w*(1-(y/L)²), 两端尖
+		var L: float = shape_spindle_half_len
+		var w: float = shape_spindle_half_wid
+		for k in seg + 1:
+			var y: float = lerpf(-L, L, float(k) / float(seg))
+			pts.append(Vector2(w * (1.0 - (y / L) * (y / L)), y))
+		for k in range(1, seg):
+			var y: float = lerpf(L, -L, float(k) / float(seg))
+			pts.append(Vector2(-w * (1.0 - (y / L) * (y / L)), y))
+	elif i == 1:
+		for k in seg:
+			var t: float = TAU * float(k) / float(seg)
+			pts.append(Vector2(cos(t), sin(t)) * shape_circle_radius)
+	elif i == 2:
+		var L: float = shape_diamond_half_len
+		var w: float = shape_diamond_half_wid
+		pts.append(Vector2(0.0, -L))
+		pts.append(Vector2(w, 0.0))
+		pts.append(Vector2(0.0, L))
+		pts.append(Vector2(-w, 0.0))
+	else:
+		var L: float = shape_ellipse_half_len
+		var w: float = shape_ellipse_half_wid
+		for k in seg:
+			var t: float = TAU * float(k) / float(seg)
+			pts.append(Vector2(w * cos(t), L * sin(t)))
+	return pts
 
 var move_speed: float = 720.0
 var move_accel: float = 3200.0         ## 速度变化最大加速度 (惯性/手感)
