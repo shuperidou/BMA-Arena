@@ -333,3 +333,45 @@ func _run() -> void:
 	_check("T13 万能AI: 任意接球都落桌", all_land, detail13)
 	ai2.omniscient = false
 	GameConfig.ai_error_chance = 0.0
+
+	# T14: 扣杀 —— 球够高 + 力量够 -> vz 向下, 先撞墙后落桌, 且比普通球快; 低球不扣杀
+	p1.global_position = Vector2(0.0, -14.0)
+	p1.rotation = -PI / 2.0
+	ball.global_position = Vector2(0.0, -90.0)
+	ball.z = 200.0
+	GameConfig.defense_perp_threshold = 1e9
+	GameConfig.smash_success_chance = 1.0
+	# 普通球 (禁扣杀)
+	GameConfig.smash_height_min = 1e9
+	_setv(Vector2(0.0, -2000.0))
+	var o_norm: Dictionary = HitSystem.compute(p1, zone, ball)
+	# 扣杀
+	GameConfig.smash_height_min = 150.0
+	_setv(Vector2(0.0, -2000.0))
+	var o_sm: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T14 触发扣杀且 vz 向下", o_sm.is_smash and o_sm.vz < 0.0,
+		"smash=%s vz=%.0f" % [str(o_sm.is_smash), o_sm.vz])
+	_check("T14 扣杀比普通球快", o_sm.ball_speed > o_norm.ball_speed + 50.0,
+		"smash=%.0f normal=%.0f" % [o_sm.ball_speed, o_norm.ball_speed])
+	var wy14: float = GameConfig.wall_inner_y()
+	var dir14: Vector2 = o_sm.assisted_dir
+	var spd14: float = o_sm.ball_speed
+	var vz14: float = o_sm.vz
+	var z14: float = maxf(ball.z, GameConfig.table_z)
+	var g14: float = GameConfig.ball_gravity
+	var tf14: float = (vz14 + sqrt(maxf(vz14 * vz14 + 2.0 * g14 * (z14 - GameConfig.table_z), 0.0))) / g14
+	var ws14: float = -dir14.y * spd14
+	var tw14: float = 1e9
+	if ws14 > 0.0:
+		tw14 = (ball.global_position.y - wy14) / ws14
+	var zw14: float = z14 + vz14 * tw14 - 0.5 * g14 * tw14 * tw14
+	_check("T14 先撞墙 (撞墙时 z>桌高 且早于落桌)",
+		tw14 < tf14 and zw14 > GameConfig.table_z,
+		"t_wall=%.3f t_flight=%.3f z_wall=%.0f" % [tw14, tf14, zw14])
+	# 低球不触发
+	ball.z = 80.0
+	_setv(Vector2(0.0, -2000.0))
+	var o_low: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T14 球不够高不扣杀", not o_low.is_smash, "smash=%s z=80" % str(o_low.is_smash))
+	GameConfig.smash_height_min = 150.0
+	ball.z = GameConfig.table_z

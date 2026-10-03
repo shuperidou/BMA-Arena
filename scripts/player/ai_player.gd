@@ -99,9 +99,19 @@ func _smart_shot(from: Vector2) -> Dictionary:
 		speed = clampf(speed, 1.0, GameConfig.hit_speed_max * 4.0)
 	else:
 		speed = clampf(speed, GameConfig.hit_speed_min, GameConfig.hit_speed_max)
-	# 失误表现：按 ai_error_chance 概率触发 (0=永不失误; 万能模式不失误)
+	# 扣杀 (仅当 F1 开关打开): 球够高 + 概率成功 -> vz 向下、速度由它反推(很快)
 	debug_last_error = ""
-	if not omniscient and randf() < GameConfig.ai_error_chance:
+	var ai_smash: bool = GameConfig.debug_ai_smash and ball != null \
+		and ball.z >= GameConfig.ai_smash_height_min \
+		and randf() < GameConfig.smash_success_chance
+	if ai_smash:
+		vz = GameConfig.smash_vz
+		var dsc: float = vz * vz + 2.0 * GameConfig.ball_gravity * (z0 - GameConfig.table_z)
+		var tfl: float = (vz + sqrt(maxf(dsc, 0.0))) / maxf(GameConfig.ball_gravity, 1.0)
+		speed = clampf(dist / maxf(tfl, 0.0001) * GameConfig.smash_speed_mult,
+			1.0, GameConfig.hit_speed_max * 4.0)
+		debug_last_error = "扣杀"
+	elif not omniscient and randf() < GameConfig.ai_error_chance:
 		match randi() % 4:
 			0:  # 瞄偏
 				dir = dir.rotated(deg_to_rad(randf_range(-GameConfig.ai_error_aim_deg, GameConfig.ai_error_aim_deg)))
@@ -120,6 +130,7 @@ func _smart_shot(from: Vector2) -> Dictionary:
 		"ball_speed": speed, "raw_speed": speed, "zone_speed": 0.0,
 		"zone_world": from, "zone_vel": Vector2.ZERO,
 		"raw_dir": dir, "assisted_dir": dir, "assist_angle": 0.0, "assist_speed_delta": 0.0,
+		"is_smash": ai_smash,
 	}
 
 func compute_hit(_hit_point: HitPoint, b: Ball) -> Dictionary:

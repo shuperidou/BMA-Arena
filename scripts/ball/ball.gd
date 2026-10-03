@@ -42,6 +42,7 @@ var _bounce_threshold: float = 25.0
 var hit_flash: float = 0.0        ## 1->0 的击球闪一下
 var last_strength: float = 0.0    ## 上次击球力度 (0..1)
 var last_was_save: bool = false   ## 上次击球是否是"防守救球"
+var last_was_smash: bool = false  ## 上次击球是否是"扣杀"
 var last_hit_info: Dictionary = {} ## 上次击球调试信息
 var _trail: Array[Vector2] = []   ## 拖尾 (存视觉位置，含高度偏移)
 var _last_surface: int = 0        ## 最近一次弹跳的面 (0=无 1=桌 2=墙) —— 同面连弹即结算
@@ -73,6 +74,7 @@ func register_hit(info: Dictionary) -> void:
 	last_hit_info = info
 	last_strength = clampf(info.get("strength", 0.0), 0.0, 1.0)
 	last_was_save = bool(info.get("defense_saved", false))
+	last_was_smash = bool(info.get("is_smash", false))
 	hit_flash = 1.0
 
 ## 弹道发射：让球第一次落桌点尽量落在 target (xy)。高度从桌面起。
@@ -263,7 +265,9 @@ func _draw() -> void:
 	# 球心颜色: 救球=绿; 否则按力度 弱蓝<->强橙红
 	var core := Color(1.0, 0.83, 0.3)
 	if hit_flash > 0.05:
-		if last_was_save:
+		if last_was_smash:
+			core = Color(1.0, 0.35, 1.0)
+		elif last_was_save:
 			core = Color(0.35, 1.0, 0.45)
 		else:
 			core = Color(0.45, 0.7, 1.0).lerp(Color(1.0, 0.35, 0.15), last_strength)
@@ -283,3 +287,17 @@ func _draw() -> void:
 	if hit_flash > 0.01:
 		var rr: float = radius * (1.5 + (1.0 - hit_flash) * 10.0)
 		draw_arc(p, rr, 0.0, TAU, 28, Color(core.r, core.g, core.b, hit_flash * 0.8), 3.0)
+	# 扣杀: 一圈尖刺 (与强力球/AI失误球明显区分)
+	if hit_flash > 0.05 and last_was_smash:
+		var spikes: int = 12
+		var base_r: float = r * 1.15
+		var tip_r: float = r * (1.7 + (1.0 - hit_flash) * 3.5)
+		var col := Color(1.0, 0.35, 1.0, hit_flash * 0.9)
+		for i in spikes:
+			var ang: float = float(i) / float(spikes) * TAU
+			var dir_v: Vector2 = Vector2(cos(ang), sin(ang))
+			var tang: Vector2 = Vector2(-dir_v.y, dir_v.x)
+			var a: Vector2 = p + dir_v * base_r + tang * (r * 0.28)
+			var b: Vector2 = p + dir_v * base_r - tang * (r * 0.28)
+			var c: Vector2 = p + dir_v * tip_r
+			draw_colored_polygon(PackedVector2Array([a, b, c]), col)

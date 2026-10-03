@@ -88,6 +88,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_7:
 			if debug_layer.enabled:
 				_toggle_flag("debug_show_block_hud")
+		KEY_8:
+			if debug_layer.enabled:
+				_toggle_flag("debug_ai_smash")
 		KEY_R:
 			match_ref.restart()
 		KEY_1:

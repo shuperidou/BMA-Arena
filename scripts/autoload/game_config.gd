@@ -133,6 +133,15 @@ var defense_vz_mult: float = 1.8            ## 防守时 vy 的额外倍数
 var defense_save_offset: float = 0.0        ## 目标(镜像点)周围的随机偏移半径 (0=正中)
 var defense_save_speed_mult: float = 1.0    ## 反推水平初速的微调倍数 (1=刚好够到)
 
+## 扣杀 (smash): 球够高 + 力量够 -> vz 向下(大)、水平速度很大; 仍走"先撞墙再落桌"的正常弹射顺序。
+## 因为 z0 高、vz 向下单调下降, 撞墙点早于落桌点 -> 自然先撞墙。
+var smash_height_min: float = 150.0      ## 触发扣杀的最低球高
+var smash_power_min: float = 0.7         ## 触发扣杀的最低力量 (strength 0..1)
+var smash_success_chance: float = 0.9    ## 扣杀成功概率 0~1
+var smash_vz: float = -900.0             ## 扣杀的向下竖直速度 (负值, 越大越快)
+var smash_speed_mult: float = 1.0        ## 扣杀水平速度微调 (>1 更凶, 可能过桌)
+var ai_smash_height_min: float = 170.0   ## AI 触发扣杀的最低球高 (单独设, 免得它太频繁)
+
 # ============================================================
 #  G. 比赛 (计分/轮换均为临时方案) [TEMP]
 # ============================================================
@@ -182,6 +191,7 @@ var debug_show_ball: bool = true     ## 4: 球状态
 var debug_show_shapes: bool = true   ## 5: 碰撞体 / 速度
 var debug_show_zones: bool = true    ## 6: 场地 / 桌 / 墙
 var debug_show_block_hud: bool = true ## 7: 屏幕上方 阻挡/救球 文字提示
+var debug_ai_smash: bool = false      ## 8: AI 也使用扣杀
 
 # ============================================================
 #  K. 输入 (physical keycodes)
