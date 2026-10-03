@@ -113,7 +113,7 @@ func _server_serve_pressed(p: PlayerController) -> bool:
 
 func _tick_serve(dt: float) -> void:
 	var server: PlayerController = players[server_index - 1]
-	if server is AiPlayer:
+	if server.ai_enabled:
 		# AI 自动发球：等一小段(给玩家反应时间)后发出
 		_serve_timer -= dt
 		if _serve_timer <= 0.0:

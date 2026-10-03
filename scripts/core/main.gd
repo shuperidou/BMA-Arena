@@ -105,7 +105,7 @@ func _toggle_flag(prop: String) -> void:
 	hud.update_debug_menu()
 
 ## F1+1 轮换的调试模式 (互斥)。加模式 = 往 DEBUG_MODES 加名字 + 在 _apply_debug_mode 加一行效果。
-const DEBUG_MODES: Array[String] = ["普通", "Solo (玩家2消失, 自己发接)", "万能AI (接到必落桌)"]
+const DEBUG_MODES: Array[String] = ["普通", "Solo (玩家2消失, 自己发接)", "万能AI (接到必落桌)", "AI vs AI (双方AI对打)"]
 var debug_mode: int = 0
 
 func _cycle_debug_mode() -> void:
@@ -115,6 +115,7 @@ func _cycle_debug_mode() -> void:
 func _apply_debug_mode() -> void:
 	var solo: bool = debug_mode == 1
 	var omni: bool = debug_mode == 2
+	var ai_vs_ai: bool = debug_mode == 3
 	# Solo: 玩家2 消失
 	match_ref.set_solo(solo)
 	var p2: PlayerController = players[1]
@@ -126,6 +127,8 @@ func _apply_debug_mode() -> void:
 	# 万能 AI: 接到必落桌
 	if p2 is AiPlayer:
 		(p2 as AiPlayer).omniscient = omni
+	# AI vs AI: 玩家1 也交给 AI 驱动 (ai_enabled)
+	players[0].ai_enabled = ai_vs_ai
 	match_ref.debug_mode_name = DEBUG_MODES[debug_mode]
 	EventBus.notify("调试模式 %d/%d: %s" % [debug_mode + 1, DEBUG_MODES.size(), DEBUG_MODES[debug_mode]], 2.5)
 	hud.update_debug_menu()
