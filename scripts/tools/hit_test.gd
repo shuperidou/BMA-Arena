@@ -259,6 +259,39 @@ func _run() -> void:
 			rot_ok = false
 			rot_detail = "rot=%.2f va=%.1f vp=%.1f def=%s" % [rot_rt, va_b, vp_b, str(od_b.is_defense)]
 	_check("T12 鼠标世界向右 = 力度不防守 (任意朝向)", rot_ok, rot_detail)
+
+	# T12b: 两端"平等" —— 鼠标向下猛拉(纯收缩)时, 前后两点都必须判防守;
+	# 复刻 _update_controls 的做法: 两点 swing_velocity 都 = 同一手势速度。
+	rot_ok = true
+	rot_detail = ""
+	for rot_b in [-PI / 2.0, PI / 2.0, 0.0, -PI / 4.0]:
+		p1.rotation = rot_b
+		var sw_b: Vector2 = Vector2(0.0, 1000.0).rotated(rot_b)
+		p1.hit_points[0].swing_velocity = sw_b
+		p1.hit_points[1].swing_velocity = sw_b
+		var det: String = ""
+		for zi in 2:
+			var o_b: Dictionary = HitSystem.compute(p1, p1.hit_points[zi], ball)
+			if not o_b.is_defense:
+				rot_ok = false
+				det += " zone%d def=false" % zi
+		if det != "":
+			rot_detail = "rot=%.2f%s" % [rot_b, det]
+	_check("T12b 两端在收缩方向均判防守 (对称平等)", rot_ok, rot_detail)
+
+	# T12c: 几何公平 —— 纯收缩偏移 (0,+c) 下, 两端关于身体中心镜像对称。
+	p1.hit_zone_offset_local = Vector2(0.0, 12.0)
+	p1._update_hit_points()
+	var pa: Vector2 = p1.hit_points[0].position
+	var pb: Vector2 = p1.hit_points[1].position
+	_check("T12c 纯收缩时两端镜像对称 (A+B=0, x=0)",
+		absf(pa.x) < 0.001 and absf(pb.x) < 0.001 and (pa + pb).length() < 0.001,
+		"A=(%.1f,%.1f) B=(%.1f,%.1f)" % [pa.x, pa.y, pb.x, pb.y])
+	var base_gap: float = 2.0 * GameConfig.player_half_length
+	var gap: float = (pb - pa).length()
+	_check("T12c 收缩 -> 两端间距变小", gap < base_gap - 0.001, "gap=%.1f < %.1f" % [gap, base_gap])
+	p1.hit_zone_offset_local = Vector2.ZERO
+	p1._update_hit_points()
 	p1.rotation = -PI / 2.0
 	GameConfig.defense_perp_threshold = 1e9
 	GameConfig.defense_save_chance = 0.6
