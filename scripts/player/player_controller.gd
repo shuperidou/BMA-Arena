@@ -127,11 +127,12 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 		hit_zone_offset_local = hit_zone_offset_local.move_toward(Vector2.ZERO,
 			GameConfig.hit_zone_return_speed * step)
 	_update_hit_points()
-	# 两个判定区反向移动 -> 挥动速度方向相反 (A=+swing, B=-swing)
+	# 击球手势 = 鼠标挥动 (两端共用同一个世界挥动速度):
+	#   两端"位置"仍反向移动, 但"挥动速度"一致, 这样鼠标向下猛拉=防守 与用哪端无关。
 	if hit_points.size() >= 2:
 		var sw: Vector2 = swing_local.rotated(rotation)
 		hit_points[0].swing_velocity = sw
-		hit_points[1].swing_velocity = -sw
+		hit_points[1].swing_velocity = sw
 	debug_hit_zone_local_delta = target_local
 	# 强回正：快速转向"面向桌中心" (仍是物理刚体，撞歪会被物理短暂影响后拉回)
 	if GameConfig.base_face_enabled:

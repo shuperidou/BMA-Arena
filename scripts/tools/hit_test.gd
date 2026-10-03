@@ -213,10 +213,12 @@ func _run() -> void:
 	_check("T11 防守(必失败) -> 用原始方向",
 		od2.is_defense and not od2.defense_saved and od2.assisted_dir.is_equal_approx(od2.raw_dir),
 		"defense=%s saved=%s" % [str(od2.is_defense), str(od2.defense_saved)])
-	# T11c: 水平分量也很大 -> 不算防守 (只是斜着挥)
+	# T11c: 水平分量明显超过阈值 -> 不算防守 (按配置比例自适应)
 	GameConfig.defense_save_chance = 1.0
-	_setv(Vector2(800.0, -800.0))  # v_perp=800, v_along=800 > 800*0.7 -> 非防守
+	var vp: float = 800.0
+	var va: float = vp * (GameConfig.defense_max_along_ratio + 0.5)  # 明确超过阈值
+	_setv(Vector2(vp, -va))  # v_perp=vp, v_along=va
 	var od3: Dictionary = HitSystem.compute(p1, zone, ball)
-	_check("T11c 水平也大 -> 不算防守", not od3.is_defense,
-		"defense=%s v_perp/v_along 都很大" % str(od3.is_defense))
+	_check("T11c 水平太大 -> 不算防守", not od3.is_defense,
+		"defense=%s v_along=%.0f v_perp=%.0f ratio=%.2f" % [str(od3.is_defense), va, vp, GameConfig.defense_max_along_ratio])
 	GameConfig.defense_save_chance = 0.6

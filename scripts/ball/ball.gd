@@ -260,26 +260,26 @@ func _draw() -> void:
 		return
 	var r: float = radius * visual_scale()
 	var p := Vector2(0.0, -z * GameConfig.shadow_offset_factor)
-	# 拖尾 (越新越明显)
+	# 球心颜色: 救球=绿; 否则按力度 弱蓝<->强橙红
+	var core := Color(1.0, 0.83, 0.3)
+	if hit_flash > 0.05:
+		if last_was_save:
+			core = Color(0.35, 1.0, 0.45)
+		else:
+			core = Color(0.45, 0.7, 1.0).lerp(Color(1.0, 0.35, 0.15), last_strength)
+	# 拖尾 (越新越明显, 颜色跟随球心)
 	var n: int = _trail.size()
 	for i in n:
 		var f: float = float(i) / float(maxi(n, 1))
 		var tp: Vector2 = _trail[i] - position
 		draw_circle(tp, radius * (0.25 + 0.5 * f) * visual_scale(),
-			Color(1.0, 0.8, 0.3, 0.04 + 0.16 * f))
+			Color(core.r, core.g, core.b, 0.05 + 0.18 * f))
 	# 影子：固定在 XY 位置，大小固定 (不随高度缩放)
 	draw_circle(Vector2.ZERO, radius * GameConfig.shadow_scale, Color(0, 0, 0, 0.32))
 	# 球：随高度放大 + 向上偏移 (影子与球的距离体现高度)
 	draw_circle(p, r, Color(1, 1, 1))
-	var inner := Color(1.0, 0.83, 0.3)
-	if hit_flash > 0.05:
-		if last_was_save:
-			inner = Color(0.35, 1.0, 0.45)   # 防守救球 -> 绿色球心
-		else:
-			# 力度反馈：弱=蓝，强=橙红
-			inner = Color(0.45, 0.7, 1.0).lerp(Color(1.0, 0.35, 0.15), last_strength)
-	draw_circle(p, r * 0.6, inner)
-	# 击球闪环
+	draw_circle(p, r * 0.6, core)
+	# 击球闪环 (颜色跟随球心: 救球=绿)
 	if hit_flash > 0.01:
 		var rr: float = radius * (1.5 + (1.0 - hit_flash) * 10.0)
-		draw_arc(p, rr, 0.0, TAU, 28, Color(1, 1, 1, hit_flash * 0.8), 3.0)
+		draw_arc(p, rr, 0.0, TAU, 28, Color(core.r, core.g, core.b, hit_flash * 0.8), 3.0)
