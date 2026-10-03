@@ -196,17 +196,32 @@ func _run() -> void:
 	_check("T10 垂直挥动 -> vy 更大", ob.vz > oa.vz,
 		"along_vz=%.0f perp_vz=%.0f" % [oa.vz, ob.vz])
 
-	# T11: 防守姿态 (向下猛拉) -> 按概率救球到墙镜像
+	# T11: 防守姿态 (向下猛拉) -> 按概率救球; 成功时由固定 vz 反推水平初速, 保证够到墙后镜像并落桌
 	p1.global_position = Vector2(0.0, -14.0)
 	p1.rotation = -PI / 2.0
 	ball.global_position = Vector2(0.0, -60.0)
+	ball.z = GameConfig.table_z
 	GameConfig.defense_perp_threshold = 400.0
 	GameConfig.defense_save_chance = 1.0
+	GameConfig.defense_save_offset = 0.0
 	_setv(Vector2(800.0, 0.0))   # v_perp=800 > 阈值 -> 防守
 	var od: Dictionary = HitSystem.compute(p1, zone, ball)
 	_check("T11 防守(必成功) -> 瞄准墙镜像",
 		od.is_defense and od.defense_saved and _post_wall_center_dist(ball.global_position, od.assisted_dir) < 8.0,
 		"defense=%s saved=%s dir=%s" % [str(od.is_defense), str(od.defense_saved), str(od.assisted_dir)])
+	# T11b: 速度必须 = 距离*g/(2*vz) (刚好够到镜像), 且"反射后"落点≈桌中心
+	var mirror_t: Vector2 = Vector2(GameConfig.table_center.x,
+		2.0 * GameConfig.wall_inner_y() - GameConfig.table_center.y)
+	var dist_t: float = (mirror_t - ball.global_position).length()
+	var expect_spd: float = dist_t * GameConfig.ball_gravity / (2.0 * od.vz)
+	_check("T11b 救球速度=距离*g/(2*vz)", absf(od.ball_speed - expect_spd) < 1.0,
+		"spd=%.0f expect=%.0f vz=%.0f" % [od.ball_speed, expect_spd, od.vz])
+	var t_fl: float = 2.0 * od.vz / GameConfig.ball_gravity
+	var endpoint: Vector2 = ball.global_position + od.assisted_dir * od.ball_speed * t_fl
+	var landed: Vector2 = Vector2(endpoint.x, 2.0 * GameConfig.wall_inner_y() - endpoint.y)
+	_check("T11b 救球反射后落点≈桌中心", landed.distance_to(GameConfig.table_center) < 8.0,
+		"land=(%.1f,%.1f) center=(%.1f,%.1f)" % [landed.x, landed.y,
+			GameConfig.table_center.x, GameConfig.table_center.y])
 	GameConfig.defense_save_chance = 0.0
 	_setv(Vector2(800.0, 0.0))
 	var od2: Dictionary = HitSystem.compute(p1, zone, ball)

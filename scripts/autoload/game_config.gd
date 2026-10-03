@@ -44,14 +44,14 @@ var bounce_vz_threshold: float = 25.0  ## 小于此下落速度不算"弹"，视
 
 ## 墙弹后"辅助回桌"：纯物理下球会掉进桌墙缝隙，这里主动给一个落点。
 ## 这是游戏化处理 (设计文档允许)，可用 wall_return_assist 关闭。
-var wall_return_assist: bool = true
+var wall_return_assist: bool = false
 var wall_return_depth_frac: float = 0.8  ## 0=远边, 1=近边。落点=远边+深度*frac [TUNED]
 
 ## 视觉：高度 -> 大小 + 阴影 (游戏化提示，非真实透视)
 var base_ball_scale: float = 1.0
 var height_scale_factor: float = 0.9   ## 高度对显示大小的贡献
 var min_visual_scale: float = 0.8
-var max_visual_scale: float = 2.6
+var max_visual_scale: float = 50.6
 var shadow_offset_factor: float = 0.35 ## 每单位高度，球相对影子向上偏移的像素数
 var shadow_scale: float = 1.0          ## 影子不随高度缩放
 
@@ -61,10 +61,10 @@ var shadow_scale: float = 1.0          ## 影子不随高度缩放
 var hit_speed_v0: float = 520.0        ## 水平初速度 (发球用) [TUNED]
 var hit_vz_v0: float = 450.0           ## 垂直初速度 (击球/发球弧线) [TUNED]
 var hit_vz_min: float = 450.0          ## 允许的垂直初速度下限 (AI/变化用)
-var hit_vz_max: float = 550.0          ## 允许的垂直初速度上限
+var hit_vz_max: float = 850.0          ## 允许的垂直初速度上限
 ## 可击球的高度范围 (第一阶段宽松)
-var hit_height_min: float = 0.0
-var hit_height_max: float = 150.0
+var hit_height_min: float = 10.0
+var hit_height_max: float = 250.0
 
 # ============================================================
 #  D. 角色通用 (尺寸 / 移动 / 朝向回正)
@@ -103,21 +103,21 @@ var hit_zone_return_speed: float = 300.0     ## 松开后的回位速度 (单位
 #  F. 击球系统 (见 scripts/match/hit_system.gd)
 # ============================================================
 ## 力度：由"击球区在世界空间中的实际速度"决定，经过曲线映射到球速区间。
-var hit_speed_min: float = 250.0        ## 判定区基本没动时的球速 (要"不大")
-var hit_speed_max: float = 2000.0       ## 挥到参考速度时的球速
-var hit_speed_curve: float = 0.9        ## 力度响应曲线指数 (<1 会更快接近满力)
-var hit_zone_speed_ref: float = 700.0   ## 挥动速度(px/s)达到此值 = 满力 (越小越容易到顶)
+var hit_speed_min: float = 500.0       ## 判定区基本没动时的球速 (要"不大")
+var hit_speed_max: float = 800.0       ## 挥到参考速度时的球速
+var hit_speed_curve: float = 0.5       ## 力度响应曲线指数 (<1 会更快接近满力)
+var hit_zone_speed_ref: float = 300.0   ## 挥动速度(px/s)达到此值 = 满力 (越小越容易到顶)
 ## vy/弧线 = hit_vz_v0 + (垂直于朝向的分速度 / hit_zone_speed_ref) * 此增益。
 ## 鼠标向下 -> 垂直分速度为正 -> vy 增大; 鼠标向上 -> vy 减小。结果夹在 [hit_vz_min, hit_vz_max]。
-var hit_vz_perp_gain: float = 100.0
+var hit_vz_perp_gain: float = 1000.0
 
 ## 方向：基础方向=面向桌中心；叠加"击球区位置 + 挥动方向"的偏置。
-var hit_direction_strength: float = 0.6 ## 偏置对方向的影响程度 (0=永远朝桌, 1=完全由挥动决定)
-var position_bias_weight: float = 0.5   ## 偏置里"击球区位置"的权重 (其余给挥动速度)
+var hit_direction_strength: float = 0.5 ## 偏置对方向的影响程度 (0=永远朝桌, 1=完全由挥动决定)
+var position_bias_weight: float = 0.1   ## 偏置里"击球区位置"的权重 (其余给挥动速度)
 
 ## 智能回球辅助 (0..1 单一旋钮)：1=只要触球就保证回桌；0=完全按玩家击球；中间=部分。
 ## 原始落点若不在"好区"(桌面内缩 assist_good_margin 像素) 就介入, 把方向拉向"墙的镜像点"。
-var assist_strength: float = 0.8        ## 辅助程度 0..1
+var assist_strength: float = 0.9        ## 辅助程度 0..1
 var max_assist_angle: float = 180.0     ## 修正角硬上限(度)。180=不限制
 var assist_good_margin: float = 50.0    ## 好区=桌面内缩这么多像素。越大越容易触发
 
@@ -126,14 +126,17 @@ var assist_good_margin: float = 50.0    ## 好区=桌面内缩这么多像素。
 var defense_perp_threshold: float = 100.0   ## 触发防守的垂直分量阈值 (px/s)
 ## 还必须"垂直分量明显大于水平分量"才算防守: |v_along| < v_perp * 此比例。
 ## 否则横向力度太大 -> 当作普通横向挥动, 不算防守。
-var defense_max_along_ratio: float = 1.5
+var defense_max_along_ratio: float = 1.2
 var defense_save_chance: float = 1.0        ## 防守救球成功概率 0~1
-var defense_vz_mult: float = 2.0            ## 防守时 vy 的额外倍数
+var defense_vz_mult: float = 1.8            ## 防守时 vy 的额外倍数
+## 救球成功时: 由 vz 反推水平初速, 让球够到"墙后桌中心的镜像"附近并落桌。
+var defense_save_offset: float = 0.0        ## 目标(镜像点)周围的随机偏移半径 (0=正中)
+var defense_save_speed_mult: float = 1.0    ## 反推水平初速的微调倍数 (1=刚好够到)
 
 # ============================================================
 #  G. 比赛 (计分/轮换均为临时方案) [TEMP]
 # ============================================================
-var score_to_win: int = 5
+var score_to_win: int = 10e7
 ## 墙后接球方侧允许的桌弹次数。设计文档: "球在桌上第二次弹起 -> 接球方输"，
 ## 所以设为 1：允许第一次落桌，第 2 次连续落桌即判接球方输 (击球方得分)。
 var receiver_bounce_limit: int = 1
