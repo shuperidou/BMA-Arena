@@ -151,11 +151,20 @@ func _draw_aim() -> void:
 		draw_line(hp.global_position, hp.global_position + hp.velocity * 0.12, Color(1.0, 0.3, 1.0, 0.85), 2.0)
 	var a_pos: Vector2 = p1.hit_points[0].position if p1.hit_points.size() >= 2 else Vector2.ZERO
 	var b_pos: Vector2 = p1.hit_points[1].position if p1.hit_points.size() >= 2 else Vector2.ZERO
-	var txt := "rot=%.2f\nMouseWorldDelta=(%.1f,%.1f)\nHitLocalDelta  =(%.1f,%.1f)\nA_local=(%.1f,%.1f) B_local=(%.1f,%.1f)" % [
+	var facing_dbg := Vector2.RIGHT.rotated(p1.rotation)
+	var perp_dbg := facing_dbg.rotated(PI / 2.0)
+	var v_along_dbg := 0.0
+	var v_perp_dbg := 0.0
+	if p1.hit_points.size() >= 1:
+		var sv: Vector2 = p1.hit_points[0].swing_velocity
+		v_along_dbg = sv.dot(facing_dbg)
+		v_perp_dbg = sv.dot(perp_dbg)
+	var txt := "rot=%.2f\nMouseWorldDelta=(%.1f,%.1f)\nHitLocalDelta  =(%.1f,%.1f)\nA_local=(%.1f,%.1f) B_local=(%.1f,%.1f)\nswing 沿朝向(力)=%.0f 垂直(收缩/防守)=%.0f" % [
 		p1.rotation,
 		p1.debug_mouse_world_delta.x, p1.debug_mouse_world_delta.y,
 		p1.hit_zone_offset_local.x, p1.hit_zone_offset_local.y,
-		a_pos.x, a_pos.y, b_pos.x, b_pos.y]
+		a_pos.x, a_pos.y, b_pos.x, b_pos.y,
+		v_along_dbg, v_perp_dbg]
 	draw_string(font, o + Vector2(12, 22), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.8, 1.0, 0.9, 0.95))
 	# 击球系统信息 (最近一次击球)
 	var b: Ball = match_ref.ball
