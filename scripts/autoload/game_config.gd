@@ -247,6 +247,7 @@ var ai_avoid_gain: float = 1.2          ## 绕对手的侧向权重
 var ai_stuck_velocity: float = 30.0     ## 想动却低于此速度视为"卡住"
 var ai_unstick_frames: int = 14         ## 连续卡住这么多帧 -> 触发脱困侧移
 var ai_unstick_gain: float = 1.6        ## 脱困侧移权重
+var ai_shot_depth_jitter: float = 0.12  ## 击球落点深度抖动 (±比例); 0=完全精确
 
 # ============================================================
 #  I. 阻挡判定 (全部临时阈值) [TEMP]

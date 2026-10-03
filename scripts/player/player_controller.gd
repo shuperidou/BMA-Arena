@@ -314,17 +314,27 @@ func _ai_desired_swing() -> Vector2:
 	var aim := Vector2(tx, 2.0 * GameConfig.wall_inner_y() - GameConfig.table_center.y)
 	var dist: float = maxf((aim - from).length(), 1.0)
 	var z0: float = maxf(ball.z, GameConfig.table_z)
-	# vz 在 [min,max] 随机, 但把 v_perp 夹在救球阈值以下 (避免无意触发"防守姿态")
+	# 选 vz: 让"够到镜像所需球速"尽量落在 [min,max] 内 —— 这样 strength 不被夹到边界, 落点才准。
+	#   所需球速 = dist*g/(2*vz) (z0≈桌高), 故 vz∈[dist*g/(2*max), dist*g/(2*min)] 时可达。
+	#   并夹住 v_perp 不越救球阈值 (避免无意触发"防守姿态")。
+	var g: float = GameConfig.ball_gravity
 	var gain: float = maxf(GameConfig.hit_vz_perp_gain, 1.0)
-	var vz: float = randf_range(GameConfig.hit_vz_min, GameConfig.hit_vz_max)
+	var vz_cap: float = GameConfig.hit_vz_v0 + GameConfig.defense_perp_threshold * 0.8 * gain / ref
+	var vz_hi_all: float = minf(GameConfig.hit_vz_max, vz_cap)
+	var vz_lo: float = maxf(dist * g / (2.0 * GameConfig.hit_speed_max), GameConfig.hit_vz_min)
+	var vz_hi: float = minf(dist * g / (2.0 * GameConfig.hit_speed_min), vz_hi_all)
+	var vz: float
+	if vz_lo <= vz_hi:
+		vz = randf_range(vz_lo, vz_hi)
+	else:
+		# 几何上做不到精确落点(太近): 取最接近的 vz, 把过冲降到最小
+		vz = clampf(dist * g / (2.0 * GameConfig.hit_speed_min), GameConfig.hit_vz_min, vz_hi_all)
 	var v_perp: float = (vz - GameConfig.hit_vz_v0) / gain * ref
-	var vp_lim: float = GameConfig.defense_perp_threshold * 0.8
-	v_perp = clampf(v_perp, -vp_lim, vp_lim)
-	vz = GameConfig.hit_vz_v0 + v_perp / ref * gain
 	# 由 vz 反推所需水平球速 -> strength -> v_along (与 HitSystem 的力度曲线互逆)
-	var disc: float = vz * vz + 2.0 * GameConfig.ball_gravity * (z0 - GameConfig.table_z)
-	var t_fl: float = (vz + sqrt(maxf(disc, 0.0))) / maxf(GameConfig.ball_gravity, 1.0)
-	var want_speed: float = dist / maxf(t_fl, 0.0001)
+	var disc: float = vz * vz + 2.0 * g * (z0 - GameConfig.table_z)
+	var t_fl: float = (vz + sqrt(maxf(disc, 0.0))) / maxf(g, 1.0)
+	var want_speed: float = dist / maxf(t_fl, 0.0001) \
+		* randf_range(1.0 - GameConfig.ai_shot_depth_jitter, 1.0 + GameConfig.ai_shot_depth_jitter)
 	var strength: float = clampf((want_speed - GameConfig.hit_speed_min) \
 		/ maxf(GameConfig.hit_speed_max - GameConfig.hit_speed_min, 1.0), 0.0, 1.0)
 	# AI 扣杀开关(关): 高球时压低力度, 避免无意触发扣杀
