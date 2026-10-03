@@ -311,26 +311,23 @@ func _run() -> void:
 	GameConfig.defense_perp_threshold = 1e9
 	GameConfig.defense_save_chance = 0.6
 
-	# T13: 万能 AI 模式 -> 从任何位置/高度接球, 打出的球一定落桌 (不夹速度上限, 无视失误概率)
+	# T13: AI 与玩家走同一 HitSystem —— 反推出的挥动应还原到"玩家上下限内"的球速/vz (无特权输出)
 	var ai2: AiPlayer = main_node.players[1]
 	ai2.omniscient = true
 	GameConfig.ai_error_chance = 0.5   # 万能模式应无视失误概率
-	var all_land := true
+	ai2.rotation = -PI / 2.0
+	var ok_par := true
 	var detail13 := ""
 	for i in 24:
 		ball.global_position = Vector2(randf_range(-160.0, 160.0), randf_range(-150.0, -30.0))
 		ball.z = randf_range(GameConfig.table_z, GameConfig.hit_height_max)
+		ai2.hit_points[0].swing_velocity = ai2._ai_desired_swing()
 		var oc: Dictionary = ai2.compute_hit(ai2.hit_points[0], ball)
-		var vzc: float = oc.vz
-		var z0c: float = maxf(ball.z, GameConfig.table_z)
-		var discc: float = vzc * vzc + 2.0 * GameConfig.ball_gravity * (z0c - GameConfig.table_z)
-		var tfc: float = (vzc + sqrt(maxf(discc, 0.0))) / GameConfig.ball_gravity
-		var epc: Vector2 = ball.global_position + oc.velocity.normalized() * oc.ball_speed * tfc
-		var ldc: Vector2 = Vector2(epc.x, 2.0 * GameConfig.wall_inner_y() - epc.y)
-		if not GameConfig.table_rect().grow(-4.0).has_point(ldc):
-			all_land = false
-			detail13 = "land=(%.0f,%.0f)" % [ldc.x, ldc.y]
-	_check("T13 万能AI: 任意接球都落桌", all_land, detail13)
+		if oc.ball_speed < GameConfig.hit_speed_min - 1.0 or oc.ball_speed > GameConfig.hit_speed_max + 1.0 \
+				or oc.vz < GameConfig.hit_vz_min - 1.0 or oc.vz > GameConfig.hit_vz_max + 1.0:
+			ok_par = false
+			detail13 = "spd=%.0f vz=%.0f" % [oc.ball_speed, oc.vz]
+	_check("T13 AI 经 HitSystem: 输出在玩家上下限内 (无特权)", ok_par, detail13)
 	ai2.omniscient = false
 	GameConfig.ai_error_chance = 0.0
 
