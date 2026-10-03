@@ -237,6 +237,17 @@ var ai_error_aim_deg: float = 40.0     ## 失误表现-瞄偏: 最大偏角(度)
 var ai_error_power_min: float = 0.4    ## 失误表现-太轻: 力度缩放
 var ai_error_power_max: float = 1.5    ## 失误表现-太重: 力度缩放
 
+## ---- AI 走位 / 防卡死 ----
+## 桌/墙是实体碰撞, 但球的可接点在桌正上方 -> 追击目标要投影到桌外(贴桌沿伸判定区够球),
+## 否则 AI 会直线怼进桌子卡死。
+var ai_hit_reach: float = 72.0          ## 判定区触球半径 (AI 用; 决定要贴多近)
+var ai_body_clearance: float = 26.0     ## 目标点必须离桌/边界这么多 (机身半径 + 余量)
+var ai_personal_space: float = 78.0     ## 与对手保持的"个人空间"; 太近就侧向绕开
+var ai_avoid_gain: float = 1.2          ## 绕对手的侧向权重
+var ai_stuck_velocity: float = 30.0     ## 想动却低于此速度视为"卡住"
+var ai_unstick_frames: int = 14         ## 连续卡住这么多帧 -> 触发脱困侧移
+var ai_unstick_gain: float = 1.6        ## 脱困侧移权重
+
 # ============================================================
 #  I. 阻挡判定 (全部临时阈值) [TEMP]
 # ============================================================

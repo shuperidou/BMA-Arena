@@ -18,6 +18,7 @@ var rival: PlayerController = null  ## 对手 (由 Match 设置)
 var ai_enabled: bool = false        ## 由 AI 驱动 (移动/击球/发球); 用于 "AI vs AI" 观察
 var omniscient: bool = false        ## 万能模式: 接到球必落桌
 var debug_last_error: String = ""   ## 最近一次 AI 失误表现 (Debug 用)
+var _ai_stuck_frames: int = 0       ## AI 连续"想动却动不了"的帧数 (脱困用)
 
 var hit_points: Array[HitPoint] = []
 ## 击球区在角色局部坐标系中的位移 (2D)。
@@ -88,6 +89,7 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 	if ai_enabled:
 		for hp in hit_points:
 			hp.position = Vector2.ZERO
+			hp.reach = GameConfig.ai_hit_reach
 	else:
 		_update_controls(state, step)
 
@@ -179,10 +181,36 @@ func _update_hit_points() -> void:
 ## 期望的世界移动方向 (默认来自输入; ai_enabled 时由 AI 决定)。
 func _desired_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
 	if ai_enabled:
-		var target: Vector2 = _target_point()
-		var d: Vector2 = target - state.transform.origin
-		return d.normalized() if d.length() > 6.0 else Vector2.ZERO
+		return _ai_move_dir(state)
 	return input_scheme.move_vector() if input_scheme != null else Vector2.ZERO
+
+## AI 走位: 趋目标 + 躲对手碰撞箱 + 卡住脱困。
+func _ai_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
+	var from: Vector2 = state.transform.origin
+	var to: Vector2 = _target_point() - from
+	if to.length() < 6.0:
+		_ai_stuck_frames = 0
+		return Vector2.ZERO
+	var dir: Vector2 = to.normalized()
+	# 躲对手: 靠太近且方向朝它 -> 加侧向分量绕开
+	if rival != null:
+		var to_r: Vector2 = rival.global_position - from
+		var rd: float = to_r.length()
+		if rd < GameConfig.ai_personal_space and rd > 0.1 \
+				and to_r.normalized().dot(dir) > 0.3:
+			var side: Vector2 = Vector2(-to_r.y, to_r.x).normalized()
+			if side.dot(to) < 0.0:
+				side = -side
+			dir = (dir + side * GameConfig.ai_avoid_gain).normalized()
+	# 卡住脱困: 想动却几乎动不了 -> 沿垂直方向蹭出去
+	if state.linear_velocity.length() < GameConfig.ai_stuck_velocity:
+		_ai_stuck_frames += 1
+	else:
+		_ai_stuck_frames = 0
+	if _ai_stuck_frames >= GameConfig.ai_unstick_frames:
+		var perp: Vector2 = Vector2(-to.y, to.x).normalized()
+		dir = (dir + perp * GameConfig.ai_unstick_gain).normalized()
+	return dir
 
 ## 击球计算 (默认走 HitSystem; ai_enabled 时走智能击球)。
 func compute_hit(hit_point: HitPoint, b: Ball) -> Dictionary:
@@ -233,11 +261,34 @@ func _target_point() -> Vector2:
 	# 自己刚打完这球 -> 切"防阻挡模式": 绕开对手的接球走廊, 避免被判阻挡
 	if ball.last_hitter == self:
 		return _anti_block_target()
-	# 否则我是接球方 -> 追可接住点
+	# 否则我是接球方 -> 追可接住点 (投影到可达区域, 见 _clamp_reachable)
 	var pred: Dictionary = ball.predict_catchable()
 	if pred.found:
-		return pred.point
-	return ball.global_position
+		return _clamp_reachable(pred.point)
+	return _clamp_reachable(ball.global_position)
+
+## 把目标点投影到"可达区域" (桌/边界之外)。球可接点在桌正上方而玩家进不去桌子,
+## 所以 AI 贴桌沿站, 用判定半径伸过去够球 —— 避免直线怼桌卡死。
+func _clamp_reachable(p: Vector2) -> Vector2:
+	var clr: float = GameConfig.ai_body_clearance
+	var ar: Rect2 = GameConfig.arena_rect().grow(-clr)
+	var q := Vector2(clampf(p.x, ar.position.x, ar.end.x), clampf(p.y, ar.position.y, ar.end.y))
+	var tr: Rect2 = GameConfig.table_rect().grow(clr)
+	if tr.has_point(q):
+		var d_l: float = q.x - tr.position.x
+		var d_r: float = tr.end.x - q.x
+		var d_t: float = q.y - tr.position.y
+		var d_b: float = tr.end.y - q.y
+		var mn: float = minf(minf(d_l, d_r), minf(d_t, d_b))
+		if mn == d_b:
+			q.y = tr.end.y
+		elif mn == d_t:
+			q.y = tr.position.y
+		elif mn == d_l:
+			q.x = tr.position.x
+		else:
+			q.x = tr.end.x
+	return q
 
 ## 防阻挡：绕到"对手 -> 预计接球点"这条走廊的侧面去。
 func _anti_block_target() -> Vector2:
