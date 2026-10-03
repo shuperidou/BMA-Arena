@@ -130,17 +130,17 @@ var defense_max_along_ratio: float = 1.2
 var defense_save_chance: float = 1.0        ## 防守救球成功概率 0~1
 var defense_vz_mult: float = 1.8            ## 防守时 vy 的额外倍数
 ## 救球成功时: 由 vz 反推水平初速, 让球够到"墙后桌中心的镜像"附近并落桌。
-var defense_save_offset: float = 0.0        ## 目标(镜像点)周围的随机偏移半径 (0=正中)
+var defense_save_offset: float = 0.1        ## 目标(镜像点)周围的随机偏移半径 (0=正中)
 var defense_save_speed_mult: float = 1.0    ## 反推水平初速的微调倍数 (1=刚好够到)
 
 ## 扣杀 (smash): 球够高 + 力量够 -> vz 向下(大)、水平速度很大; 仍走"先撞墙再落桌"的正常弹射顺序。
 ## 因为 z0 高、vz 向下单调下降, 撞墙点早于落桌点 -> 自然先撞墙。
-var smash_height_min: float = 150.0      ## 触发扣杀的最低球高
+var smash_height_min: float = 180.0      ## 触发扣杀的最低球高
 var smash_power_min: float = 0.7         ## 触发扣杀的最低力量 (strength 0..1)
 var smash_success_chance: float = 0.9    ## 扣杀成功概率 0~1
 var smash_vz: float = -900.0             ## 扣杀的向下竖直速度 (负值, 越大越快)
-var smash_speed_mult: float = 1.0        ## 扣杀水平速度微调 (>1 更凶, 可能过桌)
-var ai_smash_height_min: float = 170.0   ## AI 触发扣杀的最低球高 (单独设, 免得它太频繁)
+var smash_speed_mult: float = 0.8        ## 扣杀水平速度微调 (>1 更凶, 可能过桌)
+var ai_smash_height_min: float = 300.0   ## AI 触发扣杀的最低球高 (单独设, 免得它太频繁)
 var smash_hint_enabled: bool = true      ## 球够高且可接时, 在球周围显示"可扣杀"提示
 
 # ============================================================
@@ -162,7 +162,7 @@ var ai_serve_delay: float = 2.0
 ## AI 打出球后, 为了避开"阻挡嫌疑"而绕开对手接球走廊的偏移距离
 var ai_avoid_distance: float = 160.0
 ## AI 失误概率 (0~1)。每次击球/发球按此概率触发一次"失误表现" (0=永不失误)。
-var ai_error_chance: float = 0.08
+var ai_error_chance: float = 0.02
 var ai_error_aim_deg: float = 40.0     ## 失误表现-瞄偏: 最大偏角(度)
 var ai_error_power_min: float = 0.4    ## 失误表现-太轻: 力度缩放
 var ai_error_power_max: float = 1.5    ## 失误表现-太重: 力度缩放

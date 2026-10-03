@@ -52,22 +52,21 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var assist_angle: float = 0.0
 	var assist_speed_delta: float = 0.0
 
-	# 防守姿态: 鼠标向下猛拉 (垂直分量 > 阈值) 且 水平分量不能太大
-	#   (否则就是普通横向挥动, 不算"向下动机")
+	# 触发判定。优先级: 扣杀 > 救球 > 其它 (互斥, 先到先得)。
 	var is_defense: bool = v_perp > GameConfig.defense_perp_threshold \
 		and absf(v_along) < v_perp * GameConfig.defense_max_along_ratio
-	var defense_saved: bool = false
-	if is_defense:
-		vz = clampf(vz * GameConfig.defense_vz_mult, GameConfig.hit_vz_min, GameConfig.hit_vz_max)
-		defense_saved = randf() < GameConfig.defense_save_chance   # 救球成功概率 0~1
-
-	# 扣杀: 球够高 + 力量够 + 概率成功 -> vz 改为向下的大值; 方向/落点仍照常。
-	# 因 z 高、且 z(t) 单调下降, 撞墙时刻早于落桌时刻 -> 自然"先撞墙再落桌"。
 	var is_smash: bool = ball.z >= GameConfig.smash_height_min \
 		and strength >= GameConfig.smash_power_min \
 		and randf() < GameConfig.smash_success_chance
+	var defense_saved: bool = false
 	if is_smash:
+		# 扣杀 (最高优先): vz 改为向下的大值; 方向/落点仍照常。
+		# 因 z 高、且 z(t) 单调下降, 撞墙时刻早于落桌时刻 -> 自然"先撞墙再落桌"。
 		vz = GameConfig.smash_vz
+		is_defense = false
+	elif is_defense:
+		vz = clampf(vz * GameConfig.defense_vz_mult, GameConfig.hit_vz_min, GameConfig.hit_vz_max)
+		defense_saved = randf() < GameConfig.defense_save_chance   # 救球成功概率 0~1
 
 	# 墙镜像恢复方向 (桌中心关于墙的镜像)
 	var tc: Vector2 = GameConfig.table_center

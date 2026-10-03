@@ -375,3 +375,22 @@ func _run() -> void:
 	_check("T14 球不够高不扣杀", not o_low.is_smash, "smash=%s z=80" % str(o_low.is_smash))
 	GameConfig.smash_height_min = 150.0
 	ball.z = GameConfig.table_z
+
+	# T15: 优先级 —— 扣杀条件与救球条件同时满足时, 扣杀优先 (互斥)
+	p1.global_position = Vector2(0.0, -14.0)
+	p1.rotation = -PI / 2.0
+	ball.global_position = Vector2(0.0, -90.0)
+	ball.z = 200.0
+	GameConfig.smash_height_min = 150.0
+	GameConfig.defense_perp_threshold = 100.0
+	GameConfig.smash_success_chance = 1.0
+	GameConfig.defense_save_chance = 1.0
+	# zone_vel = v_along*facing + v_perp*perp; facing=(0,-1), perp=(1,0)
+	# v_along=300(满力), v_perp=1000(远超救球阈值) -> 扣杀与救球条件同时成立
+	_setv(Vector2(1000.0, -300.0))
+	var o15: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T15 扣杀优先于救球 (互斥)",
+		o15.is_smash and not o15.is_defense and absf(o15.vz - GameConfig.smash_vz) < 1.0,
+		"smash=%s defense=%s vz=%.0f" % [str(o15.is_smash), str(o15.is_defense), o15.vz])
+	GameConfig.defense_perp_threshold = 1e9
+	ball.z = GameConfig.table_z
