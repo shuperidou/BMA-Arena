@@ -124,6 +124,9 @@ var assist_good_margin: float = 50.0    ## 好区=桌面内缩这么多像素。
 ## 防守姿态：鼠标向下猛拉(垂直分量 > 阈值) -> vy 很大但水平初速常常不够。
 ## 此时按 probability "救球"：成功则完全瞄准墙镜像落桌, 失败则用原始方向(大概率丢分)。
 var defense_perp_threshold: float = 100.0   ## 触发防守的垂直分量阈值 (px/s)
+## 还必须"垂直分量明显大于水平分量"才算防守: |v_along| < v_perp * 此比例。
+## 否则横向力度太大 -> 当作普通横向挥动, 不算防守。
+var defense_max_along_ratio: float = 0.7
 var defense_save_chance: float = 1.0        ## 防守救球成功概率 0~1
 var defense_vz_mult: float = 1.0            ## 防守时 vy 的额外倍数
 

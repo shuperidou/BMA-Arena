@@ -52,8 +52,10 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var assist_angle: float = 0.0
 	var assist_speed_delta: float = 0.0
 
-	# 防守姿态: 鼠标向下猛拉 (垂直分量 > 阈值) -> vy 很大但水平初速常常不够
-	var is_defense: bool = v_perp > GameConfig.defense_perp_threshold
+	# 防守姿态: 鼠标向下猛拉 (垂直分量 > 阈值) 且 水平分量不能太大
+	#   (否则就是普通横向挥动, 不算"向下动机")
+	var is_defense: bool = v_perp > GameConfig.defense_perp_threshold \
+		and absf(v_along) < v_perp * GameConfig.defense_max_along_ratio
 	var defense_saved: bool = false
 	if is_defense:
 		vz = clampf(vz * GameConfig.defense_vz_mult, GameConfig.hit_vz_min, GameConfig.hit_vz_max)
