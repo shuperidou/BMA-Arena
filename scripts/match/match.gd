@@ -25,6 +25,9 @@ var solo_mode: bool = false  ## 调试：玩家2 消失，玩家1 自己发球�
 var debug_mode_name: String = "普通"  ## 当前调试模式名 (仅用于 HUD 显示)
 var ai_evolve_enabled: bool = false   ## ② 训练模式: 每分后败者继承胜者基因(变异+成长)
 var generation: int = 0               ## ② 已进化的代数
+var ai_pool: Array[AiGenome] = []     ## ② 锦标赛基因池 (非空 = 轮换锦标赛模式)
+var ai_p1_idx: int = 0                ## 当前 P1 用的池下标 (每分轮换)
+var ai_p2_idx: int = 0                ## 当前 P2 用的池下标 (P1 轮完一圈才换)
 
 var _timer: float = 0.0
 var _serve_timer: float = 0.0
@@ -240,6 +243,9 @@ func _award_point(winner_index: int, reason: int) -> void:
 func _evolve_if_enabled(winner_index: int) -> void:
 	if not ai_evolve_enabled or winner_index < 1 or winner_index > players.size():
 		return
+	if ai_pool.size() > 0:
+		_tournament_step(winner_index)
+		return
 	var w: PlayerController = players[winner_index - 1]
 	var l: PlayerController = _other(w)
 	if w == null or l == null:
@@ -254,6 +260,26 @@ func _evolve_if_enabled(winner_index: int) -> void:
 			ai_p.genome = ai_p.genome.grown(0.05, 0.01)
 			generation += 1
 			EventBus.notify("AI 进化 第%d代: 输了这分, 自我成长  风格[%s]" % [generation, ai_p.genome.style_name()], 2.0)
+
+## ② 锦标赛一步: 赢家在池内的那份基因 "变强(grown) + 吸收对手(crossover)"。
+## 轮换: P1 每分换下一份; P1 轮完一整圈后 P2 才换下一份 (全配对循环)。
+func _tournament_step(winner_index: int) -> void:
+	var n: int = ai_pool.size()
+	if n == 0:
+		return
+	var w_idx: int = ai_p1_idx if winner_index == 1 else ai_p2_idx
+	var l_idx: int = ai_p2_idx if winner_index == 1 else ai_p1_idx
+	ai_pool[w_idx] = ai_pool[w_idx].grown(0.04, 0.01).crossover(ai_pool[l_idx], 0.12)
+	ai_p1_idx = (ai_p1_idx + 1) % n
+	if ai_p1_idx == 0:
+		ai_p2_idx = (ai_p2_idx + 1) % n
+	if players.size() >= 2:
+		players[0].genome = ai_pool[ai_p1_idx]
+		players[1].genome = ai_pool[ai_p2_idx]
+	generation += 1
+	if players.size() >= 2 and players[0].genome != null and players[1].genome != null:
+		EventBus.notify("锦标赛 第%d分: P1[%s] vs P2[%s]" % [generation,
+			players[0].genome.style_name(), players[1].genome.style_name()], 1.6)
 
 func _finish_match() -> void:
 	state = GameTypes.MatchState.MATCH_OVER

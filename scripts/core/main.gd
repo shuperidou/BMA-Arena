@@ -166,6 +166,23 @@ func import_genome() -> void:
 	players[0].genome = AiGenome.load_from(genome_path(genome_slot))
 	EventBus.notify("AI 基因已从 槽%d 导入: 风格[%s]" % [genome_slot, players[0].genome.style_name()], 2.0)
 
+## ② 锦标赛基因池: 从 6 个槽读基因 (空槽 -> 随机种子, 保证起步就有花样)。
+func _build_ai_pool() -> void:
+	match_ref.ai_pool = []
+	for i in GENOME_SLOTS:
+		var slot: int = i + 1
+		match_ref.ai_pool.append(AiGenome.load_from(genome_path(slot)) if genome_slot_has(slot) \
+			else AiGenome.make_random())
+
+## ② 把当前池基因写回 6 个槽 (自动存档: 训练成果不丢)。
+func _save_ai_pool() -> void:
+	var n: int = mini(match_ref.ai_pool.size(), GENOME_SLOTS)
+	if n == 0:
+		return
+	for i in n:
+		match_ref.ai_pool[i].save_to(genome_path(i + 1))
+	EventBus.notify("锦标赛: 已自动保存 %d 份池基因到槽" % n, 2.0)
+
 # --- P4 试战: 应用候选, 双方 AI 打一小段给玩家"看球风" (不评分), 之后回面板 ---
 var _testing: bool = false
 var _test_timer: float = 0.0
@@ -208,16 +225,23 @@ func _apply_debug_mode() -> void:
 	# AI vs AI: 玩家1 也交给 AI 驱动 (ai_enabled), 并切成圆身 (和 P2 一样, 公平对拼)
 	players[0].ai_enabled = ai_vs_ai
 	players[0].set_circle_body(ai_vs_ai)
-	# ② 进化: AI vs AI = 双方随机基因对拼; 普通模式 = P2 用存档(或默认)基因, 陪你对局时也进化
+	# ② 进化: AI vs AI = 锦标赛 (6 份基因池轮换 + 自动存档); 普通模式 = P2 用存档基因, 陪你对局也进化
+	if match_ref.ai_pool.size() > 0 and not ai_vs_ai:
+		_save_ai_pool()                     # 离开训练: 自动把所有池基因写回槽
 	match_ref.ai_evolve_enabled = ai_vs_ai or debug_mode == 0
 	match_ref.generation = 0
+	match_ref.ai_p1_idx = 0
+	match_ref.ai_p2_idx = 0
 	if ai_vs_ai:
-		players[0].genome = AiGenome.make_random()
-		players[1].genome = AiGenome.make_random()
+		_build_ai_pool()                    # 从 6 个槽读基因 (空槽 -> 随机种子) 组成池
+		players[0].genome = match_ref.ai_pool[0]
+		players[1].genome = match_ref.ai_pool[0]
 	elif debug_mode == 0:
+		match_ref.ai_pool = []
 		players[0].genome = null
 		players[1].genome = AiGenome.load_from(genome_path(genome_slot))
 	else:
+		match_ref.ai_pool = []
 		players[0].genome = null
 		players[1].genome = null
 	match_ref.debug_mode_name = DEBUG_MODES[debug_mode]

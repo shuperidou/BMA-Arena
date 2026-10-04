@@ -61,6 +61,19 @@ func grown(rate: float = 0.1, growth: float = 0.03) -> AiGenome:
 	g.aim_jitter = clampf(g.aim_jitter - growth, 0.0, 0.5)
 	return g
 
+## 交叉: 朝另一份基因混合一点 (产出"综合"风格, 用于锦标赛里赢家吸收对手特点)。
+func crossover(other: AiGenome, amount: float = 0.15) -> AiGenome:
+	var g := clone()
+	var a: float = clampf(amount, 0.0, 1.0)
+	g.error_chance = lerpf(g.error_chance, other.error_chance, a)
+	g.aggression = lerpf(g.aggression, other.aggression, a)
+	g.save_willingness = lerpf(g.save_willingness, other.save_willingness, a)
+	g.smash_tendency = lerpf(g.smash_tendency, other.smash_tendency, a)
+	g.aim_jitter = lerpf(g.aim_jitter, other.aim_jitter, a)
+	g.depth_pref = lerpf(g.depth_pref, other.depth_pref, a)
+	g.feint = lerpf(g.feint, other.feint, a)
+	return g
+
 ## 可读风格名 (由基因推导, 仅供参考名字, 非评分)。
 func style_name() -> String:
 	var s := ""
