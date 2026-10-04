@@ -115,6 +115,8 @@ func _build_body() -> void:
 			_build_circle_body()
 		"polar":
 			_build_polar_body()
+		"superformula":
+			_build_superformula_body()
 		_:
 			_build_spindle_body()
 	rebuild_shape()
@@ -152,6 +154,27 @@ func _build_polar_body() -> void:
 		hp.name = "HitPointTip%d" % i
 		add_child(hp)
 		hit_points.append(hp)
+
+## 超公式: 多边形碰撞 (superformula) + 均匀绕心布 n 个判定点。
+func _build_superformula_body() -> void:
+	_shape_poly = CollisionPolygon2D.new()
+	_shape_poly.name = "ShapePoly"
+	add_child(_shape_poly)
+	for i in maxi(GameConfig.sf_pips, 1):
+		var hp := HitPoint.new()
+		hp.name = "HitPointPip%d" % i
+		add_child(hp)
+		hit_points.append(hp)
+
+## 超公式判定点: 均匀绕心布点, 判定点随拖动整体平移 (通用控制)。
+func _place_sf_points(sc: float) -> void:
+	var n: int = maxi(GameConfig.sf_pips, 1)
+	var rm: float = GameConfig.sf_radius * sc
+	var reach_i: float = GameConfig.hit_reach * sc
+	for i in mini(hit_points.size(), n):
+		var th: float = TAU * float(i) / float(n)
+		hit_points[i].position = Vector2(rm * cos(th), rm * sin(th)) + hit_zone_offset_local
+		hit_points[i].reach = reach_i
 
 ## 切换身体种类 (设置 + 重建)。P4: 验证"每个身体一套判定"的可插拔架构。
 func set_body_kind(kind: String) -> void:
@@ -209,14 +232,13 @@ func rebuild_shape() -> void:
 	if _body_kind == "polar":
 		if _shape_poly != null:
 			_shape_poly.polygon = GameConfig.player_shape_points()
-		var n: int = maxi(GameConfig.polar_lobes, 1)
-		var rm: float = GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc
-		for i in mini(hit_points.size(), n):
-			var th: float = TAU * float(i) / float(n)
-			var base := Vector2(rm * cos(th), rm * sin(th))
-			var s: float = -1.0 if base.y > 0.0 else 1.0
-			hit_points[i].position = base + hit_zone_offset_local * s     # 判定点随拖动移动
-			hit_points[i].reach = GameConfig.hit_reach * sc               # 判定半径随体型
+		_place_polar_points(sc)
+		queue_redraw()
+		return
+	if _body_kind == "superformula":
+		if _shape_poly != null:
+			_shape_poly.polygon = GameConfig.player_shape_points()
+		_place_sf_points(sc)
 		queue_redraw()
 		return
 	if _shape_poly != null:
@@ -365,21 +387,30 @@ func _recenter_body(state: PhysicsDirectBodyState2D, step: float, aim_point: Vec
 	var face_accel: float = GameConfig.base_face_acceleration * step * tmult
 	state.angular_velocity += clampf(desired_w - state.angular_velocity, -face_accel, face_accel)
 
-## 判定点随拖动位移 (纺锤 + 参数形状; 圆身固定中心, 不移动)。
-##   纺锤: 两端 A=+delta / B=-delta。 参数形状: 各点按 y 符号反向位移 (与纺锤同一套规则)。
+## 旋转体(花瓣)判定点布点 + 专属控制 (只用于花瓣):
+##   上下拖动 -> 径向缩放 (向内缩进); 左右拖动 -> 绕形状中心旋转;
+##   判定点越多, 每个半径越小 (2/sqrt(n) 归一, n=4 时=1x)。
+func _place_polar_points(sc: float) -> void:
+	var n: int = maxi(GameConfig.polar_lobes, 1)
+	var rm: float = GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc
+	var rot: float = hit_zone_offset_local.x * GameConfig.polar_rot_per_px
+	var radial: float = hit_zone_offset_local.y * GameConfig.polar_radial_per_px
+	var reach_i: float = GameConfig.hit_reach * sc * (2.0 / sqrt(float(n)))
+	for i in mini(hit_points.size(), n):
+		var th: float = TAU * float(i) / float(n) + rot
+		var rr: float = maxf(rm - radial, 4.0 * sc)
+		hit_points[i].position = Vector2(rr * cos(th), rr * sin(th))
+		hit_points[i].reach = reach_i
+
+## 判定点随拖动位移 (纺锤: 两端反向; 花瓣: 专属极坐标控制; 圆: 固定中心)。
 func _update_hit_points() -> void:
 	if _body_kind == "circle" or hit_points.is_empty():
 		return
-	if _body_kind != "spindle":
-		var sc: float = maxf(GameConfig.player_size_scale, 0.05)
-		if _body_kind == "polar":
-			var n: int = maxi(GameConfig.polar_lobes, 1)
-			var rm: float = GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc
-			for i in mini(hit_points.size(), n):
-				var th: float = TAU * float(i) / float(n)
-				var base := Vector2(rm * cos(th), rm * sin(th))
-				var s: float = -1.0 if base.y > 0.0 else 1.0
-				hit_points[i].position = base + hit_zone_offset_local * s
+	if _body_kind == "polar":
+		_place_polar_points(maxf(GameConfig.player_size_scale, 0.05))
+		return
+	if _body_kind == "superformula":
+		_place_sf_points(maxf(GameConfig.player_size_scale, 0.05))
 		return
 	if hit_points.size() < 2:
 		return
