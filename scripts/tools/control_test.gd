@@ -179,32 +179,33 @@ func _run() -> void:
 		not GameConfig.table_block_rect().grow(GameConfig.ai_body_clearance).has_point(out),
 		"in=%s out=%s margin=%.0f" % [str(inside.round()), str(out.round()), GameConfig.table_player_margin])
 
-	# T8: P4 变异候选生成/应用 + 体型代价 (涌现式, 无评分)
+	# T8: P4 变异 (只变纺锤: 长/宽/大小) 生成/应用 + 体型代价 (涌现式, 无评分)
 	var cands: Array = MutationSystem.generate()
 	var c0: Dictionary = cands[0]
 	var ok_cnt: bool = cands.size() == GameConfig.mutation_candidates
-	var ok_keep: bool = int(c0.shape_index) == GameConfig.player_shape_index \
+	var ok_keep: bool = absf(float(c0.half_len) - GameConfig.player_half_length) < 0.001 \
+		and absf(float(c0.radius) - GameConfig.player_radius) < 0.001 \
 		and absf(float(c0.size_scale) - GameConfig.player_size_scale) < 0.001
 	var ok_range: bool = true
 	for i in range(1, cands.size()):
-		var ss: float = float(cands[i].size_scale)
-		if ss < GameConfig.mutation_size_min - 0.001 or ss > GameConfig.mutation_size_max + 0.001:
+		var c: Dictionary = cands[i]
+		if float(c.half_len) < GameConfig.mutation_len_min - 0.001 or float(c.half_len) > GameConfig.mutation_len_max + 0.001 \
+				or float(c.radius) < GameConfig.mutation_wid_min - 0.001 or float(c.radius) > GameConfig.mutation_wid_max + 0.001 \
+				or float(c.size_scale) < GameConfig.mutation_size_min - 0.001 or float(c.size_scale) > GameConfig.mutation_size_max + 0.001:
 			ok_range = false
 	_check("T8a 候选数 + 含'保留当前'", ok_cnt and ok_keep, "n=%d" % cands.size())
-	_check("T8b 候选大小在范围内", ok_range, "[%.2f,%.2f]" % [GameConfig.mutation_size_min, GameConfig.mutation_size_max])
-	var n_change: int = 0
-	for i in range(1, cands.size()):
-		if int(cands[i].shape_index) != GameConfig.player_shape_index:
-			n_change += 1
-	_check("T8e 换形状类别 <=1", n_change <= 1, "change=%d" % n_change)
-	MutationSystem.apply(MutationSystem.make(0, 1.2, "t"))
+	_check("T8b 候选参数在范围内", ok_range,
+		"长[%.0f,%.0f] 宽[%.0f,%.0f]" % [GameConfig.mutation_len_min, GameConfig.mutation_len_max,
+			GameConfig.mutation_wid_min, GameConfig.mutation_wid_max])
+	MutationSystem.apply(MutationSystem.make(110.0, 20.0, 1.2, "t"))
 	_check("T8c 应用候选后当前身体更新",
-		GameConfig.player_shape_index == 0 and absf(GameConfig.player_size_scale - 1.2) < 0.001,
-		"shape=%d size=%.2f" % [GameConfig.player_shape_index, GameConfig.player_size_scale])
+		absf(GameConfig.player_half_length - 110.0) < 0.001 and absf(GameConfig.player_radius - 20.0) < 0.001 \
+		and absf(GameConfig.player_size_scale - 1.2) < 0.001,
+		"长%.0f 宽%.0f 大小%.2f" % [GameConfig.player_half_length, GameConfig.player_radius, GameConfig.player_size_scale])
 	_check("T8d 体型代价 (大=移动慢/转身难)",
 		p1._size_speed_mult() < 1.0 and p1._size_turn_mult() < 1.0,
 		"spd=%.3f turn=%.3f" % [p1._size_speed_mult(), p1._size_turn_mult()])
-	MutationSystem.apply(MutationSystem.make(0, 1.0, "t"))   # 还原
+	MutationSystem.apply(MutationSystem.make(90.0, 14.0, 1.0, "t"))   # 还原
 	p1.rebuild_shape()
 
 func _same_pts(a: PackedVector2Array, b: PackedVector2Array) -> bool:

@@ -80,7 +80,7 @@ func _refresh() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
 		var prev := ShapePreview.new()
-		prev.setup(int(c.shape_index), float(c.size_scale))
+		prev.setup_candidate(c)
 		row.add_child(prev)
 		var lab := Label.new()
 		lab.text = "[%d] %s · %s" % [i + 1, str(c.get("name", "")), MutationSystem.describe(c)]

@@ -80,88 +80,63 @@ var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [
 ## 角色的"显示形状 + 碰撞箱 + 判定区间距"由同一条形状方程统一决定, 三者永远同步。
 ## 每个形状在 _shape_points() 里采样边界点 -> 同时给 CollisionPolygon2D 和绘制用。
 ## 加形状 = player_shape_count/name/half/points 各加一处分支 + 对应参数即可。
-var player_shape_index: int = 0           ## 当前形状: 0 纺锤(原版) / 1 圆形 / 2 菱形 / 3 椭圆
-var shape_segments: int = 28              ## 曲边形状(圆/椭圆/纺锤)的采样段数
-## 纺锤(原版): 形状=原胶囊; 大小=player_radius(14)+player_half_length(90);
-##           判定区位置=±player_half_length(90); 判定区大小=hit_reach(44)。三者全部沿用原参数。
-var shape_circle_radius: float = 48.0     ## 圆形: 半径
-var shape_diamond_half_len: float = 82.0  ## 菱形: 长轴半长
-var shape_diamond_half_wid: float = 34.0  ## 菱形: 短轴半宽
-var shape_ellipse_half_len: float = 82.0  ## 椭圆: 长轴半长
-var shape_ellipse_half_wid: float = 42.0  ## 椭圆: 短轴半宽
-## 角色大小倍率 (ESC 菜单拖动条调节): 同时缩放 形状多边形 + 碰撞箱 + 判定区间距。
+## ---- 身体系统 (P4 身体构筑基础) ----
+## 只有"纺锤"实现了击球判定; 其它身体(圆/菱/椭/未来)以后各自设计"判定方式", 不共用判定区。
+## "判定方式"做成每身体可插拔 (player_body_kind); 现在只有 "spindle"。
+var player_body_kind: String = "spindle"  ## 身体种类 (决定用哪套击球判定; 现在只有纺锤)
+var player_shape_index: int = 0           ## 当前身体显示形状 (只有 0 纺锤是已设计的)
+var shape_segments: int = 28              ## 曲边采样段数
+## 纺锤(唯一已设计): 形状=胶囊; 方程参数 = player_half_length(长半) + player_radius(宽半);
+##   判定区位置 = ±(player_half_length×大小); 判定区大小 = hit_reach。三者同步。
+## 角色大小倍率: 同时缩放 形状多边形 + 碰撞箱 + 判定区间距。
 var player_size_scale: float = 1.0
 
-## ---- P4 变异 v1 (最小可验证)：只变异"形状类别 + 大小"; 代价=大→移动慢/转身难 ----
-var mutation_candidates: int = 4        ## 每次生成的候选数 (含"保留当前")
-var mutation_size_delta: float = 0.15   ## 大小相对当前的抖动量
-var mutation_size_min: float = 0.85     ## 变异后大小下限
-var mutation_size_max: float = 1.25     ## 变异后大小上限
-var size_move_exponent: float = 0.55    ## 体型→移动速度代价: speed ∝ size^(-此指数)
-var size_turn_exponent: float = 0.45    ## 体型→转身速度代价: turn  ∝ size^(-此指数)
-var ai_test_seconds: float = 5.0        ## P4"试战"时长(秒): 应用候选后双方AI对打一小段给玩家看
+## ---- P4 变异 v1 (最小可验证)：只变异"纺锤"的大小 + 形状方程参数(长/宽); 代价=大→移动慢/转身难 ----
+var mutation_candidates: int = 4          ## 每次生成的候选数 (含"保留当前")
+var mutation_size_delta: float = 0.15     ## 大小抖动量
+var mutation_size_min: float = 0.85
+var mutation_size_max: float = 1.25
+var mutation_len_delta: float = 16.0      ## 长半抖动量 (加减)
+var mutation_len_min: float = 58.0
+var mutation_len_max: float = 132.0
+var mutation_wid_delta: float = 5.0       ## 宽半抖动量 (加减)
+var mutation_wid_min: float = 8.0
+var mutation_wid_max: float = 30.0
+var size_move_exponent: float = 0.55      ## 体型→移动速度代价: speed ∝ size^(-此指数)
+var size_turn_exponent: float = 0.45      ## 体型→转身速度代价: turn  ∝ size^(-此指数)
+var ai_test_seconds: float = 5.0          ## P4"试战"时长(秒): 应用候选后双方AI对打一小段给玩家看
 
+## 已设计的身体种类数 (只有纺锤)。
 func player_shape_count() -> int:
-	return 4
+	return 1
 
-func player_shape_name(idx: int = -1) -> String:
-	var i: int = player_shape_index if idx < 0 else idx
-	var names: Array[String] = ["纺锤", "圆形", "菱形", "椭圆"]
-	return names[clampi(i, 0, names.size() - 1)]
+func player_shape_name(_idx: int = -1) -> String:
+	return "纺锤"
 
-## 形状长轴(局部y = 判定区连线方向)半长 -> 判定区间距随形状同步。
-func player_shape_half(idx: int = -1) -> float:
-	var i: int = player_shape_index if idx < 0 else idx
-	var h: float = player_half_length
-	match i:
-		0:
-			h = player_half_length
-		1:
-			h = shape_circle_radius
-		2:
-			h = shape_diamond_half_len
-		3:
-			h = shape_ellipse_half_len
-	return h * player_size_scale
+## 纺锤长轴(局部y = 判定区连线方向)半长 -> 判定区间距 (随身体同步)。
+func player_shape_half(_idx: int = -1) -> float:
+	return player_half_length * player_size_scale
 
-## 采样形状边界点 (角色局部坐标, 未旋转), 凸多边形, 顺序绕行。
-func player_shape_points(idx: int = -1) -> PackedVector2Array:
-	var i: int = player_shape_index if idx < 0 else idx
-	var seg: int = maxi(shape_segments, 8)
+## 纺锤(胶囊)边界点: 给定 长半 L / 宽半 r (未乘大小)。
+func spindle_points(L: float, r: float) -> PackedVector2Array:
+	var seg2: int = maxi(shape_segments / 2, 6)
+	var sc: float = maxf(L - r, 0.0)
 	var pts := PackedVector2Array()
-	if i == 0:
-		# 纺锤 = 原版胶囊: 半径 r 的两端半圆 + ±(L-r) 直边 (与原 CapsuleShape2D 完全一致)
-		var rr: float = player_radius
-		var L: float = player_half_length
-		var sc: float = maxf(L - rr, 0.0)
-		var seg2: int = maxi(seg / 2, 6)
-		pts.append(Vector2(rr, -sc))          # 右直边 上
-		pts.append(Vector2(rr, sc))           # 右直边 下
-		for k in range(1, seg2):              # 底部半圆 (右->左)
-			var t: float = PI * float(k) / float(seg2)
-			pts.append(Vector2(rr * cos(t), sc + rr * sin(t)))
-		pts.append(Vector2(-rr, sc))          # 左直边 下
-		pts.append(Vector2(-rr, -sc))         # 左直边 上
-		for k in range(1, seg2):              # 顶部半圆 (左->右)
-			var t: float = PI + PI * float(k) / float(seg2)
-			pts.append(Vector2(rr * cos(t), -sc + rr * sin(t)))
-	elif i == 1:
-		for k in seg:
-			var t: float = TAU * float(k) / float(seg)
-			pts.append(Vector2(cos(t), sin(t)) * shape_circle_radius)
-	elif i == 2:
-		var L: float = shape_diamond_half_len
-		var w: float = shape_diamond_half_wid
-		pts.append(Vector2(0.0, -L))
-		pts.append(Vector2(w, 0.0))
-		pts.append(Vector2(0.0, L))
-		pts.append(Vector2(-w, 0.0))
-	else:
-		var L: float = shape_ellipse_half_len
-		var w: float = shape_ellipse_half_wid
-		for k in seg:
-			var t: float = TAU * float(k) / float(seg)
-			pts.append(Vector2(w * cos(t), L * sin(t)))
+	pts.append(Vector2(r, -sc))
+	pts.append(Vector2(r, sc))
+	for k in range(1, seg2):
+		var t: float = PI * float(k) / float(seg2)
+		pts.append(Vector2(r * cos(t), sc + r * sin(t)))
+	pts.append(Vector2(-r, sc))
+	pts.append(Vector2(-r, -sc))
+	for k in range(1, seg2):
+		var t: float = PI + PI * float(k) / float(seg2)
+		pts.append(Vector2(r * cos(t), -sc + r * sin(t)))
+	return pts
+
+## 采样身体边界点 (角色局部坐标, 未旋转)。现在只有纺锤一种身体。
+func player_shape_points(_idx: int = -1) -> PackedVector2Array:
+	var pts: PackedVector2Array = spindle_points(player_half_length, player_radius)
 	if player_size_scale != 1.0:
 		for k in pts.size():
 			pts[k] = pts[k] * player_size_scale

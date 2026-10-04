@@ -4,7 +4,6 @@ extends CanvasLayer
 ## 用代码构建 UI (与工程"代码组装"风格一致)。
 
 var main_ref: Node = null
-var _shape_opt: OptionButton
 var _ai_opt: OptionButton
 var _size_slider: HSlider
 var _size_label: Label
@@ -57,23 +56,12 @@ func _build() -> void:
 	_font(title, 28)
 	vb.add_child(title)
 
-	# 形状选择
-	var srow := HBoxContainer.new()
-	srow.add_theme_constant_override("separation", 10)
-	vb.add_child(srow)
-	var slab := Label.new()
-	slab.text = "形状:"
-	_font(slab, 20)
-	srow.add_child(slab)
-	_shape_opt = OptionButton.new()
-	_font(_shape_opt, 20)
-	for i in GameConfig.player_shape_count():
-		_shape_opt.add_item(GameConfig.player_shape_name(i), i)
-	_shape_opt.selected = GameConfig.player_shape_index
-	_shape_opt.get_popup().add_theme_font_override("font", GameConfig.ui_font())
-	_shape_opt.get_popup().add_theme_font_size_override("font_size", 20)
-	_shape_opt.item_selected.connect(_on_shape)
-	srow.add_child(_shape_opt)
+	# 身体 (现在只有纺锤; 改身体在「变异」面板)
+	var body_label := Label.new()
+	body_label.text = "身体: 纺锤   长%.0f 宽%.0f 大小%.2f" % [
+		GameConfig.player_half_length, GameConfig.player_radius, GameConfig.player_size_scale]
+	_font(body_label, 17)
+	vb.add_child(body_label)
 
 	# AI 强度
 	var arow := HBoxContainer.new()
@@ -138,10 +126,6 @@ func _build() -> void:
 func _font(c: Control, sz: int) -> void:
 	c.add_theme_font_override("font", GameConfig.ui_font())
 	c.add_theme_font_size_override("font_size", sz)
-
-func _on_shape(i: int) -> void:
-	GameConfig.player_shape_index = i
-	_apply()
 
 func _on_ai_level(i: int) -> void:
 	GameConfig.ai_level = i
