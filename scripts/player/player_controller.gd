@@ -19,6 +19,8 @@ var ai_enabled: bool = false        ## 由 AI 驱动 (移动/击球/发球); 用
 var omniscient: bool = false        ## 万能模式: 接到球必落桌
 var debug_last_error: String = ""   ## 最近一次 AI 失误表现 (Debug 用)
 var _ai_stuck_frames: int = 0       ## AI 连续"想动却动不了"的帧数 (脱困用)
+var _swing_smooth: Vector2 = Vector2.ZERO  ## 挥拍滤波 A: 平滑后的挥速
+var _swing_charge: float = 0.0             ## 挥拍滤波 B: 蓄力 (0..1)
 var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
 var _ai_aim_y: float = 0.0          ## AI 本次进攻落点 y (深度; 高手会据 hit_speed 区间自动换算)
 var _ai_face_dir: Vector2 = Vector2.ZERO  ## 高手/大师: 解析求得的出球方向 (供朝向跟随)
@@ -78,6 +80,22 @@ func _ready() -> void:
 func _shape_half() -> float:
 	return GameConfig.player_shape_half()
 
+## 挥拍滤波 (玩家/AI 共享): 把"瞬时挥速"变成"前一段"的平滑/蓄力。
+##   A 平滑: 短窗低通 (去噪, 仍灵敏)。 B 蓄力: 累积"沿朝向的甩动位移", 带衰减 (持续拖才够力)。
+func _filter_swing(raw: Vector2, step: float) -> Vector2:
+	var m: int = GameConfig.swing_filter_mode
+	var out: Vector2 = raw
+	if m == 1 or m == 3:
+		var a: float = 1.0 - exp(-step / maxf(GameConfig.swing_smooth_tau, 0.001))
+		_swing_smooth = _swing_smooth.lerp(raw, a)
+		out = _swing_smooth
+	if m == 2 or m == 3:
+		var d: float = exp(-step / maxf(GameConfig.swing_charge_tau, 0.001))
+		_swing_charge = clampf(_swing_charge * d + absf(raw.x) * step / maxf(GameConfig.swing_charge_ref, 1.0),
+			0.0, 1.0)
+		out = out * _swing_charge
+	return out
+
 ## 挥拍力量 (0..1): 由"沿朝向的挥速"经力度曲线算出 (仅供判定区填色)。
 func _swing_power01(sw: Vector2) -> float:
 	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
@@ -124,7 +142,7 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 			if ball.last_hitter != self:
 				_ai_pick_aim()
 		# AI: 判定点收到中心, 每帧像甩鼠标一样设好"挥动速度"; 命中走同一 HitSystem。
-		var sw2: Vector2 = _ai_desired_swing()
+		var sw2: Vector2 = _filter_swing(_ai_desired_swing(), step)
 		# "手臂": 判定点朝球方向伸出 (最多 ai_arm_len), 让 AI 能越桌够球
 		# 1) 计算"想要的"伸手: 朝球方向, 最多 ai_arm_len。
 		#    时机门: 必须"本方可击(returnable)且球已过顶点(vz<=0)"才伸 -> 球要先升到顶点再落下, 才有合理滞空。
@@ -191,7 +209,8 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 		_prev_drag_valid = true
 	else:
 		_prev_drag_valid = false
-	var swing_local: Vector2 = drag_vel * GameConfig.hit_zone_drag_scale
+	# 挥拍滤波 (玩家/AI 共享): 力量看"前一段", 不看瞬时
+	var swing_local: Vector2 = _filter_swing(drag_vel * GameConfig.hit_zone_drag_scale, step)
 
 	var target_local: Vector2 = (drag * GameConfig.hit_zone_drag_scale) \
 		.limit_length(GameConfig.hit_zone_max_offset)

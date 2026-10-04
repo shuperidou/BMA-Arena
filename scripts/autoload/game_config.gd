@@ -106,6 +106,13 @@ var size_move_exponent: float = 0.55      ## 体型→移动速度代价: speed 
 var size_turn_exponent: float = 0.45      ## 体型→转身速度代价: turn  ∝ size^(-此指数)
 var ai_test_seconds: float = 5.0          ## P4"试战"时长(秒): 应用候选后双方AI对打一小段给玩家看
 
+## ---- 挥拍滤波 (玩家/AI 共享): 力量不看"瞬时", 看"前一段" ----
+##   0=瞬时(原) 1=A平滑(短窗低通) 2=B蓄力(累积位移, 衰减) 3=A+B
+var swing_filter_mode: int = 1
+var swing_smooth_tau: float = 0.10        ## A: 平滑时间常数(秒)
+var swing_charge_tau: float = 0.35        ## B: 蓄力衰减时间常数(秒)
+var swing_charge_ref: float = 260.0       ## B: 蓄力满值所需的"沿朝向的甩动位移" (速度×秒的累积)
+
 ## 已设计的身体种类数 (只有纺锤)。
 func player_shape_count() -> int:
 	return 1
@@ -174,7 +181,7 @@ var hit_zone_return_speed: float = 300.0     ## 松开后的回位速度 (单位
 var hit_speed_min: float = 500.0       ## 判定区基本没动时的球速 (要"不大")
 var hit_speed_max: float = 700.0       ## 挥到参考速度时的球速
 var hit_speed_curve: float = 0.95       ## 力度响应曲线指数 (<1 会更快接近满力)
-var hit_zone_speed_ref: float = 300.0   ## 挥动速度(px/s)达到此值 = 满力 (越小越容易到顶)
+var hit_zone_speed_ref: float = 200.0   ## 挥动速度(px/s)达到此值 = 满力 (越小越容易到顶)
 ## vy/弧线 = hit_vz_v0 + (垂直于朝向的分速度 / hit_zone_speed_ref) * 此增益。
 ## 鼠标向下 -> 垂直分速度为正 -> vy 增大; 鼠标向上 -> vy 减小。结果夹在 [hit_vz_min, hit_vz_max]。
 var hit_vz_perp_gain: float = 1000.0

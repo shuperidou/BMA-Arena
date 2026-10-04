@@ -5,6 +5,8 @@ extends CanvasLayer
 
 var main_ref: Node = null
 var _ai_opt: OptionButton
+var _filter_opt: OptionButton
+var _smooth_slider: HSlider
 var _size_slider: HSlider
 var _size_label: Label
 
@@ -81,6 +83,36 @@ func _build() -> void:
 	_ai_opt.item_selected.connect(_on_ai_level)
 	arow.add_child(_ai_opt)
 
+	# 挥拍滤波 (A 平滑 / B 蓄力; 玩家/AI 共享)
+	var frow := HBoxContainer.new()
+	frow.add_theme_constant_override("separation", 10)
+	vb.add_child(frow)
+	var flab := Label.new()
+	flab.text = "挥拍滤波:"
+	_font(flab, 19)
+	frow.add_child(flab)
+	_filter_opt = OptionButton.new()
+	_font(_filter_opt, 18)
+	var fnames: Array[String] = ["瞬时", "平滑A", "蓄力B", "A+B"]
+	for i in fnames.size():
+		_filter_opt.add_item(fnames[i], i)
+	_filter_opt.selected = GameConfig.swing_filter_mode
+	_filter_opt.item_selected.connect(_on_filter_mode)
+	frow.add_child(_filter_opt)
+	_smooth_slider = HSlider.new()
+	_smooth_slider.min_value = 0.02
+	_smooth_slider.max_value = 0.5
+	_smooth_slider.step = 0.01
+	_smooth_slider.value = GameConfig.swing_smooth_tau
+	_smooth_slider.custom_minimum_size = Vector2(150, 26)
+	_smooth_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_smooth_slider.value_changed.connect(_on_smooth_tau)
+	frow.add_child(_smooth_slider)
+	var ftau := Label.new()
+	ftau.text = "τ=%.2fs" % GameConfig.swing_smooth_tau
+	_font(ftau, 15)
+	frow.add_child(ftau)
+
 	# 大小拖动条
 	var zrow := HBoxContainer.new()
 	zrow.add_theme_constant_override("separation", 10)
@@ -135,6 +167,12 @@ func _on_mutate() -> void:
 	close()
 	if main_ref != null and main_ref.has_method("open_mutation"):
 		main_ref.open_mutation()
+
+func _on_filter_mode(i: int) -> void:
+	GameConfig.swing_filter_mode = i
+
+func _on_smooth_tau(v: float) -> void:
+	GameConfig.swing_smooth_tau = v
 
 func _on_size(v: float) -> void:
 	GameConfig.player_size_scale = v
