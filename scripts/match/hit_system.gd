@@ -55,14 +55,12 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	# 触发判定。优先级: 扣杀 > 救球 > 其它 (互斥, 先到先得)。
 	var is_defense: bool = v_perp > GameConfig.defense_perp_threshold \
 		and absf(v_along) < v_perp * GameConfig.defense_max_along_ratio
-	var is_smash: bool = ball.z >= GameConfig.smash_height_min \
-		and strength >= GameConfig.smash_power_min \
-		and randf() < GameConfig.smash_success_chance
+	# 扣杀: "尝试"=条件成立; "成功"=再过概率 (用 attempt 区分视觉上的失败/成功)
+	var smash_attempt: bool = ball.z >= GameConfig.smash_height_min \
+		and strength >= GameConfig.smash_power_min
+	var is_smash: bool = smash_attempt and randf() < GameConfig.smash_success_chance
 	var defense_saved: bool = false
 	if is_smash:
-		# 扣杀 (最高优先): vz 改为向下的大值; 方向/落点仍照常。
-		# 因 z 高、且 z(t) 单调下降, 撞墙时刻早于落桌时刻 -> 自然"先撞墙再落桌"。
-		vz = GameConfig.smash_vz
 		is_defense = false
 	elif is_defense:
 		vz = clampf(vz * GameConfig.defense_vz_mult, GameConfig.hit_vz_min, GameConfig.hit_vz_max)
@@ -79,14 +77,26 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	da = clampf(da, -cap, cap)
 
 	if is_smash:
-		# 扣杀: 由向下的大 vz 反推水平速度(很快), 照常瞄准墙/镜像 -> 自然先撞墙、再高速砸桌
-		var dist_s: float = maxf(to_m.length(), 1.0)
-		assisted_dir = recov_dir
+		# 扣杀成功: 舍弃固定参数, 按实际几何自由反解 —— 取目标落点 T(桌上), 反推(vz向下 + 水平速度),
+		# 让球"先撞墙、再正好砸到 T" (用镜像 + 墙反射损耗补偿)。保证一定上桌。
+		var tr_s: Rect2 = GameConfig.table_rect()
+		var T: Vector2 = Vector2(
+			clampf(p.x + randf_range(-70.0, 70.0), tr_s.position.x + 30.0, tr_s.end.x - 30.0),
+			tc.y + randf_range(-25.0, 25.0))
+		var M: Vector2 = Vector2(T.x, 2.0 * wall_y - T.y)
+		var to_M: Vector2 = M - p
+		var dist_m: float = maxf(to_M.length(), 1.0)
+		assisted_dir = to_M / dist_m
+		vz = -absf(GameConfig.smash_vz)                       # 向下
 		var z0s: float = maxf(ball.z, GameConfig.table_z)
 		var discs: float = vz * vz + 2.0 * g * (z0s - GameConfig.table_z)
 		var tfs: float = (vz + sqrt(maxf(discs, 0.0))) / maxf(g, 1.0)
-		final_speed = clampf(dist_s / maxf(tfs, 0.0001) * GameConfig.smash_speed_mult,
-			0.0, GameConfig.hit_speed_max * 4.0)
+		var wbf: float = clampf(GameConfig.wall_bounce_factor, 0.05, 1.0)
+		var fw: float = 0.0
+		if absf(p.y - M.y) > 1.0:
+			fw = clampf((p.y - wall_y) / (p.y - M.y), 0.0, 1.0)
+		var tfs_eff: float = maxf(tfs * (1.0 - (1.0 - wbf) * fw), 0.0001)
+		final_speed = clampf(dist_m / tfs_eff, GameConfig.hit_speed_min, GameConfig.hit_speed_max * 4.0)
 		assist_angle = 0.0
 	elif is_defense and defense_saved:
 		# 救球成功: vz 固定, 由它反推水平初速, 让球正好"够到"墙后镜像(桌中心)附近。
@@ -128,6 +138,7 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 		"assist_speed_delta": assist_speed_delta,
 		"is_defense": is_defense,
 		"defense_saved": defense_saved,
+		"smash_attempt": smash_attempt,
 		"is_smash": is_smash,
 	}
 

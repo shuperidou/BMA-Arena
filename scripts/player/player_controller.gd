@@ -78,6 +78,13 @@ func _ready() -> void:
 func _shape_half() -> float:
 	return GameConfig.player_shape_half()
 
+## 挥拍力量 (0..1): 由"沿朝向的挥速"经力度曲线算出 (仅供判定区填色)。
+func _swing_power01(sw: Vector2) -> float:
+	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
+	var ref: float = maxf(GameConfig.hit_zone_speed_ref, 1.0)
+	var t: float = clampf(maxf(sw.dot(facing), 0.0) / ref, 0.0, 1.0)
+	return pow(t, maxf(GameConfig.hit_speed_curve, 0.05))
+
 ## P4 体型代价: 移动速度倍率 (越大越慢)。只作用玩家(索引1), AI 不继承玩家变异。
 func _size_speed_mult() -> float:
 	if player_index != 1:
@@ -133,6 +140,7 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 			hp.position = _ai_arm_cur
 			hp.reach = GameConfig.ai_hit_reach
 			hp.swing_velocity = sw2
+			hp.power01 = _swing_power01(sw2)
 		_recenter_body(state, step, _ai_face_point(), 0.0)
 	else:
 		_update_controls(state, step)
@@ -197,8 +205,11 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 	#   两端"位置"仍反向移动, 但"挥动速度"一致, 这样鼠标向下猛拉=防守 与用哪端无关。
 	if hit_points.size() >= 2:
 		var sw: Vector2 = swing_local.rotated(rotation)
+		var p01: float = _swing_power01(sw)
 		hit_points[0].swing_velocity = sw
 		hit_points[1].swing_velocity = sw
+		hit_points[0].power01 = p01
+		hit_points[1].power01 = p01
 	debug_hit_zone_local_delta = target_local
 	# 鼠标左右拖动时，身体跟随做"有限的小幅旋转"
 	var drag_rad: float = 0.0

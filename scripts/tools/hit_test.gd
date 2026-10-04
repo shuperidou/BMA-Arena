@@ -365,6 +365,11 @@ func _run() -> void:
 	_check("T14 先撞墙 (撞墙时 z>桌高 且早于落桌)",
 		tw14 < tf14 and zw14 > GameConfig.table_z,
 		"t_wall=%.3f t_flight=%.3f z_wall=%.0f" % [tw14, tf14, zw14])
+	# T14c: 扣杀成功 -> 反解保证"反射后落点在桌上"
+	var ep14: Vector2 = ball.global_position + o_sm.assisted_dir * o_sm.ball_speed * tf14
+	var ld14: Vector2 = Vector2(ep14.x, 2.0 * wy14 - ep14.y) if ep14.y < wy14 else ep14
+	_check("T14c 扣杀落点在桌上", GameConfig.table_rect().grow(20.0).has_point(ld14),
+		"land=(%.0f,%.0f)" % [ld14.x, ld14.y])
 	# 低球不触发
 	ball.z = 80.0
 	_setv(Vector2(0.0, -2000.0))

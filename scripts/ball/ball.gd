@@ -41,8 +41,8 @@ var _bounce_threshold: float = 25.0
 # 击球反馈
 var hit_flash: float = 0.0        ## 1->0 的击球闪一下
 var last_strength: float = 0.0    ## 上次击球力度 (0..1)
-var last_was_save: bool = false   ## 上次击球是否是"防守救球"
-var last_was_smash: bool = false  ## 上次击球是否是"扣杀"
+var last_save_state: int = 0      ## 上次击球: 救球 0=无/1=成功/2=失败
+var last_smash_state: int = 0     ## 上次击球: 扣杀 0=无/1=成功/2=失败
 var last_hit_info: Dictionary = {} ## 上次击球调试信息
 var _trail: Array[Vector2] = []   ## 拖尾 (存视觉位置，含高度偏移)
 var _last_surface: int = 0        ## 最近一次弹跳的面 (0=无 1=桌 2=墙) —— 同面连弹即结算
@@ -73,8 +73,12 @@ func launch_velocity(v: Vector2, vz0: float) -> void:
 func register_hit(info: Dictionary) -> void:
 	last_hit_info = info
 	last_strength = clampf(info.get("strength", 0.0), 0.0, 1.0)
-	last_was_save = bool(info.get("defense_saved", false))
-	last_was_smash = bool(info.get("is_smash", false))
+	last_save_state = 0
+	if bool(info.get("is_defense", false)):
+		last_save_state = 1 if bool(info.get("defense_saved", false)) else 2
+	last_smash_state = 0
+	if bool(info.get("smash_attempt", false)):
+		last_smash_state = 1 if bool(info.get("is_smash", false)) else 2
 	hit_flash = 1.0
 
 ## 弹道发射：让球第一次落桌点尽量落在 target (xy)。高度从桌面起。
@@ -265,10 +269,14 @@ func _draw() -> void:
 	# 球心颜色: 救球=绿; 否则按力度 弱蓝<->强橙红
 	var core := Color(1.0, 0.83, 0.3)
 	if hit_flash > 0.05:
-		if last_was_smash:
-			core = Color(1.0, 0.35, 1.0)
-		elif last_was_save:
-			core = Color(0.35, 1.0, 0.45)
+		if last_smash_state == 1:
+			core = Color(1.0, 0.35, 1.0)      # 扣杀成功: 品红
+		elif last_smash_state == 2:
+			core = Color(0.5, 0.4, 0.55)      # 扣杀失败: 灰品红 (哑火)
+		elif last_save_state == 1:
+			core = Color(0.35, 1.0, 0.45)     # 救球成功: 绿
+		elif last_save_state == 2:
+			core = Color(0.55, 0.35, 0.32)    # 救球失败: 暗红
 		else:
 			core = Color(0.45, 0.7, 1.0).lerp(Color(1.0, 0.35, 0.15), last_strength)
 	# 拖尾 (越新越明显, 颜色跟随球心)
@@ -283,16 +291,22 @@ func _draw() -> void:
 	# 球：随高度放大 + 向上偏移 (影子与球的距离体现高度)
 	draw_circle(p, r, Color(1, 1, 1))
 	draw_circle(p, r * 0.6, core)
-	# 击球闪环 (颜色跟随球心: 救球=绿)
+	# 击球闪环 (颜色跟随球心); 救球失败 -> 断成几段的暗环, 一眼可辨
 	if hit_flash > 0.01:
 		var rr: float = radius * (1.5 + (1.0 - hit_flash) * 10.0)
-		draw_arc(p, rr, 0.0, TAU, 28, Color(core.r, core.g, core.b, hit_flash * 0.8), 3.0)
-	# 扣杀: 一圈尖刺 (与强力球/AI失误球明显区分)
-	if hit_flash > 0.05 and last_was_smash:
+		if last_save_state == 2:
+			for seg in 6:
+				var a0: float = float(seg) / 6.0 * TAU
+				draw_arc(p, rr, a0, a0 + TAU / 6.0 * 0.5, 6, Color(core.r, core.g, core.b, hit_flash * 0.7), 3.0)
+		else:
+			draw_arc(p, rr, 0.0, TAU, 28, Color(core.r, core.g, core.b, hit_flash * 0.8), 3.0)
+	# 扣杀: 一圈尖刺 (成功=又长又亮; 失败=又短又暗的"哑火"刺)
+	if hit_flash > 0.05 and last_smash_state != 0:
+		var ok: bool = last_smash_state == 1
 		var spikes: int = 12
 		var base_r: float = r * 1.15
-		var tip_r: float = r * (1.7 + (1.0 - hit_flash) * 3.5)
-		var col := Color(1.0, 0.35, 1.0, hit_flash * 0.9)
+		var tip_r: float = r * ((1.7 if ok else 1.3) + (1.0 - hit_flash) * (3.5 if ok else 1.0))
+		var col := Color(1.0, 0.35, 1.0, hit_flash * 0.9) if ok else Color(0.5, 0.42, 0.55, hit_flash * 0.65)
 		for i in spikes:
 			var ang: float = float(i) / float(spikes) * TAU
 			var dir_v: Vector2 = Vector2(cos(ang), sin(ang))

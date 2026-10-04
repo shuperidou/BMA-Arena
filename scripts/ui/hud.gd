@@ -98,12 +98,20 @@ func _update_hud_prompts() -> void:
 	# 阻挡 / 救球 文字提示：只在 F1 打开且该分类开启时显示
 	var show: bool = _debug_menu_visible and GameConfig.debug_show_block_hud
 	_block_label.visible = show and _block_label.text != ""
-	var saving: bool = false
+	var save_state: int = 0
 	if match_ref != null and match_ref.ball != null:
 		var b: Ball = match_ref.ball
-		saving = b.hit_flash > 0.2 and bool(b.last_hit_info.get("defense_saved", false))
-	_save_label.text = "救球！" if saving else ""
-	_save_label.visible = show and saving
+		if b.hit_flash > 0.2:
+			save_state = b.last_save_state
+	if save_state == 1:
+		_save_label.text = "救球成功！"
+		_save_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.5))
+	elif save_state == 2:
+		_save_label.text = "救球失败"
+		_save_label.add_theme_color_override("font_color", Color(0.95, 0.45, 0.4))
+	else:
+		_save_label.text = ""
+	_save_label.visible = show and save_state != 0
 
 func _update_block_label() -> void:
 	if match_ref == null or match_ref.block_system == null:
