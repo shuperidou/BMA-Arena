@@ -78,10 +78,10 @@ var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [
 ## 角色的"显示形状 + 碰撞箱 + 判定区间距"由同一条形状方程统一决定, 三者永远同步。
 ## 每个形状在 _shape_points() 里采样边界点 -> 同时给 CollisionPolygon2D 和绘制用。
 ## 加形状 = player_shape_count/name/half/points 各加一处分支 + 对应参数即可。
-var player_shape_index: int = 0           ## 当前形状: 0 梭形 / 1 圆形 / 2 菱形 / 3 椭圆
-var shape_segments: int = 28              ## 曲边形状(圆/椭圆/梭)的采样段数
-var shape_spindle_half_len: float = 90.0  ## 梭形: 长轴(局部y)半长 = 判定区间距
-var shape_spindle_half_wid: float = 16.0  ## 梭形: 短轴(局部x)半宽
+var player_shape_index: int = 0           ## 当前形状: 0 纺锤(原版) / 1 圆形 / 2 菱形 / 3 椭圆
+var shape_segments: int = 28              ## 曲边形状(圆/椭圆/纺锤)的采样段数
+## 纺锤(原版): 形状=原胶囊; 大小=player_radius(14)+player_half_length(90);
+##           判定区位置=±player_half_length(90); 判定区大小=hit_reach(44)。三者全部沿用原参数。
 var shape_circle_radius: float = 48.0     ## 圆形: 半径
 var shape_diamond_half_len: float = 82.0  ## 菱形: 长轴半长
 var shape_diamond_half_wid: float = 34.0  ## 菱形: 短轴半宽
@@ -93,7 +93,7 @@ func player_shape_count() -> int:
 
 func player_shape_name(idx: int = -1) -> String:
 	var i: int = player_shape_index if idx < 0 else idx
-	var names: Array[String] = ["梭形", "圆形", "菱形", "椭圆"]
+	var names: Array[String] = ["纺锤", "圆形", "菱形", "椭圆"]
 	return names[clampi(i, 0, names.size() - 1)]
 
 ## 形状长轴(局部y = 判定区连线方向)半长 -> 判定区间距随形状同步。
@@ -101,14 +101,14 @@ func player_shape_half(idx: int = -1) -> float:
 	var i: int = player_shape_index if idx < 0 else idx
 	match i:
 		0:
-			return shape_spindle_half_len
+			return player_half_length
 		1:
 			return shape_circle_radius
 		2:
 			return shape_diamond_half_len
 		3:
 			return shape_ellipse_half_len
-	return shape_spindle_half_len
+	return player_half_length
 
 ## 采样形状边界点 (角色局部坐标, 未旋转), 凸多边形, 顺序绕行。
 func player_shape_points(idx: int = -1) -> PackedVector2Array:
@@ -116,15 +116,21 @@ func player_shape_points(idx: int = -1) -> PackedVector2Array:
 	var seg: int = maxi(shape_segments, 8)
 	var pts := PackedVector2Array()
 	if i == 0:
-		# 梭形: x = ±w*(1-(y/L)²), 两端尖
-		var L: float = shape_spindle_half_len
-		var w: float = shape_spindle_half_wid
-		for k in seg + 1:
-			var y: float = lerpf(-L, L, float(k) / float(seg))
-			pts.append(Vector2(w * (1.0 - (y / L) * (y / L)), y))
-		for k in range(1, seg):
-			var y: float = lerpf(L, -L, float(k) / float(seg))
-			pts.append(Vector2(-w * (1.0 - (y / L) * (y / L)), y))
+		# 纺锤 = 原版胶囊: 半径 r 的两端半圆 + ±(L-r) 直边 (与原 CapsuleShape2D 完全一致)
+		var rr: float = player_radius
+		var L: float = player_half_length
+		var sc: float = maxf(L - rr, 0.0)
+		var seg2: int = maxi(seg / 2, 6)
+		pts.append(Vector2(rr, -sc))          # 右直边 上
+		pts.append(Vector2(rr, sc))           # 右直边 下
+		for k in range(1, seg2):              # 底部半圆 (右->左)
+			var t: float = PI * float(k) / float(seg2)
+			pts.append(Vector2(rr * cos(t), sc + rr * sin(t)))
+		pts.append(Vector2(-rr, sc))          # 左直边 下
+		pts.append(Vector2(-rr, -sc))         # 左直边 上
+		for k in range(1, seg2):              # 顶部半圆 (左->右)
+			var t: float = PI + PI * float(k) / float(seg2)
+			pts.append(Vector2(rr * cos(t), -sc + rr * sin(t)))
 	elif i == 1:
 		for k in seg:
 			var t: float = TAU * float(k) / float(seg)

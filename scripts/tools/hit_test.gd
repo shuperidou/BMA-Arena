@@ -391,3 +391,29 @@ func _run() -> void:
 		"smash=%s defense=%s vz=%.0f" % [str(o15.is_smash), str(o15.is_defense), o15.vz])
 	GameConfig.defense_perp_threshold = 1e9
 	ball.z = GameConfig.table_z
+
+	# T16: AI 方向控制 —— 换落点应产出不同落点 x (不被辅助拉回桌中心)
+	var ai3: AiPlayer = main_node.players[1]
+	ai3.global_position = Vector2(0.0, 30.0)
+	ball.global_position = Vector2(0.0, -90.0)
+	ball.z = GameConfig.table_z
+	GameConfig.ai_error_chance = 0.0
+	var xl: float = _ai_landing_x(ai3, -120.0)
+	var xr: float = _ai_landing_x(ai3, 120.0)
+	_check("T16 AI 落点可控 (左右明显不同)", absf(xl - xr) > 60.0,
+		"left=%.0f right=%.0f" % [xl, xr])
+
+## 给定落点 x, 算出 AI 经 HitSystem 后的实际落点 x。
+func _ai_landing_x(ai: AiPlayer, aim_x: float) -> float:
+	ai._ai_aim_x = aim_x
+	ai.rotation = (ai._ai_face_point() - ai.global_position).angle()
+	ai.hit_points[0].swing_velocity = ai._ai_desired_swing()
+	var oc: Dictionary = ai.compute_hit(ai.hit_points[0], ball)
+	var vzc: float = oc.vz
+	var z0c: float = maxf(ball.z, GameConfig.table_z)
+	var dsc: float = vzc * vzc + 2.0 * GameConfig.ball_gravity * (z0c - GameConfig.table_z)
+	var tfc: float = (vzc + sqrt(maxf(dsc, 0.0))) / GameConfig.ball_gravity
+	var ep: Vector2 = ball.global_position + oc.assisted_dir * oc.ball_speed * tfc
+	if ep.y < GameConfig.wall_inner_y():
+		ep = Vector2(ep.x, 2.0 * GameConfig.wall_inner_y() - ep.y)
+	return ep.x

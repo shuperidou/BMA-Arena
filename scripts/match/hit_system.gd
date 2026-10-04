@@ -145,8 +145,12 @@ static func _lands_on_table(p: Vector2, dir: Vector2, dist: float) -> bool:
 	return GameConfig.table_rect().grow(-4.0).has_point(p + dir * dist)
 
 ## 落点是否落在"好区"(桌面内缩 assist_good_margin)。不在则触发辅助。
+## 注意: 要按**真实弹道**判断 —— 若中途撞到墙, 用反射后的落点 (否则瞄准墙的球永远"出界", 被拉回中心)。
 static func _lands_in_good_zone(p: Vector2, dir: Vector2, dist: float) -> bool:
-	return GameConfig.table_rect().grow(-GameConfig.assist_good_margin).has_point(p + dir * dist)
+	var endp: Vector2 = p + dir * dist
+	if dir.y < 0.0 and endp.y < GameConfig.wall_inner_y():
+		endp = Vector2(endp.x, 2.0 * GameConfig.wall_inner_y() - endp.y)
+	return GameConfig.table_rect().grow(-GameConfig.assist_good_margin).has_point(endp)
 
 ## 桌中心关于墙的镜像点 (墙在俯视上是水平镜面 -> 翻转 y)。
 static func mirror_of_table_center() -> Vector2:

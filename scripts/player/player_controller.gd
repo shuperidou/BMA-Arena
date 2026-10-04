@@ -19,6 +19,8 @@ var ai_enabled: bool = false        ## 由 AI 驱动 (移动/击球/发球); 用
 var omniscient: bool = false        ## 万能模式: 接到球必落桌
 var debug_last_error: String = ""   ## 最近一次 AI 失误表现 (Debug 用)
 var _ai_stuck_frames: int = 0       ## AI 连续"想动却动不了"的帧数 (脱困用)
+var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
+var _ai_last_hitter_seen: Node = null
 
 var hit_points: Array[HitPoint] = []
 ## 击球区在角色局部坐标系中的位移 (2D)。
@@ -87,13 +89,18 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 
 	# --- 击球区控制 (玩家=鼠标; AI=判定点收到中心, 像圆形 AI 那样用中心触球) ---
 	if ai_enabled:
+		# 对手换了击球 -> 重新选本次落点 (方向由朝向决定, 见 _ai_face_point)
+		if ball != null and ball.last_hitter != _ai_last_hitter_seen:
+			_ai_last_hitter_seen = ball.last_hitter
+			if ball.last_hitter != self:
+				_ai_pick_aim()
 		# AI: 判定点收到中心, 每帧像甩鼠标一样设好"挥动速度"; 命中走同一 HitSystem。
-		var sw: Vector2 = _ai_desired_swing()
+		var sw2: Vector2 = _ai_desired_swing()
 		for hp in hit_points:
 			hp.position = Vector2.ZERO
 			hp.reach = GameConfig.ai_hit_reach
-			hp.swing_velocity = sw
-		_recenter_body(state, step, 0.0)
+			hp.swing_velocity = sw2
+		_recenter_body(state, step, _ai_face_point(), 0.0)
 	else:
 		_update_controls(state, step)
 
@@ -166,13 +173,13 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 		var dx: float = input_scheme.mouse_drag_screen_x(self)
 		drag_rad = clampf(dx * GameConfig.drag_rot_sensitivity,
 			-GameConfig.drag_rot_max, GameConfig.drag_rot_max)
-	_recenter_body(state, step, drag_rad)
+	_recenter_body(state, step, GameConfig.table_center, drag_rad)
 
 ## 强回正: 快速转向"面向桌中心" (drag_rad = 鼠标拖动带来的小偏角; AI 传 0)。
-func _recenter_body(state: PhysicsDirectBodyState2D, step: float, drag_rad: float) -> void:
+func _recenter_body(state: PhysicsDirectBodyState2D, step: float, aim_point: Vector2, drag_rad: float) -> void:
 	if not GameConfig.base_face_enabled:
 		return
-	var base: float = (GameConfig.table_center - state.transform.origin).angle() + drag_rad
+	var base: float = (aim_point - state.transform.origin).angle() + drag_rad
 	var err: float = wrapf(base - state.transform.get_rotation(), -PI, PI)
 	var desired_w: float = clampf(err * GameConfig.base_face_response,
 		-GameConfig.base_face_max_angular_velocity, GameConfig.base_face_max_angular_velocity)
@@ -298,8 +305,18 @@ func _clamp_reachable(p: Vector2) -> Vector2:
 			q.x = tr.end.x
 	return q
 
+## 换一次进攻落点 (在"好区"内随机 x, 让落点有变化; 走它自己的方向 -> 不受辅助拉回中心)。
+func _ai_pick_aim() -> void:
+	var tr := GameConfig.table_rect()
+	var m: float = maxf(GameConfig.assist_good_margin, 20.0)
+	_ai_aim_x = randf_range(tr.position.x + m, tr.end.x - m)
+
+## AI 朝向点 = 本次落点关于墙的镜像。朝向它 -> raw_dir 指向镜像 -> 撞墙后落点 = 目标 x。
+func _ai_face_point() -> Vector2:
+	return Vector2(_ai_aim_x, 2.0 * GameConfig.wall_inner_y() - GameConfig.table_center.y)
+
 ## AI 的"挥动": 反推出能打到桌上目标的判定区速度 (world) —— 走与玩家相同的 HitSystem 判定。
-## 目标 = 桌面随机 x 的墙镜像(撞墙后落桌); 由 vz 反推所需球速 -> 反推 strength -> v_along。
+## 目标 = 本次落点 _ai_aim_x 的墙镜像; 由 vz 反推所需球速 -> 反推 strength -> v_along。
 func _ai_desired_swing() -> Vector2:
 	if ball == null or ball.state != GameTypes.BallState.LIVE:
 		return Vector2.ZERO
@@ -310,7 +327,7 @@ func _ai_desired_swing() -> Vector2:
 	var from: Vector2 = ball.global_position
 	var tr := GameConfig.table_rect()
 	var mm: float = maxf(GameConfig.assist_good_margin, 20.0)
-	var tx: float = randf_range(tr.position.x + mm, tr.end.x - mm)
+	var tx: float = clampf(_ai_aim_x, tr.position.x + mm, tr.end.x - mm)
 	var aim := Vector2(tx, 2.0 * GameConfig.wall_inner_y() - GameConfig.table_center.y)
 	var dist: float = maxf((aim - from).length(), 1.0)
 	var z0: float = maxf(ball.z, GameConfig.table_z)
