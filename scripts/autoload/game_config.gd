@@ -326,7 +326,6 @@ var debug_show_shapes: bool = true   ## 5: 碰撞体 / 速度
 var debug_show_zones: bool = true    ## 6: 场地 / 桌 / 墙
 var debug_show_block_hud: bool = true ## 7: 屏幕上方 阻挡/救球 文字提示
 var debug_ai_smash: bool = true       ## 8: AI 也使用扣杀 (默认开, F1 可关)
-var debug_show_preview: bool = true    ## 击球落点预测线 (玩家拖动时显示预计轨迹+落点)
 
 # ============================================================
 #  K. 输入 (physical keycodes)
