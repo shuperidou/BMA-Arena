@@ -12,6 +12,14 @@ var power01: float = 0.0:                    ## 当前挥拍力量 (0..1) -> 判
 	set(v):
 		power01 = v
 		queue_redraw()
+var posture: int = 0:                        ## 0=普通挥拍 1=防守姿态 (由 PlayerController 每帧写入) -> 青环提示
+	set(v):
+		posture = v
+		queue_redraw()
+var ball_in_range: bool = false:             ## 球是否已在触及范围附近 (可击窗口) -> 白环脉冲
+	set(v):
+		ball_in_range = v
+		queue_redraw()
 var _prev_world: Vector2 = Vector2.ZERO
 var _has_prev: bool = false
 
@@ -37,3 +45,9 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, reach, Color(fill.r, fill.g, fill.b, 0.12 + 0.22 * pw))
 	draw_arc(Vector2.ZERO, reach, 0.0, TAU, 28, Color(fill.r, fill.g, fill.b, 0.6), 2.0)
 	draw_circle(Vector2.ZERO, 3.0, Color(fill.r, fill.g, fill.b))
+	# 防守姿态: 青色"盾"环
+	if posture == 1:
+		draw_arc(Vector2.ZERO, reach + 4.0, 0.0, TAU, 30, Color(0.35, 0.9, 1.0, 0.95), 3.0)
+	# 可击窗口: 内圈白色脉冲环
+	if ball_in_range:
+		draw_arc(Vector2.ZERO, reach * 0.55, 0.0, TAU, 24, Color(1, 1, 1, 0.85), 2.0)

@@ -275,10 +275,20 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 	if hit_points.size() >= 2:
 		var sw: Vector2 = swing_local.rotated(rotation)
 		var p01: float = _swing_power01(sw)
-		hit_points[0].swing_velocity = sw
-		hit_points[1].swing_velocity = sw
-		hit_points[0].power01 = p01
-		hit_points[1].power01 = p01
+		# 姿态: 与 HitSystem 同判据 (垂直分量够大 且 沿向够小 -> 防守姿态)
+		var is_def: bool = GameConfig.defense_perp_threshold > 0.0 \
+			and swing_local.y > GameConfig.defense_perp_threshold \
+			and absf(swing_local.x) < swing_local.y * GameConfig.defense_max_along_ratio
+		# 可击窗口: 球在本方且已接近判定区
+		var in_range: bool = ball != null and ball.state == GameTypes.BallState.LIVE \
+			and ball.returnable \
+			and hit_points[0].global_position.distance_to(ball.global_position) \
+				<= hit_points[0].reach + ball.radius + 26.0
+		for hp in hit_points:
+			hp.swing_velocity = sw
+			hp.power01 = p01
+			hp.posture = 1 if is_def else 0
+			hp.ball_in_range = in_range
 	debug_hit_zone_local_delta = target_local
 	# 鼠标左右拖动时，身体跟随做"有限的小幅旋转"
 	var drag_rad: float = 0.0
@@ -385,6 +395,14 @@ func _now() -> float:
 	return float(Time.get_ticks_msec()) / 1000.0
 
 func _draw() -> void:
+	# 力度条 (脚下): 随挥拍力量变色/变长 (圆身/纺锤都画)
+	var pwv: float = clampf(hit_points[0].power01 if hit_points.size() > 0 else 0.0, 0.0, 1.0)
+	var bw: float = 48.0
+	var bh: float = 6.0
+	var by: float = 32.0
+	draw_rect(Rect2(-bw * 0.5, by, bw, bh), Color(0, 0, 0, 0.45))
+	draw_rect(Rect2(-bw * 0.5, by, bw * pwv, bh),
+		Color(0.45, 0.7, 1.0).lerp(Color(1.0, 0.35, 0.15), pwv))
 	if _circle_body:
 		draw_circle(Vector2.ZERO, 20.0, _body_color)
 		draw_arc(Vector2.ZERO, 20.0, 0.0, TAU, 32, Color(1, 1, 1, 0.5), 2.0)
