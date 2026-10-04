@@ -9,6 +9,8 @@ var _filter_opt: OptionButton
 var _smooth_slider: HSlider
 var _size_slider: HSlider
 var _size_label: Label
+var _mut_slider: HSlider
+var _mut_label: Label
 var _slot_opt: OptionButton
 
 func _ready() -> void:
@@ -46,12 +48,12 @@ func _build() -> void:
 
 	var panel := Panel.new()
 	panel.position = Vector2(430, 120)
-	panel.size = Vector2(420, 420)
+	panel.size = Vector2(420, 476)
 	add_child(panel)
 
 	var vb := VBoxContainer.new()
 	vb.position = Vector2(28, 22)
-	vb.size = Vector2(364, 376)
+	vb.size = Vector2(364, 432)
 	vb.add_theme_constant_override("separation", 18)
 	panel.add_child(vb)
 
@@ -114,6 +116,28 @@ func _build() -> void:
 	ftau.text = "τ=%.2fs" % GameConfig.swing_smooth_tau
 	_font(ftau, 15)
 	frow.add_child(ftau)
+
+	# ② AI 探险度 (锦标赛赢家基因的随机扰动幅度; 只影响进化, 不影响当前对局)
+	var erow := HBoxContainer.new()
+	erow.add_theme_constant_override("separation", 10)
+	vb.add_child(erow)
+	var elab := Label.new()
+	elab.text = "探险度:"
+	_font(elab, 20)
+	erow.add_child(elab)
+	_mut_slider = HSlider.new()
+	_mut_slider.min_value = 0.0
+	_mut_slider.max_value = 0.15
+	_mut_slider.step = 0.01
+	_mut_slider.value = GameConfig.ai_mutation_rate
+	_mut_slider.custom_minimum_size = Vector2(190, 26)
+	_mut_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_mut_slider.value_changed.connect(_on_mut_rate)
+	erow.add_child(_mut_slider)
+	_mut_label = Label.new()
+	_mut_label.text = "%.2f" % GameConfig.ai_mutation_rate
+	_font(_mut_label, 16)
+	erow.add_child(_mut_label)
 
 	# 大小拖动条
 	var zrow := HBoxContainer.new()
@@ -233,6 +257,11 @@ func _on_size(v: float) -> void:
 	GameConfig.player_size_scale = v
 	_update_size_label()
 	_apply()
+
+func _on_mut_rate(v: float) -> void:
+	GameConfig.ai_mutation_rate = v
+	if _mut_label != null:
+		_mut_label.text = "%.2f" % v
 
 func _update_size_label() -> void:
 	_size_label.text = "%.2f" % GameConfig.player_size_scale

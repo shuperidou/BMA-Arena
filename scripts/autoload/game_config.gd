@@ -106,6 +106,11 @@ var size_move_exponent: float = 0.55      ## 体型→移动速度代价: speed 
 var size_turn_exponent: float = 0.45      ## 体型→转身速度代价: turn  ∝ size^(-此指数)
 var ai_test_seconds: float = 5.0          ## P4"试战"时长(秒): 应用候选后双方AI对打一小段给玩家看
 
+## ---- ② AI 进化 [TEMP]: 变异率 / 探险度 (ESC 可调) ----
+## 锦标赛每分, 赢家在池内的基因每个位 ±此值的随机扰动。0=只靠选择(不探索), 越大越爱乱试。
+var ai_mutation_rate: float = 0.04
+var ai_crossover_amount: float = 0.12     ## 赢家吸收对手基因的比例 (0=不学对手)
+
 ## ---- AI 救球 (F1 菜单 0 开关): 搏命(A) + 冷却(B) ----
 ## AI 只在"够呛"(球很高)且冷却好时, 用一次防守姿态救球 -> 救出的球很高, 正好可被扣杀惩罚。
 var ai_save_enabled: bool = true          ## 默认开: AI 会救球 (F1 菜单 0 可关)

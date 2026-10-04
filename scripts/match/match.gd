@@ -251,13 +251,13 @@ func _evolve_if_enabled(winner_index: int) -> void:
 	if w == null or l == null:
 		return
 	if w.genome != null and l.genome != null:
-		l.genome = w.genome.grown(0.08, 0.02)
+		l.genome = w.genome.grown(GameConfig.ai_mutation_rate * 2.0, 0.02)
 		generation += 1
 		EventBus.notify("AI 进化 第%d代: 败者继承+变异  风格[%s]" % [generation, l.genome.style_name()], 2.0)
 	elif w.genome != null or l.genome != null:
 		var ai_p: PlayerController = w if w.genome != null else l
 		if ai_p == l:
-			ai_p.genome = ai_p.genome.grown(0.05, 0.01)
+			ai_p.genome = ai_p.genome.grown(GameConfig.ai_mutation_rate, 0.01)
 			generation += 1
 			EventBus.notify("AI 进化 第%d代: 输了这分, 自我成长  风格[%s]" % [generation, ai_p.genome.style_name()], 2.0)
 
@@ -269,7 +269,8 @@ func _tournament_step(winner_index: int) -> void:
 		return
 	var w_idx: int = ai_p1_idx if winner_index == 1 else ai_p2_idx
 	var l_idx: int = ai_p2_idx if winner_index == 1 else ai_p1_idx
-	ai_pool[w_idx] = ai_pool[w_idx].grown(0.04, 0.01).crossover(ai_pool[l_idx], 0.12)
+	ai_pool[w_idx] = ai_pool[w_idx].grown(GameConfig.ai_mutation_rate, 0.01) \
+		.crossover(ai_pool[l_idx], GameConfig.ai_crossover_amount)
 	ai_p1_idx = (ai_p1_idx + 1) % n
 	if ai_p1_idx == 0:
 		ai_p2_idx = (ai_p2_idx + 1) % n
