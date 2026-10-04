@@ -20,6 +20,7 @@ var omniscient: bool = false        ## 万能模式: 接到球必落桌
 var debug_last_error: String = ""   ## 最近一次 AI 失误表现 (Debug 用)
 var _ai_stuck_frames: int = 0       ## AI 连续"想动却动不了"的帧数 (脱困用)
 var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
+var _ai_aim_y: float = 0.0          ## AI 本次进攻落点 y (深度; 高手会据 hit_speed 区间自动换算)
 var _ai_bait_x: float = 0.0         ## 假动作诱饵 x (与真实落点相反侧)
 var _ai_last_hitter_seen: Node = null
 var _ai_smooth_target: Vector2 = Vector2.ZERO   ## 平滑后的走位目标 (抗抖)
@@ -383,6 +384,7 @@ func _ai_pick_aim() -> void:
 	else:
 		_ai_aim_x = randf_range(lo, hi)
 	_ai_bait_x = (lo + hi) - _ai_aim_x                    # 诱饵 = 真实落点的反侧
+	_ai_aim_y = GameConfig.table_center.y                 # 默认深度 (出手时会按 hit_speed 区间自动修正)
 
 ## AI 朝向点 = 落点关于墙的镜像。朝向它 -> raw_dir 指向镜像 -> 撞墙后落点 = 目标 x。
 ## 假动作: 球还远时先朝向"诱饵"(反侧), 球近到阈值内再切真实落点 (骗对手先动)。
@@ -391,7 +393,7 @@ func _ai_face_point() -> Vector2:
 	if GameConfig.ai_feint() and ball != null \
 			and global_position.distance_to(ball.global_position) > GameConfig.ai_feint_switch_dist:
 		x = _ai_bait_x
-	return Vector2(x, 2.0 * GameConfig.wall_inner_y() - GameConfig.table_center.y)
+	return Vector2(x, 2.0 * GameConfig.wall_inner_y() - _ai_aim_y)
 
 ## AI 的"挥动": 反推出能打到桌上目标的判定区速度 (world) —— 走与玩家相同的 HitSystem 判定。
 ## 目标 = 本次落点 _ai_aim_x 的墙镜像; 由 vz 反推所需球速 -> 反推 strength -> v_along。
@@ -406,42 +408,44 @@ func _ai_desired_swing() -> Vector2:
 	var tr := GameConfig.table_rect()
 	var mm: float = maxf(GameConfig.assist_good_margin, 20.0)
 	var tx: float = clampf(_ai_aim_x, tr.position.x + mm, tr.end.x - mm)
-	var aim := Vector2(tx, 2.0 * GameConfig.wall_inner_y() - GameConfig.table_center.y)
-	var dist: float = maxf((aim - from).length(), 1.0)
 	var z0: float = maxf(ball.z, GameConfig.table_z)
-	# 选 vz: 让"够到镜像所需球速"尽量落在 [min,max] 内 —— 这样 strength 不被夹到边界, 落点才准。
-	#   所需球速 = dist*g/(2*vz) (z0≈桌高), 故 vz∈[dist*g/(2*max), dist*g/(2*min)] 时可达。
-	#   并夹住 v_perp 不越救球阈值 (避免无意触发"防守姿态")。
+	# 把 hit_speed_min/max 当参数用 (改 hit_speed 时 AI 依然有效)
+	var s_min: float = maxf(GameConfig.hit_speed_min, 1.0)
+	var s_max: float = maxf(GameConfig.hit_speed_max, s_min + 1.0)
 	var g: float = GameConfig.ball_gravity
+	var w_y: float = GameConfig.wall_inner_y()
 	var gain: float = maxf(GameConfig.hit_vz_perp_gain, 1.0)
+	# vz 在 [vz_min, min(vz_max, vz_cap)] 随机; vz_cap 避免 v_perp 误触"救球"
 	var vz_cap: float = GameConfig.hit_vz_v0 + GameConfig.defense_perp_threshold * 0.8 * gain / ref
-	var vz_hi_all: float = minf(GameConfig.hit_vz_max, vz_cap)
-	var vz_lo: float = maxf(dist * g / (2.0 * GameConfig.hit_speed_max), GameConfig.hit_vz_min)
-	var vz_hi: float = minf(dist * g / (2.0 * GameConfig.hit_speed_min), vz_hi_all)
-	var vz: float
-	if vz_lo <= vz_hi:
-		vz = randf_range(vz_lo, vz_hi)
-	else:
-		# 几何上做不到精确落点(太近): 取最接近的 vz, 把过冲降到最小
-		vz = clampf(dist * g / (2.0 * GameConfig.hit_speed_min), GameConfig.hit_vz_min, vz_hi_all)
-	var v_perp: float = (vz - GameConfig.hit_vz_v0) / gain * ref
-	# 由 vz 反推所需水平球速 -> strength -> v_along (与 HitSystem 的力度曲线互逆)
+	var vz_hi_all: float = maxf(GameConfig.hit_vz_min, minf(GameConfig.hit_vz_max, vz_cap))
+	var vz: float = randf_range(GameConfig.hit_vz_min, vz_hi_all)
 	var disc: float = vz * vz + 2.0 * g * (z0 - GameConfig.table_z)
 	var t_fl: float = (vz + sqrt(maxf(disc, 0.0))) / maxf(g, 1.0)
-	# 高手/大师: 自己调力度让球落桌 —— 补偿"墙反射损耗" (wall_bounce_factor<1 让反射段变慢,
-	# 否则落点会系统性偏移)。仍在玩家区间内、仍走 HitSystem -> 与玩家平等。
+	# 高手/大师: 反解"落点深度 ty", 使所需球速 = dist/t_fl 恰落在 [hit_speed_min, hit_speed_max]:
+	#   dist ∈ [s_min*t_fl, s_max*t_fl]; 镜像 y = from.y - sqrt(dist² - dx²); ty = 2*wall_y - my
+	#   -> strength 不被夹到边界, 落点精确, 且改 hit_speed 依然有效。
+	var ty: float = GameConfig.table_center.y
+	if GameConfig.ai_level >= 3:
+		var dx: float = tx - from.x
+		var my_lo: float = from.y - sqrt(maxf((s_max * t_fl) * (s_max * t_fl) - dx * dx, 0.0))
+		var my_hi: float = from.y - sqrt(maxf((s_min * t_fl) * (s_min * t_fl) - dx * dx, 0.0))
+		var my_des: float = clampf(2.0 * w_y - GameConfig.table_center.y, my_lo, my_hi)
+		ty = clampf(2.0 * w_y - my_des, tr.position.y + mm, tr.end.y - mm)
+	_ai_aim_y = ty
+	var aim := Vector2(tx, 2.0 * w_y - ty)
+	var dist: float = maxf((aim - from).length(), 1.0)
+	# 高手/大师: 补偿"墙反射损耗" (wall_bounce_factor<1 让反射段变慢) -> 落点更准
 	var t_eff: float = t_fl
 	if GameConfig.ai_level >= 3:
 		var wbf: float = clampf(GameConfig.wall_bounce_factor, 0.05, 1.0)
-		var w_y: float = GameConfig.wall_inner_y()
 		var fw: float = 0.0
 		if absf(from.y - aim.y) > 1.0:
 			fw = clampf((from.y - w_y) / (from.y - aim.y), 0.0, 1.0)
 		t_eff = maxf(t_fl * (1.0 - (1.0 - wbf) * fw), 0.0001)
+	var v_perp: float = (vz - GameConfig.hit_vz_v0) / gain * ref
 	var want_speed: float = dist / maxf(t_eff, 0.0001) \
 		* randf_range(1.0 - GameConfig.ai_shot_depth_jitter, 1.0 + GameConfig.ai_shot_depth_jitter)
-	var strength: float = clampf((want_speed - GameConfig.hit_speed_min) \
-		/ maxf(GameConfig.hit_speed_max - GameConfig.hit_speed_min, 1.0), 0.0, 1.0)
+	var strength: float = clampf((want_speed - s_min) / maxf(s_max - s_min, 1.0), 0.0, 1.0)
 	# AI 扣杀开关(关): 高球时压低力度, 避免无意触发扣杀
 	if not (GameConfig.debug_ai_smash or GameConfig.ai_level_smash()) and ball.z >= GameConfig.smash_height_min:
 		strength = minf(strength, maxf(GameConfig.smash_power_min - 0.05, 0.0))
