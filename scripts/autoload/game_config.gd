@@ -244,7 +244,7 @@ var hit_cooldown: float = 0.15
 ## AI 自动发球前的等待时间 (给玩家反应时间)
 var ai_serve_delay: float = 2.0
 ## AI 打出球后, 为了避开"阻挡嫌疑"而绕开对手接球走廊的偏移距离
-var ai_avoid_distance: float = 160.0
+var ai_avoid_distance: float = 90.0
 ## AI 失误概率 (0~1)。每次击球/发球按此概率触发一次"失误表现" (0=永不失误)。
 var ai_error_chance: float = 0.02
 var ai_error_aim_deg: float = 40.0     ## 失误表现-瞄偏: 最大偏角(度)
@@ -256,7 +256,8 @@ var ai_error_power_max: float = 1.5    ## 失误表现-太重: 力度缩放
 ## 否则 AI 会直线怼进桌子卡死。
 var ai_hit_reach: float = 44.0          ## 判定区触球半径 (AI 用; = 玩家 hit_reach, 保持平等)
 var ai_body_clearance: float = 22.0     ## 目标点必须离(缩过的)桌/边界这么多 (机身半径 + 余量)
-var ai_arm_len: float = 72.0            ## AI"手臂": 判定点朝球方向可伸出的最大长度 (能越桌够球)
+var ai_arm_len: float = 36.0            ## AI"手臂": 判定点朝球方向可伸出的最大长度 (能越桌够球)
+var ai_ready_height: float = 110.0      ## 击球时机: 球升到此高度或已过顶点(vz<=0)手臂才伸出 (别一弹起就秒打)
 var ai_personal_space: float = 78.0     ## 与对手保持的"个人空间"; 太近就侧向绕开
 var ai_arrive_dist: float = 16.0        ## 到达目标的判定距离 (越大越稳, 减少来回抖)
 var ai_target_smooth: float = 0.30      ## 目标平滑系数 (每帧向新目标插值; 1=不平滑)

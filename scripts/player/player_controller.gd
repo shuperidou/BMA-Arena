@@ -24,6 +24,8 @@ var _ai_bait_x: float = 0.0         ## 假动作诱饵 x (与真实落点相反�
 var _ai_last_hitter_seen: Node = null
 var _ai_smooth_target: Vector2 = Vector2.ZERO   ## 平滑后的走位目标 (抗抖)
 var _ai_smooth_ready: bool = false
+var _ai_post_target: Vector2 = Vector2.ZERO     ## 打完球后的"防阻挡"目标 (每拍只算一次)
+var _ai_post_ready: bool = false
 
 var hit_points: Array[HitPoint] = []
 ## 击球区在角色局部坐标系中的位移 (2D)。
@@ -101,7 +103,8 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 		var sw2: Vector2 = _ai_desired_swing()
 		# "手臂": 判定点朝球方向伸出 (最多 ai_arm_len), 让 AI 能越桌够球
 		var arm: Vector2 = Vector2.ZERO
-		if ball != null:
+		# 击球时机: 球升到位(或已过顶点)手臂才伸出 -> 让球有正常滞空, 而不是一弹起就秒打
+		if ball != null and (ball.vz <= 0.0 or ball.z >= GameConfig.ai_ready_height):
 			arm = (ball.global_position - global_position).rotated(-rotation).limit_length(GameConfig.ai_arm_len)
 		for hp in hit_points:
 			hp.position = arm
@@ -233,9 +236,7 @@ func _ai_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
 			if side.dot(to) < 0.0:
 				side = -side
 			dir = (dir + side * GameConfig.ai_avoid_gain).normalized()
-	# 桌子避让: 贴桌且朝桌内 -> 沿桌边滑 (防止怼桌卡死)
-	dir = _slide_along_table(dir, to, from)
-	# 绕桌角: 直线路径被桌子挡住时, 先绕到最省路的桌角
+	# 绕桌角: 直线路径真的被桌子挡住时才绕 (不要用"沿边滑", 那会阻止 AI 靠近桌子)
 	dir = _route_around_table(dir, from, target)
 	# 卡住脱困: 想动却几乎动不了 -> 沿垂直方向蹭出去
 	if state.linear_velocity.length() < GameConfig.ai_stuck_velocity:
@@ -292,9 +293,13 @@ func _draw() -> void:
 func _target_point() -> Vector2:
 	if ball == null or ball.state != GameTypes.BallState.LIVE:
 		return global_position  # 球不在场(发球/死球): 原地待命
-	# 自己刚打完这球 -> 切"防阻挡模式": 绕开对手的接球走廊, 避免被判阻挡
+	# 自己刚打完这球 -> 切"防阻挡模式": 绕开对手的接球走廊 (每拍只算一次, 免得目标和球一起乱动)
 	if ball.last_hitter == self:
-		return _anti_block_target()
+		if not _ai_post_ready:
+			_ai_post_target = _anti_block_target()
+			_ai_post_ready = true
+		return _ai_post_target
+	_ai_post_ready = false
 	# 否则我是接球方 -> 追可接住点 (投影到可达区域, 见 _clamp_reachable)
 	var pred: Dictionary = ball.predict_catchable()
 	if pred.found:
@@ -309,43 +314,11 @@ func _clamp_reachable(p: Vector2) -> Vector2:
 	var q := Vector2(clampf(p.x, ar.position.x, ar.end.x), clampf(p.y, ar.position.y, ar.end.y))
 	var tr: Rect2 = GameConfig.table_block_rect().grow(clr)
 	if tr.has_point(q):
-		var d_l: float = q.x - tr.position.x
-		var d_r: float = tr.end.x - q.x
-		var d_t: float = q.y - tr.position.y
-		var d_b: float = tr.end.y - q.y
-		var mn: float = minf(minf(d_l, d_r), minf(d_t, d_b))
-		if mn == d_b:
-			q.y = tr.end.y
-		elif mn == d_t:
-			q.y = tr.position.y
-		elif mn == d_l:
-			q.x = tr.position.x
-		else:
-			q.x = tr.end.x
+		# 推出到"AI 所在的纵向一侧"(玩家通常在桌下方): 只调 y, 保留 x -> 站到桌前、与球对齐, 手臂上够。
+		q.y = tr.end.y if global_position.y > GameConfig.table_center.y else tr.position.y
 	return q
 
-## 桌子避让: 若贴着桌子(阈值内)且方向指向桌内, 去掉法向分量 -> 沿桌边滑(朝目标侧)。
-## 玩家进不去桌子, 只能沿它的边绕 —— 这是"不怼桌卡死"的核心。
-func _slide_along_table(dir: Vector2, to: Vector2, from: Vector2) -> Vector2:
-	var tr: Rect2 = GameConfig.table_block_rect().grow(GameConfig.ai_body_clearance)
-	var closest := Vector2(clampf(from.x, tr.position.x, tr.end.x), clampf(from.y, tr.position.y, tr.end.y))
-	var n: Vector2 = from - closest
-	if n.length() > 90.0:
-		return dir                       # 离桌还远, 不干预
-	if n.length() < 2.0:
-		n = from - GameConfig.table_center
-		if n.length() < 1.0:
-			n = Vector2(0.0, 1.0)
-	n = n.normalized()
-	if dir.dot(n) >= -0.05:
-		return dir                       # 没往桌里走
-	var tang: Vector2 = dir - n * dir.dot(n)
-	if tang.length() < 0.001:
-		tang = Vector2(-n.y, n.x)
-	tang = tang.normalized()
-	if tang.dot(to) < 0.0:
-		tang = -tang
-	return tang
+## (已移除 _slide_along_table: 它把"朝桌分量"删掉, 会让 AI 永远靠近不了桌子 -> 来回跑够不到。)
 
 ## 线段 a-b 是否与矩形 r 相交 (路径是否被桌子挡)。
 func _seg_hits_rect(a: Vector2, b: Vector2, r: Rect2) -> bool:
