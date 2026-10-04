@@ -98,6 +98,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_8:
 			if debug_layer.enabled:
 				_toggle_flag("debug_ai_smash")
+		KEY_9:
+			if debug_layer.enabled:
+				_toggle_flag("ai_diverse")
 		KEY_R:
 			match_ref.restart()
 		KEY_1:

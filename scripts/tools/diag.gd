@@ -11,6 +11,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	main_node.debug_mode = 3
 	main_node._apply_debug_mode()
+	GameConfig.ai_diverse = true   # 诊断: 打开多样化, 观察落点变化
 	ball = main_node.ball
 	var ai: PlayerController = main_node.players[1]
 	var prev_bounces: int = 0

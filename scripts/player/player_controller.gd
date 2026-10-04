@@ -378,14 +378,34 @@ func _ai_pick_aim() -> void:
 	var m: float = maxf(GameConfig.assist_good_margin, 20.0)
 	var lo: float = tr.position.x + m
 	var hi: float = tr.end.x - m
-	if GameConfig.ai_smart_aim() and rival != null:
-		var opp_x: float = rival.global_position.x
-		var far: float = hi if opp_x < 0.0 else lo        # 挑对手的反侧
-		_ai_aim_x = clampf(far + randf_range(-m, m), lo, hi)
+	# 深度"稳定带" (不贴边)
+	var d_lo: float = tr.position.y + tr.size.y * GameConfig.ai_shot_band_frac
+	var d_hi: float = tr.end.y - tr.size.y * GameConfig.ai_shot_band_frac
+	var cx: float = GameConfig.table_center.x
+	var opp_x: float = rival.global_position.x if rival != null else cx
+	var far_x: float = hi if opp_x < 0.0 else lo          # 对手反侧
+	var near_x: float = lo if opp_x < 0.0 else hi         # 对手同侧
+	if GameConfig.ai_diverse:
+		# 多样化打法: 每拍随机选横向套路 + 深浅套路
+		match randi() % 4:
+			0: _ai_aim_x = far_x + randf_range(-m, m)     # 对角 (逼跑)
+			1: _ai_aim_x = near_x + randf_range(-m, m)    # 直线 (出其不意)
+			2: _ai_aim_x = cx + randf_range(-m, m)        # 中路
+			_: _ai_aim_x = randf_range(lo, hi)            # 纯随机
+		var mid_y: float = (d_lo + d_hi) * 0.5
+		match randi() % 3:
+			0: _ai_aim_y = randf_range(d_lo, mid_y)       # 短 (靠墙侧)
+			1: _ai_aim_y = randf_range(mid_y, d_hi)       # 深 (靠玩家侧)
+			_: _ai_aim_y = randf_range(d_lo, d_hi)        # 随机
+	elif GameConfig.ai_smart_aim() and rival != null:
+		_ai_aim_x = clampf(far_x + randf_range(-m, m), lo, hi)
+		_ai_aim_y = randf_range(d_lo, d_hi)
 	else:
 		_ai_aim_x = randf_range(lo, hi)
+		_ai_aim_y = GameConfig.table_center.y
+	_ai_aim_x = clampf(_ai_aim_x, lo, hi)
+	_ai_aim_y = clampf(_ai_aim_y, d_lo, d_hi)
 	_ai_bait_x = (lo + hi) - _ai_aim_x                    # 诱饵 = 真实落点的反侧
-	_ai_aim_y = GameConfig.table_center.y                 # 默认深度 (出手时会按 hit_speed 区间自动修正)
 
 ## AI 朝向点 = 落点关于墙的镜像。朝向它 -> raw_dir 指向镜像 -> 撞墙后落点 = 目标 x。
 ## 假动作: 球还远时先朝向"诱饵"(反侧), 球近到阈值内再切真实落点 (骗对手先动)。
@@ -428,7 +448,7 @@ func _ai_desired_swing() -> Vector2:
 		#   => vx=A, |vy|=B, speed=sqrt(A²+B²); 遍历 vz 取使 speed∈[hit_speed_min,max] 者。
 		var band_lo: float = tr.position.y + tr.size.y * GameConfig.ai_shot_band_frac
 		var band_hi: float = tr.end.y - tr.size.y * GameConfig.ai_shot_band_frac
-		var aim_y: float = randf_range(band_lo, band_hi)
+		var aim_y: float = clampf(_ai_aim_y, band_lo, band_hi)
 		_ai_aim_y = aim_y
 		var wbf: float = clampf(GameConfig.wall_bounce_factor, 0.05, 1.0)
 		var nz: int = 24
