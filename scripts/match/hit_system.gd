@@ -101,11 +101,12 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 		final_speed = clampf(dist_m / tfs_eff, GameConfig.hit_speed_min, GameConfig.hit_speed_max * 4.0)
 		assist_angle = 0.0
 	elif smash_attempt:
-		# 扣杀失败: 没能完整走完墙桌循环 -> 打飞(出界), 由击球方失误
+		# 扣杀失败(失误): 方向打歪 + vz 向下 -> 球多半撞到桌(墙前跳弹)再弹飞/出界, 由击球方失误
 		vz = -absf(GameConfig.smash_vz)
-		assisted_dir = recov_dir
-		final_speed = GameConfig.hit_speed_max * 4.0
-		assist_angle = 0.0
+		var skew: float = deg_to_rad(randf_range(-GameConfig.smash_fail_skew_deg, GameConfig.smash_fail_skew_deg))
+		assisted_dir = raw_dir.rotated(skew)
+		final_speed = ball_speed
+		assist_angle = skew
 	elif is_defense and defense_saved:
 		# 救球成功: vz 固定, 由它反推水平初速, 让球正好"够到"墙后镜像(桌中心)附近。
 		# 于是球上抛撞墙、再落回桌面时, 落点≈桌中心 -> 保证真的救起来。
