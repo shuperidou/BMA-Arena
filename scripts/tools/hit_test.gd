@@ -437,6 +437,15 @@ func _run() -> void:
 	GameConfig.ai_apply_level()
 	ball.global_position = Vector2(0.0, -90.0)
 
+	# T18: 桌子避让 —— 贴桌且目标在桌对面时, 移动方向不指向桌内 (改为沿边滑)
+	var ai5: AiPlayer = main_node.players[1]
+	ai5.global_position = Vector2(0.0, 0.0)
+	var frm: Vector2 = ai5.global_position
+	var into: Vector2 = GameConfig.table_center - frm      # 指向桌内(上)
+	var slid: Vector2 = ai5._slide_along_table(into.normalized(), into, frm)
+	_check("T18 贴桌不往桌内顶 (沿边滑)", slid.dot(into.normalized()) < 0.6,
+		"dir=%s dot=%.2f" % [str(slid.round()), slid.dot(into.normalized())])
+
 ## 给定落点 x, 算出 AI 经 HitSystem 后的实际落点 x。
 func _ai_landing_x(ai: AiPlayer, aim_x: float) -> float:
 	ai._ai_aim_x = aim_x

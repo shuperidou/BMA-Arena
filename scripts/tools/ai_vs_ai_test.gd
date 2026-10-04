@@ -25,14 +25,20 @@ func _ready() -> void:
 		p.ball_touched.connect(func(_pl: PlayerController, _hp: HitPoint) -> void: hits += 1)
 	ball.died.connect(func(_r: int) -> void: deaths += 1)
 
-	# 跑 ~12 秒模拟
-	for i in 720:
+	# 跑 ~20 秒模拟; 统计"卡住"帧 (想动却几乎不动 且 离目标还远)
+	var stuck: int = 0
+	for i in 1200:
 		await get_tree().physics_frame
+		if ball.state == GameTypes.BallState.LIVE:
+			for p in main_node.players:
+				if p.linear_velocity.length() < 20.0 \
+						and p.global_position.distance_to(p._target_point()) > 60.0:
+					stuck += 1
 
 	var p0: PlayerController = main_node.players[0]
 	var p1: PlayerController = main_node.players[1]
 	print("AIVSAI p0.ai=", p0.ai_enabled, " p1.ai=", p1.ai_enabled)
-	print("AIVSAI hits=", hits, " bounces=", bounces, " deaths=", deaths, " score=", match_ref.scores)
+	print("AIVSAI hits=", hits, " bounces=", bounces, " deaths=", deaths, " stuck=", stuck, " score=", match_ref.scores)
 	if p0.ai_enabled and p1.ai_enabled and hits >= 3 and bounces >= 3:
 		print("AIVSAI PASS")
 	else:

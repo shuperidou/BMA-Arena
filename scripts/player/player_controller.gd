@@ -204,7 +204,8 @@ func _desired_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
 ## AI 走位: 趋目标 + 躲对手碰撞箱 + 卡住脱困。
 func _ai_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
 	var from: Vector2 = state.transform.origin
-	var to: Vector2 = _target_point() - from
+	var target: Vector2 = _target_point()
+	var to: Vector2 = target - from
 	if to.length() < 6.0:
 		_ai_stuck_frames = 0
 		return Vector2.ZERO
@@ -219,6 +220,10 @@ func _ai_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
 			if side.dot(to) < 0.0:
 				side = -side
 			dir = (dir + side * GameConfig.ai_avoid_gain).normalized()
+	# 桌子避让: 贴桌且朝桌内 -> 沿桌边滑 (防止怼桌卡死)
+	dir = _slide_along_table(dir, to, from)
+	# 绕桌角: 直线路径被桌子挡住时, 先绕到最省路的桌角
+	dir = _route_around_table(dir, from, target)
 	# 卡住脱困: 想动却几乎动不了 -> 沿垂直方向蹭出去
 	if state.linear_velocity.length() < GameConfig.ai_stuck_velocity:
 		_ai_stuck_frames += 1
@@ -305,6 +310,67 @@ func _clamp_reachable(p: Vector2) -> Vector2:
 		else:
 			q.x = tr.end.x
 	return q
+
+## 桌子避让: 若贴着桌子(阈值内)且方向指向桌内, 去掉法向分量 -> 沿桌边滑(朝目标侧)。
+## 玩家进不去桌子, 只能沿它的边绕 —— 这是"不怼桌卡死"的核心。
+func _slide_along_table(dir: Vector2, to: Vector2, from: Vector2) -> Vector2:
+	var tr: Rect2 = GameConfig.table_rect().grow(GameConfig.ai_body_clearance)
+	var closest := Vector2(clampf(from.x, tr.position.x, tr.end.x), clampf(from.y, tr.position.y, tr.end.y))
+	var n: Vector2 = from - closest
+	if n.length() > 90.0:
+		return dir                       # 离桌还远, 不干预
+	if n.length() < 2.0:
+		n = from - GameConfig.table_center
+		if n.length() < 1.0:
+			n = Vector2(0.0, 1.0)
+	n = n.normalized()
+	if dir.dot(n) >= -0.05:
+		return dir                       # 没往桌里走
+	var tang: Vector2 = dir - n * dir.dot(n)
+	if tang.length() < 0.001:
+		tang = Vector2(-n.y, n.x)
+	tang = tang.normalized()
+	if tang.dot(to) < 0.0:
+		tang = -tang
+	return tang
+
+## 线段 a-b 是否与矩形 r 相交 (路径是否被桌子挡)。
+func _seg_hits_rect(a: Vector2, b: Vector2, r: Rect2) -> bool:
+	if r.has_point(a) or r.has_point(b):
+		return true
+	var p0 := r.position
+	var p1 := Vector2(r.end.x, r.position.y)
+	var p2 := r.end
+	var p3 := Vector2(r.position.x, r.end.y)
+	return Geometry2D.segment_intersects_segment(a, b, p0, p1) != null \
+		or Geometry2D.segment_intersects_segment(a, b, p1, p2) != null \
+		or Geometry2D.segment_intersects_segment(a, b, p2, p3) != null \
+		or Geometry2D.segment_intersects_segment(a, b, p3, p0) != null
+
+## 若直线路径被桌子挡住, 绕到"最省路"的桌角 (只处理这一格桌子, 足够)。
+func _route_around_table(dir: Vector2, from: Vector2, target: Vector2) -> Vector2:
+	var tr: Rect2 = GameConfig.table_rect().grow(GameConfig.ai_body_clearance)
+	# 仅当"路径中点落在桌内"才认为真的被挡 (避免目标恰在桌边时的误触发)
+	if not tr.has_point((from + target) * 0.5):
+		return dir
+	var g2: float = 6.0
+	var cors: Array[Vector2] = [
+		tr.position - Vector2(g2, g2),
+		Vector2(tr.end.x + g2, tr.position.y - g2),
+		tr.end + Vector2(g2, g2),
+		Vector2(tr.position.x - g2, tr.end.y + g2)]
+	var best: Vector2 = from
+	var best_cost: float = 1e18
+	for c in cors:
+		if _seg_hits_rect(from, c, tr):
+			continue
+		var cost: float = from.distance_to(c) + c.distance_to(target)
+		if cost < best_cost:
+			best_cost = cost
+			best = c
+	if best == from:
+		return dir
+	return (best - from).normalized()
 
 ## 换一次进攻落点 (好区内)。达到"普通"以上会挑对手对侧 (逼他跑); 并备一个反侧诱饵做假动作。
 func _ai_pick_aim() -> void:
@@ -405,7 +471,9 @@ func _anti_block_target() -> Vector2:
 		perp = -perp
 	var target: Vector2 = mid + perp * GameConfig.ai_avoid_distance
 	var ar: Rect2 = GameConfig.arena_rect().grow(-40.0)
-	return Vector2(clampf(target.x, ar.position.x, ar.end.x), clampf(target.y, ar.position.y, ar.end.y))
+	# 必须也投影到桌外, 否则这个"避让点"落进/穿过桌子会让 AI 顶桌卡死
+	return _clamp_reachable(Vector2(clampf(target.x, ar.position.x, ar.end.x),
+		clampf(target.y, ar.position.y, ar.end.y)))
 
 ## 智能击球/发球: 瞄准"桌面随机 x 关于墙的镜像点", 保证撞墙后落桌; 力度/vz 在玩家上下限内。
 func _smart_shot(from: Vector2) -> Dictionary:
