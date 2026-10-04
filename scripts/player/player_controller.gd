@@ -62,6 +62,8 @@ var _prev_drag: Vector2 = Vector2.ZERO
 var _prev_drag_valid: bool = false
 var _body_color: Color = Color(0.31, 0.82, 0.77)
 var _shape_poly: CollisionPolygon2D = null  ## 形状碰撞体 (与显示完全同步)
+var _circle_body: bool = false              ## 圆身模式 (AI vs AI 里让 P1 与 P2 一样是圆)
+var _circle_shape: CollisionShape2D = null  ## 圆身模式的碰撞体 (半径与圆形 AI 相同)
 
 func setup(index: int, scheme: InputScheme) -> void:
 	player_index = index
@@ -141,6 +143,27 @@ func rebuild_shape() -> void:
 		var h: float = _shape_half()
 		hit_points[0].position = Vector2(0.0, -h) + hit_zone_offset_local
 		hit_points[1].position = Vector2(0.0, h) - hit_zone_offset_local
+	queue_redraw()
+
+## 圆形身体模式: 在 "AI vs AI" 里让 P1 与 P2 完全一样是圆 (碰撞 + 显示同步; 公平对拼)。
+## 关掉时恢复纺锤。半径 20 = 圆形 AI (AiPlayer.ai_radius)。
+func set_circle_body(on: bool) -> void:
+	_circle_body = on
+	if _shape_poly != null:
+		_shape_poly.disabled = on
+	if on:
+		if _circle_shape == null:
+			_circle_shape = CollisionShape2D.new()
+			_circle_shape.name = "CircleShape"
+			add_child(_circle_shape)
+		var circ := CircleShape2D.new()
+		circ.radius = 20.0
+		_circle_shape.shape = circ
+		_circle_shape.disabled = false
+	else:
+		if _circle_shape != null:
+			_circle_shape.disabled = true
+		rebuild_shape()
 	queue_redraw()
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
@@ -358,6 +381,12 @@ func _now() -> float:
 	return float(Time.get_ticks_msec()) / 1000.0
 
 func _draw() -> void:
+	if _circle_body:
+		draw_circle(Vector2.ZERO, 20.0, _body_color)
+		draw_arc(Vector2.ZERO, 20.0, 0.0, TAU, 32, Color(1, 1, 1, 0.5), 2.0)
+		draw_line(Vector2.ZERO, Vector2(8.0, 0.0), Color(1, 1, 1, 0.6), 4.0)
+		draw_circle(Vector2.ZERO, 5.0, Color(1, 1, 1, 0.85))
+		return
 	var pts: PackedVector2Array = GameConfig.player_shape_points()
 	if pts.size() >= 3:
 		draw_colored_polygon(pts, _body_color)

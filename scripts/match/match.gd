@@ -234,17 +234,26 @@ func _award_point(winner_index: int, reason: int) -> void:
 	EventBus.match_state_changed.emit(state)
 	state_changed.emit(state)
 
-## ② 进化一步: 败者继承 (胜者基因 + 变异 + 成长)。
+## ② 进化一步。
+##   AI vs AI: 败者继承胜者基因 (变异 + 成长)。
+##   人机: 只有 AI 一方有基因; 它输了这一分就自我成长 (陪你打越打越强)。
 func _evolve_if_enabled(winner_index: int) -> void:
 	if not ai_evolve_enabled or winner_index < 1 or winner_index > players.size():
 		return
 	var w: PlayerController = players[winner_index - 1]
 	var l: PlayerController = _other(w)
-	if w == null or l == null or w.genome == null or l.genome == null:
+	if w == null or l == null:
 		return
-	l.genome = w.genome.grown(0.08, 0.02)
-	generation += 1
-	EventBus.notify("AI 进化 第%d代: 败者继承+变异  新风格[%s]" % [generation, l.genome.style_name()], 2.0)
+	if w.genome != null and l.genome != null:
+		l.genome = w.genome.grown(0.08, 0.02)
+		generation += 1
+		EventBus.notify("AI 进化 第%d代: 败者继承+变异  风格[%s]" % [generation, l.genome.style_name()], 2.0)
+	elif w.genome != null or l.genome != null:
+		var ai_p: PlayerController = w if w.genome != null else l
+		if ai_p == l:
+			ai_p.genome = ai_p.genome.grown(0.05, 0.01)
+			generation += 1
+			EventBus.notify("AI 进化 第%d代: 输了这分, 自我成长  风格[%s]" % [generation, ai_p.genome.style_name()], 2.0)
 
 func _finish_match() -> void:
 	state = GameTypes.MatchState.MATCH_OVER

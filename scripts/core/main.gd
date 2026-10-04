@@ -190,14 +190,18 @@ func _apply_debug_mode() -> void:
 	# 万能 AI: 接到必落桌
 	if p2 is AiPlayer:
 		(p2 as AiPlayer).omniscient = omni
-	# AI vs AI: 玩家1 也交给 AI 驱动 (ai_enabled)
+	# AI vs AI: 玩家1 也交给 AI 驱动 (ai_enabled), 并切成圆身 (和 P2 一样, 公平对拼)
 	players[0].ai_enabled = ai_vs_ai
-	# ② AI vs AI = 训练模式: 双方随机基因 + 每分进化; 其它模式清空基因
-	match_ref.ai_evolve_enabled = ai_vs_ai
+	players[0].set_circle_body(ai_vs_ai)
+	# ② 进化: AI vs AI = 双方随机基因对拼; 普通模式 = P2 用存档(或默认)基因, 陪你对局时也进化
+	match_ref.ai_evolve_enabled = ai_vs_ai or debug_mode == 0
 	match_ref.generation = 0
 	if ai_vs_ai:
 		players[0].genome = AiGenome.make_random()
 		players[1].genome = AiGenome.make_random()
+	elif debug_mode == 0:
+		players[0].genome = null
+		players[1].genome = AiGenome.load_from(GENOME_PATH)
 	else:
 		players[0].genome = null
 		players[1].genome = null
