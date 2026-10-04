@@ -83,7 +83,9 @@ var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [
 ## ---- 身体系统 (P4 身体构筑基础) ----
 ## 只有"纺锤"实现了击球判定; 其它身体(圆/菱/椭/未来)以后各自设计"判定方式", 不共用判定区。
 ## "判定方式"做成每身体可插拔 (player_body_kind); 现在只有 "spindle"。
-var player_body_kind: String = "spindle"  ## 身体种类 (决定用哪套击球判定; 现在只有纺锤)
+var player_body_kind: String = "spindle"  ## 身体种类 (决定用哪套击球判定): "spindle" 纺锤 / "circle" 圆
+var circle_body_radius: float = 20.0      ## "圆"身体的碰撞半径
+var circle_hit_reach: float = 40.0        ## "圆"身体的中心判定半径 (全向覆盖; 圆靠挥拍定方向, 不靠判定点位)
 var player_shape_index: int = 0           ## 当前身体显示形状 (只有 0 纺锤是已设计的)
 var shape_segments: int = 28              ## 曲边采样段数
 ## 纺锤(唯一已设计): 形状=胶囊; 方程参数 = player_half_length(长半) + player_radius(宽半);

@@ -271,7 +271,7 @@ func _apply_debug_mode() -> void:
 		(p2 as AiPlayer).omniscient = omni
 	# AI vs AI: 玩家1 也交给 AI 驱动 (ai_enabled), 并切成圆身 (和 P2 一样, 公平对拼)
 	players[0].ai_enabled = ai_vs_ai
-	players[0].set_circle_body(ai_vs_ai)
+	players[0].set_body_kind("circle" if ai_vs_ai else "spindle")
 	# ② 进化: AI vs AI = 锦标赛 (6 份基因池轮换 + 自动存档); 普通模式 = P2 用存档基因, 陪你对局也进化
 	if match_ref.ai_pool.size() > 0 and not ai_vs_ai:
 		_save_ai_pool()                     # 离开训练: 自动把所有池基因写回槽

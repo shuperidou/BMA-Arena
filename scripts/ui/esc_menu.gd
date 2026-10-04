@@ -65,12 +65,21 @@ func _build() -> void:
 	_font(title, 28)
 	vb.add_child(title)
 
-	# 身体 (现在只有纺锤; 改身体在「变异」面板)
-	var body_label := Label.new()
-	body_label.text = "身体: 纺锤   长%.0f 宽%.0f 大小%.2f" % [
-		GameConfig.player_half_length, GameConfig.player_radius, GameConfig.player_size_scale]
-	_font(body_label, 17)
-	vb.add_child(body_label)
+	# 身体种类 (P4: 每种身体一套独立的击球判定方式)
+	var krow := HBoxContainer.new()
+	krow.add_theme_constant_override("separation", 10)
+	vb.add_child(krow)
+	var klab := Label.new()
+	klab.text = "身体:"
+	_font(klab, 20)
+	krow.add_child(klab)
+	var body_opt := OptionButton.new()
+	_font(body_opt, 18)
+	body_opt.add_item("纺锤 (两端两点)", 0)
+	body_opt.add_item("圆 (中心全向)", 1)
+	body_opt.selected = 0 if GameConfig.player_body_kind == "spindle" else 1
+	body_opt.item_selected.connect(_on_body_kind)
+	krow.add_child(body_opt)
 
 	# AI 强度
 	var arow := HBoxContainer.new()
@@ -244,6 +253,11 @@ func _on_mutate() -> void:
 	close()
 	if main_ref != null and main_ref.has_method("open_mutation"):
 		main_ref.open_mutation()
+
+func _on_body_kind(i: int) -> void:
+	var kind: String = "circle" if i == 1 else "spindle"
+	if main_ref != null and main_ref.players.size() > 0:
+		main_ref.players[0].set_body_kind(kind)
 
 func _on_export_genome() -> void:
 	if main_ref != null and main_ref.has_method("export_genome"):

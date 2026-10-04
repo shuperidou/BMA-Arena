@@ -64,9 +64,9 @@ var _last_touch_time: float = -10.0
 var _prev_drag: Vector2 = Vector2.ZERO
 var _prev_drag_valid: bool = false
 var _body_color: Color = Color(0.31, 0.82, 0.77)
-var _shape_poly: CollisionPolygon2D = null  ## 形状碰撞体 (与显示完全同步)
-var _circle_body: bool = false              ## 圆身模式 (AI vs AI 里让 P1 与 P2 一样是圆)
-var _circle_shape: CollisionShape2D = null  ## 圆身模式的碰撞体 (半径与圆形 AI 相同)
+var _shape_poly: CollisionPolygon2D = null  ## 纺锤: 形状碰撞体 (与显示完全同步)
+var _circle_shape: CollisionShape2D = null  ## 圆: 圆形碰撞体
+var _body_kind: String = "spindle"          ## 当前身体种类: spindle / circle
 
 func setup(index: int, scheme: InputScheme) -> void:
 	player_index = index
@@ -83,25 +83,50 @@ func _ready() -> void:
 	linear_damp = 0.0
 	angular_damp = GameConfig.player_angular_damp  # 撞击旋转后逐渐停下
 
-	# 形状碰撞体 (由形状方程采样成多边形, 与显示完全同步)
-	_shape_poly = CollisionPolygon2D.new()
-	_shape_poly.name = "ShapePoly"
-	add_child(_shape_poly)
-
-	for i in 2:
-		var hp := HitPoint.new()
-		hp.name = "HitPoint%s" % ("Front" if i == 0 else "Back")
-		var s := -1.0 if i == 0 else 1.0
-		hp.position = Vector2(0.0, s * _shape_half())
-		add_child(hp)
-		hit_points.append(hp)
-
-	rebuild_shape()
-	queue_redraw()
+	_build_body()
 
 ## 形状长轴半长 (判定区间距)。
 func _shape_half() -> float:
 	return GameConfig.player_shape_half()
+
+## 按身体种类搭建 碰撞体 + 判定区(s) —— 每种身体一套自己的"判定方式":
+##   spindle 纺锤 = 胶囊碰撞 + 两端两个击球点 (点对点, 要瞄准)
+##   circle  圆   = 圆形碰撞 + 中心一个判定点 (全向覆盖, 方向靠挥拍)
+func _build_body() -> void:
+	for hp in hit_points:
+		hp.queue_free()
+	hit_points.clear()
+	if _shape_poly != null:
+		_shape_poly.queue_free()
+		_shape_poly = null
+	if _circle_shape != null:
+		_circle_shape.queue_free()
+		_circle_shape = null
+	_body_kind = GameConfig.player_body_kind
+	if _body_kind == "circle":
+		_circle_shape = CollisionShape2D.new()
+		_circle_shape.name = "CircleShape"
+		add_child(_circle_shape)
+		var hi := HitPoint.new()
+		hi.name = "HitPointCenter"
+		add_child(hi)
+		hit_points.append(hi)
+	else:
+		_shape_poly = CollisionPolygon2D.new()
+		_shape_poly.name = "ShapePoly"
+		add_child(_shape_poly)
+		for i in 2:
+			var hp := HitPoint.new()
+			hp.name = "HitPoint%s" % ("Front" if i == 0 else "Back")
+			add_child(hp)
+			hit_points.append(hp)
+	rebuild_shape()
+	queue_redraw()
+
+## 切换身体种类 (设置 + 重建)。P4: 验证"每个身体一套判定"的可插拔架构。
+func set_body_kind(kind: String) -> void:
+	GameConfig.player_body_kind = kind
+	_build_body()
 
 ## 挥拍滤波 (玩家/AI 共享): 把"瞬时挥速"变成"前一段"的平滑/蓄力。
 ##   A 平滑: 短窗低通 (去噪, 仍灵敏)。 B 蓄力: 累积"沿朝向的甩动位移", 带衰减 (持续拖才够力)。
@@ -138,35 +163,25 @@ func _size_turn_mult() -> float:
 		return 1.0
 	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_turn_exponent)
 
-## 重建碰撞多边形 + 判定区间距 (换形状时调用)。
+## 重建碰撞体 + 判定区间距 (换形状/大小/身体时调用)。
 func rebuild_shape() -> void:
+	var sc: float = maxf(GameConfig.player_size_scale, 0.05)
+	if _body_kind == "circle":
+		if _circle_shape != null:
+			var circ := CircleShape2D.new()
+			circ.radius = GameConfig.circle_body_radius * sc
+			_circle_shape.shape = circ
+		if not hit_points.is_empty():
+			hit_points[0].position = Vector2.ZERO
+			hit_points[0].reach = GameConfig.circle_hit_reach * sc
+		queue_redraw()
+		return
 	if _shape_poly != null:
 		_shape_poly.polygon = GameConfig.player_shape_points()
 	if hit_points.size() >= 2:
 		var h: float = _shape_half()
 		hit_points[0].position = Vector2(0.0, -h) + hit_zone_offset_local
 		hit_points[1].position = Vector2(0.0, h) - hit_zone_offset_local
-	queue_redraw()
-
-## 圆形身体模式: 在 "AI vs AI" 里让 P1 与 P2 完全一样是圆 (碰撞 + 显示同步; 公平对拼)。
-## 关掉时恢复纺锤。半径 20 = 圆形 AI (AiPlayer.ai_radius)。
-func set_circle_body(on: bool) -> void:
-	_circle_body = on
-	if _shape_poly != null:
-		_shape_poly.disabled = on
-	if on:
-		if _circle_shape == null:
-			_circle_shape = CollisionShape2D.new()
-			_circle_shape.name = "CircleShape"
-			add_child(_circle_shape)
-		var circ := CircleShape2D.new()
-		circ.radius = 20.0
-		_circle_shape.shape = circ
-		_circle_shape.disabled = false
-	else:
-		if _circle_shape != null:
-			_circle_shape.disabled = true
-		rebuild_shape()
 	queue_redraw()
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
@@ -272,7 +287,7 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 	_update_hit_points()
 	# 击球手势 = 鼠标挥动 (两端共用同一个世界挥动速度):
 	#   两端"位置"仍反向移动, 但"挥动速度"一致, 这样鼠标向下猛拉=防守 与用哪端无关。
-	if hit_points.size() >= 2:
+	if not hit_points.is_empty():
 		var sw: Vector2 = swing_local.rotated(rotation)
 		var p01: float = _swing_power01(sw)
 		# 姿态: 与 HitSystem 同判据 (垂直分量够大 且 沿向够小 -> 防守姿态)
@@ -306,8 +321,9 @@ func _recenter_body(state: PhysicsDirectBodyState2D, step: float, aim_point: Vec
 	state.angular_velocity += clampf(desired_w - state.angular_velocity, -face_accel, face_accel)
 
 ## 两个击球区在角色局部坐标系中反向位移 (A=+delta, B=-delta)，再经 Transform 转世界。
+## (仅纺锤; 圆身判定点固定中心, 不随拖动位移)
 func _update_hit_points() -> void:
-	if hit_points.size() < 2:
+	if _body_kind != "spindle" or hit_points.size() < 2:
 		return
 	var l: float = _shape_half()
 	hit_points[0].position = Vector2(0.0, -l) + hit_zone_offset_local  # 前端 A
@@ -397,10 +413,11 @@ func _draw() -> void:
 	draw_rect(Rect2(-bw * 0.5, by, bw, bh), Color(0, 0, 0, 0.45))
 	draw_rect(Rect2(-bw * 0.5, by, bw * pwv, bh),
 		Color(0.45, 0.7, 1.0).lerp(Color(1.0, 0.35, 0.15), pwv))
-	if _circle_body:
-		draw_circle(Vector2.ZERO, 20.0, _body_color)
-		draw_arc(Vector2.ZERO, 20.0, 0.0, TAU, 32, Color(1, 1, 1, 0.5), 2.0)
-		draw_line(Vector2.ZERO, Vector2(8.0, 0.0), Color(1, 1, 1, 0.6), 4.0)
+	if _body_kind == "circle":
+		var r: float = GameConfig.circle_body_radius * maxf(GameConfig.player_size_scale, 0.05)
+		draw_circle(Vector2.ZERO, r, _body_color)
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 36, Color(1, 1, 1, 0.5), 2.0)
+		draw_line(Vector2.ZERO, Vector2(r * 0.45, 0.0), Color(1, 1, 1, 0.6), 4.0)
 		draw_circle(Vector2.ZERO, 5.0, Color(1, 1, 1, 0.85))
 		return
 	var pts: PackedVector2Array = GameConfig.player_shape_points()
