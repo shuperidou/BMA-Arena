@@ -418,6 +418,14 @@ func _ai_desired_swing() -> Vector2:
 	# vz 在 [vz_min, min(vz_max, vz_cap)] 随机; vz_cap 避免 v_perp 误触"救球"
 	var vz_cap: float = GameConfig.hit_vz_v0 + GameConfig.defense_perp_threshold * 0.8 * gain / ref
 	var vz_hi_all: float = maxf(GameConfig.hit_vz_min, minf(GameConfig.hit_vz_max, vz_cap))
+	# 高手/大师: 按几何反解"vz 上限" —— 即使打最小球速, 落地也不能越过桌近边(否则大 vz 会飞过整张桌)。
+	#   min*t_fl <= d_near -> t_fl <= d_near/min -> vz <= g*t_fl/2 - dz/t_fl
+	if GameConfig.ai_level >= 3:
+		var dz: float = z0 - GameConfig.table_z
+		var d_near: float = (Vector2(tx, 2.0 * w_y - (tr.end.y - mm)) - from).length()
+		var t_max: float = maxf(d_near / s_min, 0.001)
+		var vz_land_hi: float = g * t_max * 0.5 - dz / t_max
+		vz_hi_all = minf(vz_hi_all, maxf(vz_land_hi, GameConfig.hit_vz_min))
 	var vz: float = randf_range(GameConfig.hit_vz_min, vz_hi_all)
 	var disc: float = vz * vz + 2.0 * g * (z0 - GameConfig.table_z)
 	var t_fl: float = (vz + sqrt(maxf(disc, 0.0))) / maxf(g, 1.0)
