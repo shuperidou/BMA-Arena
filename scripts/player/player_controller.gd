@@ -428,7 +428,17 @@ func _ai_desired_swing() -> Vector2:
 	# 由 vz 反推所需水平球速 -> strength -> v_along (与 HitSystem 的力度曲线互逆)
 	var disc: float = vz * vz + 2.0 * g * (z0 - GameConfig.table_z)
 	var t_fl: float = (vz + sqrt(maxf(disc, 0.0))) / maxf(g, 1.0)
-	var want_speed: float = dist / maxf(t_fl, 0.0001) \
+	# 高手/大师: 自己调力度让球落桌 —— 补偿"墙反射损耗" (wall_bounce_factor<1 让反射段变慢,
+	# 否则落点会系统性偏移)。仍在玩家区间内、仍走 HitSystem -> 与玩家平等。
+	var t_eff: float = t_fl
+	if GameConfig.ai_level >= 3:
+		var wbf: float = clampf(GameConfig.wall_bounce_factor, 0.05, 1.0)
+		var w_y: float = GameConfig.wall_inner_y()
+		var fw: float = 0.0
+		if absf(from.y - aim.y) > 1.0:
+			fw = clampf((from.y - w_y) / (from.y - aim.y), 0.0, 1.0)
+		t_eff = maxf(t_fl * (1.0 - (1.0 - wbf) * fw), 0.0001)
+	var want_speed: float = dist / maxf(t_eff, 0.0001) \
 		* randf_range(1.0 - GameConfig.ai_shot_depth_jitter, 1.0 + GameConfig.ai_shot_depth_jitter)
 	var strength: float = clampf((want_speed - GameConfig.hit_speed_min) \
 		/ maxf(GameConfig.hit_speed_max - GameConfig.hit_speed_min, 1.0), 0.0, 1.0)

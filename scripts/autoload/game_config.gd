@@ -255,20 +255,20 @@ var ai_error_power_max: float = 1.5    ## 失误表现-太重: 力度缩放
 ## 桌/墙是实体碰撞, 但球的可接点在桌正上方 -> 追击目标要投影到桌外(贴桌沿伸判定区够球),
 ## 否则 AI 会直线怼进桌子卡死。
 var ai_hit_reach: float = 44.0          ## 判定区触球半径 (AI 用; = 玩家 hit_reach, 保持平等)
-var ai_body_clearance: float = 22.0     ## 目标点必须离(缩过的)桌/边界这么多 (机身半径 + 余量)
+var ai_body_clearance: float = 40.0     ## 目标点必须离(缩过的)桌/边界这么多 (机身半径 + 余量)
 var ai_arm_len: float = 36.0            ## AI"手臂": 判定点朝球方向可伸出的最大长度 (能越桌够球)
 var ai_min_hit_height: float = 90.0     ## 最低击球高度: 球升到这么高(且已过顶点)才出手 -> 保证有滞空
 var ai_arm_speed: float = 500.0         ## 手臂伸/缩的速度上限 (px/s) -> 有连续性, 不瞬伸
 var ai_arm_accel: float = 2500.0        ## 手臂伸/缩的加速度上限 (px/s^2)
 var ai_personal_space: float = 78.0     ## 与对手保持的"个人空间"; 太近就侧向绕开
-var ai_arrive_dist: float = 16.0        ## 到达目标的判定距离 (越大越稳, 减少来回抖)
+var ai_arrive_dist: float = 20.0        ## 到达目标的判定距离 (越大越稳, 减少来回抖)
 var ai_target_smooth: float = 0.30      ## 目标平滑系数 (每帧向新目标插值; 1=不平滑)
 var ai_avoid_gain: float = 1.2          ## 绕对手的侧向权重
 var ai_stuck_velocity: float = 30.0     ## 想动却低于此速度视为"卡住"
 var ai_unstick_frames: int = 14         ## 连续卡住这么多帧 -> 触发脱困侧移
 var ai_unstick_gain: float = 1.6        ## 脱困侧移权重
 var ai_shot_depth_jitter: float = 0.12  ## 击球落点深度抖动 (±比例); 0=完全精确
-var ai_feint_switch_dist: float = 150.0  ## 假动作: 球近至此距离内才切换成真实朝向
+var ai_feint_switch_dist: float = 200.0  ## 假动作: 球近至此距离内才切换成真实朝向
 
 ## ---- AI 强度 / 等级 (ESC 菜单选择) ----
 ## 等级 = 一组"能力与技巧": 失误率 / 挑对手对侧落点 / 假动作 / 扣杀。
