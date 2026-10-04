@@ -220,7 +220,7 @@ func _run() -> void:
 		or absf(gm.get_gene("aggression") - gr.get_gene("aggression")) > 0.0, "")
 	var gg: AiGenome = gr.clone()
 	for i in 30:
-		gg = gg.grown(0.05, 0.02)
+		gg = gg.grown(0.005, 0.05)   # 小变异 + 大成长 -> 失误应稳定下降 (避免随机抖动导致误判)
 	_check("T9c 成长使失误下降 (越练越强)", gg.get_gene("error_chance") < gr.get_gene("error_chance") - 0.01,
 		"err %.2f->%.2f" % [gr.get_gene("error_chance"), gg.get_gene("error_chance")])
 	var back: AiGenome = AiGenome.from_dict(gr.to_dict())

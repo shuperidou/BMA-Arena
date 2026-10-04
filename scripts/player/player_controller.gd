@@ -107,6 +107,8 @@ func _build_body() -> void:
 	match _body_kind:
 		"circle":
 			_build_circle_body()
+		"polar":
+			_build_polar_body()
 		_:
 			_build_spindle_body()
 	rebuild_shape()
@@ -132,6 +134,18 @@ func _build_circle_body() -> void:
 	hi.name = "HitPointCenter"
 	add_child(hi)
 	hit_points.append(hi)
+
+## 极坐标花瓣: 多边形碰撞 (r(θ) 公式) + 各花瓣尖一个判定点 (判定点数量 = 花瓣数)。
+func _build_polar_body() -> void:
+	_shape_poly = CollisionPolygon2D.new()
+	_shape_poly.name = "ShapePoly"
+	add_child(_shape_poly)
+	var n: int = maxi(GameConfig.polar_lobes, 1)
+	for i in n:
+		var hp := HitPoint.new()
+		hp.name = "HitPointTip%d" % i
+		add_child(hp)
+		hit_points.append(hp)
 
 ## 切换身体种类 (设置 + 重建)。P4: 验证"每个身体一套判定"的可插拔架构。
 func set_body_kind(kind: String) -> void:
@@ -184,6 +198,17 @@ func rebuild_shape() -> void:
 		if not hit_points.is_empty():
 			hit_points[0].position = Vector2.ZERO
 			hit_points[0].reach = GameConfig.circle_hit_reach * sc
+		queue_redraw()
+		return
+	if _body_kind == "polar":
+		if _shape_poly != null:
+			_shape_poly.polygon = GameConfig.player_shape_points()
+		var n: int = maxi(GameConfig.polar_lobes, 1)
+		var rm: float = GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc
+		for i in mini(hit_points.size(), n):
+			var th: float = TAU * float(i) / float(n)
+			hit_points[i].position = Vector2(rm * cos(th), rm * sin(th))
+			hit_points[i].reach = GameConfig.hit_reach * sc
 		queue_redraw()
 		return
 	if _shape_poly != null:

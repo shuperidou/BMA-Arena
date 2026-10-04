@@ -86,15 +86,21 @@ var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [
 var player_body_kind: String = "spindle"  ## 身体种类 (决定用哪套击球判定): "spindle" 纺锤 / "circle" 圆
 ## 已实现的身体族 (每种 = 一套 碰撞 + 判定布点 规则)。顺序 = ESC 菜单顺序。
 ## 加新身体: 往这里加 key + 在 body_kind_label 加名字 + 在 PlayerController 写 _build_xxx()。
-const BODY_KINDS: Array[String] = ["spindle", "circle"]
+const BODY_KINDS: Array[String] = ["spindle", "circle", "polar"]
 func body_kind_label(k: String) -> String:
 	match k:
 		"circle":
 			return "圆 (中心全向)"
+		"polar":
+			return "极坐标花瓣 (花瓣数=判定点)"
 		_:
 			return "纺锤 (两端两点)"
 var circle_body_radius: float = 20.0      ## "圆"身体的碰撞半径
 var circle_hit_reach: float = 40.0        ## "圆"身体的中心判定半径 (全向覆盖; 圆靠挥拍定方向, 不靠判定点位)
+## "极坐标花瓣"身体: 形状 = r(θ) = r0·(1 + amp·cos(lobes·θ)); 判定点放在各花瓣尖(=花瓣数个)。
+var polar_r0: float = 26.0                ## 基础半径
+var polar_lobes: int = 4                  ## 花瓣数 (同时 = 判定点数量)
+var polar_amp: float = 0.45               ## 花瓣深浅 0~0.9 (0=圆, 越大越尖)
 var player_shape_index: int = 0           ## 当前身体显示形状 (只有 0 纺锤是已设计的)
 var shape_segments: int = 28              ## 曲边采样段数
 ## 纺锤(唯一已设计): 形状=胶囊; 方程参数 = player_half_length(长半) + player_radius(宽半);
@@ -163,9 +169,26 @@ func spindle_points(L: float, r: float) -> PackedVector2Array:
 		pts.append(Vector2(r * cos(t), -sc + r * sin(t)))
 	return pts
 
-## 采样身体边界点 (角色局部坐标, 未旋转)。现在只有纺锤一种身体。
+## 极坐标花瓣边界: r(θ) = r0·(1 + amp·cos(lobes·θ))。(lobes 个花瓣尖)
+func polar_points(r0: float, lobes: int, amp: float, seg: int = 64) -> PackedVector2Array:
+	var n: int = maxi(seg, 12)
+	var lo: float = maxf(float(lobes), 1.0)
+	var a: float = clampf(amp, -0.9, 0.9)
+	var pts := PackedVector2Array()
+	for k in n:
+		var th: float = TAU * float(k) / float(n)
+		var r: float = r0 * (1.0 + a * cos(lo * th))
+		pts.append(Vector2(r * cos(th), r * sin(th)))
+	return pts
+
+## 采样身体边界点 (角色局部坐标, 未旋转)。按 player_body_kind 分派。
+## (圆身体用原生 CircleShape2D, 不走这里; 这里给纺锤/极坐标等"多边形"身体用)
 func player_shape_points(_idx: int = -1) -> PackedVector2Array:
-	var pts: PackedVector2Array = spindle_points(player_half_length, player_radius)
+	var pts: PackedVector2Array
+	if player_body_kind == "polar":
+		pts = polar_points(polar_r0, polar_lobes, polar_amp)
+	else:
+		pts = spindle_points(player_half_length, player_radius)
 	if player_size_scale != 1.0:
 		for k in pts.size():
 			pts[k] = pts[k] * player_size_scale
