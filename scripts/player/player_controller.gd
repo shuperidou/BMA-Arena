@@ -21,6 +21,7 @@ var debug_last_error: String = ""   ## 最近一次 AI 失误表现 (Debug 用)
 var _ai_stuck_frames: int = 0       ## AI 连续"想动却动不了"的帧数 (脱困用)
 var _swing_smooth: Vector2 = Vector2.ZERO  ## 挥拍滤波 A: 平滑后的挥速
 var _swing_charge: float = 0.0             ## 挥拍滤波 B: 蓄力 (0..1)
+var _ai_save_cd: float = 0.0               ## AI 救球冷却剩余时间
 var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
 var _ai_aim_y: float = 0.0          ## AI 本次进攻落点 y (深度; 高手会据 hit_speed 区间自动换算)
 var _ai_face_dir: Vector2 = Vector2.ZERO  ## 高手/大师: 解析求得的出球方向 (供朝向跟随)
@@ -136,6 +137,7 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 
 	# --- 击球区控制 (玩家=鼠标; AI=判定点收到中心, 像圆形 AI 那样用中心触球) ---
 	if ai_enabled:
+		_ai_save_cd = maxf(0.0, _ai_save_cd - step)
 		# 对手换了击球 -> 重新选本次落点 (方向由朝向决定, 见 _ai_face_point)
 		if ball != null and ball.last_hitter != _ai_last_hitter_seen:
 			_ai_last_hitter_seen = ball.last_hitter
@@ -471,6 +473,12 @@ func _ai_desired_swing() -> Vector2:
 		return Vector2.ZERO
 	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
 	var perp: Vector2 = facing.rotated(PI * 0.5)
+	# AI 救球 (搏命 A + 冷却 B): "够呛"(球很高)且冷却好 -> 用防守姿态救球 (产出高球, 可被扣杀惩罚)
+	if GameConfig.ai_save_enabled and _ai_save_cd <= 0.0 and ball.returnable \
+			and ball.z >= GameConfig.ai_save_height_min:
+		_ai_save_cd = GameConfig.ai_save_cooldown
+		debug_last_error = "救球"
+		return perp * (GameConfig.defense_perp_threshold * 2.0)
 	var ref: float = maxf(GameConfig.hit_zone_speed_ref, 1.0)
 	var curve: float = maxf(GameConfig.hit_speed_curve, 0.05)
 	var from: Vector2 = ball.global_position

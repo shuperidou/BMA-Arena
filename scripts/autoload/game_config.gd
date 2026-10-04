@@ -106,6 +106,12 @@ var size_move_exponent: float = 0.55      ## 体型→移动速度代价: speed 
 var size_turn_exponent: float = 0.45      ## 体型→转身速度代价: turn  ∝ size^(-此指数)
 var ai_test_seconds: float = 5.0          ## P4"试战"时长(秒): 应用候选后双方AI对打一小段给玩家看
 
+## ---- AI 救球 (F1 菜单 0 开关): 搏命(A) + 冷却(B) ----
+## AI 只在"够呛"(球很高)且冷却好时, 用一次防守姿态救球 -> 救出的球很高, 正好可被扣杀惩罚。
+var ai_save_enabled: bool = false
+var ai_save_cooldown: float = 4.0         ## 冷却(秒): 一次救球后这么久内不再救
+var ai_save_height_min: float = 120.0     ## "够呛"判定: 球高 ≥ 此值才考虑救球
+
 ## ---- 挥拍滤波 (玩家/AI 共享): 力量不看"瞬时", 看"前一段" ----
 ##   0=瞬时(原) 1=A平滑(短窗低通) 2=B蓄力(累积位移, 衰减) 3=A+B
 var swing_filter_mode: int = 1
