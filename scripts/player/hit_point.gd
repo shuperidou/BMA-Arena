@@ -8,7 +8,10 @@ extends Node2D
 var reach: float = 22.0
 var velocity: Vector2 = Vector2.ZERO        ## 世界空间实际速度 (有限差分)
 var swing_velocity: Vector2 = Vector2.ZERO  ## 判定区"挥动"速度 (未夹制, 经身体 rotation; 击球力度依据)
-var power01: float = 0.0                     ## 当前挥拍力量 (0..1, 由 PlayerController 写入 -> 判定区填充色)
+var power01: float = 0.0:                    ## 当前挥拍力量 (0..1) -> 判定区填充色
+	set(v):
+		power01 = v
+		queue_redraw()
 var _prev_world: Vector2 = Vector2.ZERO
 var _has_prev: bool = false
 
