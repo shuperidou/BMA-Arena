@@ -141,8 +141,12 @@ func _cycle_debug_mode() -> void:
 
 ## 重新构建所有角色的形状 (ESC 菜单换形状/改大小后调用; 显示+碰撞+判定间距同步)。
 func rebuild_shapes() -> void:
+	# 变异后身体种类可能变了 -> 对玩家重建整具身体; AI 保持自己的圆身
 	for p in players:
-		p.rebuild_shape()
+		if p.player_index == 1:
+			p.set_body_kind(GameConfig.player_body_kind)
+		else:
+			p.rebuild_shape()
 
 ## 打开 P4 变异面板 (ESC 菜单「变异」按钮调用)。
 func open_mutation() -> void:

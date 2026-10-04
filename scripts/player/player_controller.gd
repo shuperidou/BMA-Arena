@@ -213,8 +213,10 @@ func rebuild_shape() -> void:
 		var rm: float = GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc
 		for i in mini(hit_points.size(), n):
 			var th: float = TAU * float(i) / float(n)
-			hit_points[i].position = Vector2(rm * cos(th), rm * sin(th))
-			hit_points[i].reach = GameConfig.hit_reach * sc
+			var base := Vector2(rm * cos(th), rm * sin(th))
+			var s: float = -1.0 if base.y > 0.0 else 1.0
+			hit_points[i].position = base + hit_zone_offset_local * s     # 判定点随拖动移动
+			hit_points[i].reach = GameConfig.hit_reach * sc               # 判定半径随体型
 		queue_redraw()
 		return
 	if _shape_poly != null:
@@ -223,6 +225,8 @@ func rebuild_shape() -> void:
 		var h: float = _shape_half()
 		hit_points[0].position = Vector2(0.0, -h) + hit_zone_offset_local
 		hit_points[1].position = Vector2(0.0, h) - hit_zone_offset_local
+		hit_points[0].reach = GameConfig.hit_reach * sc                    # 判定半径随体型 (原来漏了)
+		hit_points[1].reach = GameConfig.hit_reach * sc
 	queue_redraw()
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
@@ -361,10 +365,23 @@ func _recenter_body(state: PhysicsDirectBodyState2D, step: float, aim_point: Vec
 	var face_accel: float = GameConfig.base_face_acceleration * step * tmult
 	state.angular_velocity += clampf(desired_w - state.angular_velocity, -face_accel, face_accel)
 
-## 两个击球区在角色局部坐标系中反向位移 (A=+delta, B=-delta)，再经 Transform 转世界。
-## (仅纺锤; 圆身判定点固定中心, 不随拖动位移)
+## 判定点随拖动位移 (纺锤 + 参数形状; 圆身固定中心, 不移动)。
+##   纺锤: 两端 A=+delta / B=-delta。 参数形状: 各点按 y 符号反向位移 (与纺锤同一套规则)。
 func _update_hit_points() -> void:
-	if _body_kind != "spindle" or hit_points.size() < 2:
+	if _body_kind == "circle" or hit_points.is_empty():
+		return
+	if _body_kind != "spindle":
+		var sc: float = maxf(GameConfig.player_size_scale, 0.05)
+		if _body_kind == "polar":
+			var n: int = maxi(GameConfig.polar_lobes, 1)
+			var rm: float = GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc
+			for i in mini(hit_points.size(), n):
+				var th: float = TAU * float(i) / float(n)
+				var base := Vector2(rm * cos(th), rm * sin(th))
+				var s: float = -1.0 if base.y > 0.0 else 1.0
+				hit_points[i].position = base + hit_zone_offset_local * s
+		return
+	if hit_points.size() < 2:
 		return
 	var l: float = _shape_half()
 	hit_points[0].position = Vector2(0.0, -l) + hit_zone_offset_local  # 前端 A

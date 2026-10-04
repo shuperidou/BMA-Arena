@@ -197,7 +197,7 @@ func _run() -> void:
 	_check("T8b 候选参数在范围内", ok_range,
 		"长[%.0f,%.0f] 宽[%.0f,%.0f]" % [GameConfig.mutation_len_min, GameConfig.mutation_len_max,
 			GameConfig.mutation_wid_min, GameConfig.mutation_wid_max])
-	MutationSystem.apply(MutationSystem.make(110.0, 20.0, 1.2, "t"))
+	MutationSystem.apply({"kind": "spindle", "half_len": 110.0, "radius": 20.0, "size_scale": 1.2})
 	_check("T8c 应用候选后当前身体更新",
 		absf(GameConfig.player_half_length - 110.0) < 0.001 and absf(GameConfig.player_radius - 20.0) < 0.001 \
 		and absf(GameConfig.player_size_scale - 1.2) < 0.001,
@@ -205,8 +205,8 @@ func _run() -> void:
 	_check("T8d 体型代价 (大=移动慢/转身难)",
 		p1._size_speed_mult() < 1.0 and p1._size_turn_mult() < 1.0,
 		"spd=%.3f turn=%.3f" % [p1._size_speed_mult(), p1._size_turn_mult()])
-	MutationSystem.apply(MutationSystem.make(90.0, 14.0, 1.0, "t"))   # 还原
-	p1.rebuild_shape()
+	MutationSystem.apply({"kind": "spindle", "half_len": 90.0, "radius": 14.0, "size_scale": 1.0})   # 还原
+	p1.set_body_kind("spindle")   # 变异可能改过身体种类 -> 重建
 
 	# T9: ② AI 基因 —— 随机/变异/成长/序列化
 	var gr: AiGenome = AiGenome.make_random()
