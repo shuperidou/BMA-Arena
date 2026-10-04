@@ -211,19 +211,21 @@ func _run() -> void:
 	# T9: ② AI 基因 —— 随机/变异/成长/序列化
 	var gr: AiGenome = AiGenome.make_random()
 	_check("T9a 随机基因在范围内",
-		gr.error_chance >= 0.0 and gr.error_chance <= 0.5 and gr.aggression >= 0.0 and gr.aggression <= 1.0,
-		"err=%.2f agg=%.2f" % [gr.error_chance, gr.aggression])
+		gr.get_gene("error_chance") >= 0.0 and gr.get_gene("error_chance") <= 0.5
+		and gr.get_gene("aggression") >= 0.0 and gr.get_gene("aggression") <= 1.0,
+		"err=%.2f agg=%.2f" % [gr.get_gene("error_chance"), gr.get_gene("aggression")])
 	var gm: AiGenome = gr.mutated(0.1)
 	_check("T9b 变异改变基因",
-		absf(gm.error_chance - gr.error_chance) > 0.0 or absf(gm.aggression - gr.aggression) > 0.0, "")
+		absf(gm.get_gene("error_chance") - gr.get_gene("error_chance")) > 0.0
+		or absf(gm.get_gene("aggression") - gr.get_gene("aggression")) > 0.0, "")
 	var gg: AiGenome = gr.clone()
 	for i in 30:
 		gg = gg.grown(0.05, 0.02)
-	_check("T9c 成长使失误下降 (越练越强)", gg.error_chance < gr.error_chance - 0.01,
-		"err %.2f->%.2f" % [gr.error_chance, gg.error_chance])
+	_check("T9c 成长使失误下降 (越练越强)", gg.get_gene("error_chance") < gr.get_gene("error_chance") - 0.01,
+		"err %.2f->%.2f" % [gr.get_gene("error_chance"), gg.get_gene("error_chance")])
 	var back: AiGenome = AiGenome.from_dict(gr.to_dict())
-	_check("T9d 序列化往返一致", absf(back.error_chance - gr.error_chance) < 0.0001
-		and absf(back.save_willingness - gr.save_willingness) < 0.0001, "")
+	_check("T9d 序列化往返一致", absf(back.get_gene("error_chance") - gr.get_gene("error_chance")) < 0.0001
+		and absf(back.get_gene("save_willingness") - gr.get_gene("save_willingness")) < 0.0001, "")
 
 func _same_pts(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 	if a.size() != b.size():

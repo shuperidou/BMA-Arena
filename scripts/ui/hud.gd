@@ -112,14 +112,10 @@ func _update_ai_genome() -> void:
 	if g == null:
 		_ai_genome_label.text = "AI(玩家2) 基因: 无 (用 GameConfig 默认/段位)"
 		return
-	_ai_genome_label.text = "AI(玩家2) 风格: %s    第%d代\n" % [g.style_name(), match_ref.generation] \
-		+ " 失误 %s\n" % _gene_bar(g.error_chance) \
-		+ " 冒进 %s\n" % _gene_bar(g.aggression) \
-		+ " 救球 %s\n" % _gene_bar(g.save_willingness) \
-		+ " 扣杀 %s\n" % _gene_bar(g.smash_tendency) \
-		+ " 抖动 %s\n" % _gene_bar(g.aim_jitter) \
-		+ " 深浅 %s\n" % _gene_bar(g.depth_pref) \
-		+ " 假动作 %s" % _gene_bar(g.feint)
+	var txt: String = "AI(玩家2) 风格: %s    第%d代" % [g.style_name(), match_ref.generation]
+	for k in AiGenome.GENE_DEFS:
+		txt += "\n %s %s" % [AiGenome.GENE_DEFS[k]["label"], _gene_bar(g.get_gene(k))]
+	_ai_genome_label.text = txt
 
 func _gene_bar(v: float) -> String:
 	var n: int = clampi(int(round(clampf(v, 0.0, 1.0) * 10.0)), 0, 10)

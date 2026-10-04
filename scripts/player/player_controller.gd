@@ -29,19 +29,19 @@ var _ai_want_feint: bool = false           ## 本拍是否做假动作 (每拍�
 
 # --- ② 基因取值器 (无基因组则回落到 GameConfig, 保证行为不因缺基因而变) ---
 func _g_err() -> float:
-	return genome.error_chance if genome != null else GameConfig.ai_error_chance
+	return genome.get_gene("error_chance") if genome != null else GameConfig.ai_error_chance
 func _g_save() -> float:
-	return genome.save_willingness if genome != null else 0.35
+	return genome.get_gene("save_willingness") if genome != null else 0.35
 func _g_smash() -> float:
-	return genome.smash_tendency if genome != null else 0.5
+	return genome.get_gene("smash_tendency") if genome != null else 0.5
 func _g_depth() -> float:
-	return genome.depth_pref if genome != null else 0.5
+	return genome.get_gene("depth_pref") if genome != null else 0.5
 func _g_jitter() -> float:
-	return genome.aim_jitter if genome != null else 0.12
+	return genome.get_gene("aim_jitter") if genome != null else 0.12
 func _g_feint() -> float:
-	return genome.feint if genome != null else 0.5
+	return genome.get_gene("feint") if genome != null else 0.5
 func _g_aggression() -> float:
-	return genome.aggression if genome != null else 0.5
+	return genome.get_gene("aggression") if genome != null else 0.5
 var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
 var _ai_aim_y: float = 0.0          ## AI 本次进攻落点 y (深度; 高手会据 hit_speed 区间自动换算)
 var _ai_face_dir: Vector2 = Vector2.ZERO  ## 高手/大师: 解析求得的出球方向 (供朝向跟随)
