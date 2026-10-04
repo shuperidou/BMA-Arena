@@ -131,6 +131,13 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 		assist_angle = da * assist
 		assisted_dir = raw_dir.rotated(assist_angle)
 		final_speed = ball_speed
+		# 力度容错: 只修方向不够; 把球速朝"正好够到墙后镜像"的方向拉一点 (让力度差一点的球也能进好区)
+		var t_fl: float = 2.0 * vz / maxf(g, 1.0)
+		if t_fl > 0.0001:
+			var need_speed: float = (mirror - p).length() / t_fl
+			var ss: float = clampf(GameConfig.assist_speed_strength, 0.0, 1.0) * assist
+			final_speed = clampf(lerpf(ball_speed, need_speed, ss),
+				GameConfig.hit_speed_min, GameConfig.hit_speed_max)
 
 	return {
 		"velocity": assisted_dir * final_speed,

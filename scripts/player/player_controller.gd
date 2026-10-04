@@ -279,16 +279,10 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 		var is_def: bool = GameConfig.defense_perp_threshold > 0.0 \
 			and swing_local.y > GameConfig.defense_perp_threshold \
 			and absf(swing_local.x) < swing_local.y * GameConfig.defense_max_along_ratio
-		# 可击窗口: 球在本方且已接近判定区
-		var in_range: bool = ball != null and ball.state == GameTypes.BallState.LIVE \
-			and ball.returnable \
-			and hit_points[0].global_position.distance_to(ball.global_position) \
-				<= hit_points[0].reach + ball.radius + 26.0
 		for hp in hit_points:
 			hp.swing_velocity = sw
 			hp.power01 = p01
 			hp.posture = 1 if is_def else 0
-			hp.ball_in_range = in_range
 	debug_hit_zone_local_delta = target_local
 	# 鼠标左右拖动时，身体跟随做"有限的小幅旋转"
 	var drag_rad: float = 0.0

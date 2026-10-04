@@ -203,7 +203,8 @@ var position_bias_weight: float = 0.1   ## 偏置里"击球区位置"的权重 (
 
 ## 智能回球辅助 (0..1 单一旋钮)：1=只要触球就保证回桌；0=完全按玩家击球；中间=部分。
 ## 原始落点若不在"好区"(桌面内缩 assist_good_margin 像素) 就介入, 把方向拉向"墙的镜像点"。
-var assist_strength: float = 0.9        ## 辅助程度 0..1
+var assist_strength: float = 0.9        ## 辅助程度 0..1 (方向修正)
+var assist_speed_strength: float = 0.6  ## 力度容错 0..1: 只修方向不够时, 把球速也朝"正好落好区"拉一点
 var max_assist_angle: float = 180.0     ## 修正角硬上限(度)。180=不限制
 var assist_good_margin: float = 50.0    ## 好区=桌面内缩这么多像素。越大越容易触发
 
