@@ -22,6 +22,21 @@ var _ai_stuck_frames: int = 0       ## AI 连续"想动却动不了"的帧数 (�
 var _swing_smooth: Vector2 = Vector2.ZERO  ## 挥拍滤波 A: 平滑后的挥速
 var _swing_charge: float = 0.0             ## 挥拍滤波 B: 蓄力 (0..1)
 var _ai_save_cd: float = 0.0               ## AI 救球冷却剩余时间
+var genome: AiGenome = null                ## AI 行为基因 (②自进化; null = 用 GameConfig 默认)
+
+# --- ② 基因取值器 (无基因组则回落到 GameConfig, 保证行为不因缺基因而变) ---
+func _g_err() -> float:
+	return genome.error_chance if genome != null else GameConfig.ai_error_chance
+func _g_save() -> float:
+	return genome.save_willingness if genome != null else 0.35
+func _g_smash() -> float:
+	return genome.smash_tendency if genome != null else 0.5
+func _g_depth() -> float:
+	return genome.depth_pref if genome != null else 0.5
+func _g_jitter() -> float:
+	return genome.aim_jitter if genome != null else 0.12
+func _g_feint() -> float:
+	return genome.feint if genome != null else 0.5
 var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
 var _ai_aim_y: float = 0.0          ## AI 本次进攻落点 y (深度; 高手会据 hit_speed 区间自动换算)
 var _ai_face_dir: Vector2 = Vector2.ZERO  ## 高手/大师: 解析求得的出球方向 (供朝向跟随)
@@ -475,7 +490,7 @@ func _ai_desired_swing() -> Vector2:
 	var perp: Vector2 = facing.rotated(PI * 0.5)
 	# AI 救球 (搏命 A + 冷却 B): "够呛"(球很高)且冷却好 -> 用防守姿态救球 (产出高球, 可被扣杀惩罚)
 	if GameConfig.ai_save_enabled and _ai_save_cd <= 0.0 and ball.returnable \
-			and ball.z >= GameConfig.ai_save_height_min:
+			and ball.z >= GameConfig.ai_save_height_min and randf() < _g_save():
 		_ai_save_cd = GameConfig.ai_save_cooldown
 		debug_last_error = "救球"
 		return perp * (GameConfig.defense_perp_threshold * 2.0)
@@ -549,7 +564,7 @@ func _ai_desired_swing() -> Vector2:
 	var sw: Vector2 = facing * v_along + perp * v_perp
 	# 失误表现: omniscient 不失误; 其余按 ai_error_chance
 	debug_last_error = ""
-	if not omniscient and randf() < GameConfig.ai_error_chance:
+	if not omniscient and randf() < _g_err() + _g_jitter() * 0.5:
 		match randi() % 4:
 			0:
 				sw = sw.rotated(deg_to_rad(randf_range(-GameConfig.ai_error_aim_deg, GameConfig.ai_error_aim_deg)))
@@ -608,7 +623,7 @@ func _smart_shot(from: Vector2) -> Dictionary:
 	debug_last_error = ""
 	var ai_smash: bool = (GameConfig.debug_ai_smash or GameConfig.ai_level_smash()) and ball != null \
 		and ball.z >= GameConfig.ai_smash_height_min \
-		and randf() < GameConfig.smash_success_chance
+		and randf() < clampf(GameConfig.smash_success_chance * (0.3 + 1.4 * _g_smash()), 0.0, 1.0)
 	if ai_smash:
 		vz = GameConfig.smash_vz
 		var dsc: float = vz * vz + 2.0 * GameConfig.ball_gravity * (z0 - GameConfig.table_z)

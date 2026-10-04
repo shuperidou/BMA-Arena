@@ -138,6 +138,19 @@ func rebuild_shapes() -> void:
 func open_mutation() -> void:
 	mutation_panel.open()
 
+## ② 导出/导入 P1 的 AI 基因 (存成熟体 / 续训)。
+const GENOME_PATH := "user://ai_genome.json"
+
+func export_genome() -> void:
+	if players[0].genome == null:
+		players[0].genome = AiGenome.make_default()
+	var ok: bool = players[0].genome.save_to(GENOME_PATH)
+	EventBus.notify("AI 基因已导出: %s  [%s]" % ["OK" if ok else "失败", players[0].genome.style_name()], 2.0)
+
+func import_genome() -> void:
+	players[0].genome = AiGenome.load_from(GENOME_PATH)
+	EventBus.notify("AI 基因已导入: 风格[%s]" % players[0].genome.style_name(), 2.0)
+
 # --- P4 试战: 应用候选, 双方 AI 打一小段给玩家"看球风" (不评分), 之后回面板 ---
 var _testing: bool = false
 var _test_timer: float = 0.0
@@ -179,6 +192,15 @@ func _apply_debug_mode() -> void:
 		(p2 as AiPlayer).omniscient = omni
 	# AI vs AI: 玩家1 也交给 AI 驱动 (ai_enabled)
 	players[0].ai_enabled = ai_vs_ai
+	# ② AI vs AI = 训练模式: 双方随机基因 + 每分进化; 其它模式清空基因
+	match_ref.ai_evolve_enabled = ai_vs_ai
+	match_ref.generation = 0
+	if ai_vs_ai:
+		players[0].genome = AiGenome.make_random()
+		players[1].genome = AiGenome.make_random()
+	else:
+		players[0].genome = null
+		players[1].genome = null
 	match_ref.debug_mode_name = DEBUG_MODES[debug_mode]
 	EventBus.notify("调试模式 %d/%d: %s" % [debug_mode + 1, DEBUG_MODES.size(), DEBUG_MODES[debug_mode]], 2.5)
 	hud.update_debug_menu()

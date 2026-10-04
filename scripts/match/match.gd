@@ -23,6 +23,8 @@ var last_hitter: PlayerController = null
 var expected_receiver: PlayerController = null
 var solo_mode: bool = false  ## 调试：玩家2 消失，玩家1 自己发球自己接
 var debug_mode_name: String = "普通"  ## 当前调试模式名 (仅用于 HUD 显示)
+var ai_evolve_enabled: bool = false   ## ② 训练模式: 每分后败者继承胜者基因(变异+成长)
+var generation: int = 0               ## ② 已进化的代数
 
 var _timer: float = 0.0
 var _serve_timer: float = 0.0
@@ -220,6 +222,7 @@ func _award_point(winner_index: int, reason: int) -> void:
 		state_changed.emit(state)
 		return
 	scores[winner_index] += 1
+	_evolve_if_enabled(winner_index)
 	EventBus.score_changed.emit(scores)
 	EventBus.notify("玩家%d 得分  (%s)" % [winner_index, _reason_text(reason)], GameConfig.point_pause)
 	state = GameTypes.MatchState.POINT_PAUSE
@@ -230,6 +233,18 @@ func _award_point(winner_index: int, reason: int) -> void:
 	server_index = 3 - server_index  # TEMP: 暂时一直交替发球
 	EventBus.match_state_changed.emit(state)
 	state_changed.emit(state)
+
+## ② 进化一步: 败者继承 (胜者基因 + 变异 + 成长)。
+func _evolve_if_enabled(winner_index: int) -> void:
+	if not ai_evolve_enabled or winner_index < 1 or winner_index > players.size():
+		return
+	var w: PlayerController = players[winner_index - 1]
+	var l: PlayerController = _other(w)
+	if w == null or l == null or w.genome == null or l.genome == null:
+		return
+	l.genome = w.genome.grown(0.08, 0.02)
+	generation += 1
+	EventBus.notify("AI 进化 第%d代: 败者继承+变异  新风格[%s]" % [generation, l.genome.style_name()], 2.0)
 
 func _finish_match() -> void:
 	state = GameTypes.MatchState.MATCH_OVER

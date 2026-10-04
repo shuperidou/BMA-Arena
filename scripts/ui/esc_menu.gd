@@ -144,6 +144,16 @@ func _build() -> void:
 	_font(mutate, 20)
 	mutate.pressed.connect(_on_mutate)
 	brow.add_child(mutate)
+	var bexp := Button.new()
+	bexp.text = "导出基因"
+	_font(bexp, 17)
+	bexp.pressed.connect(_on_export_genome)
+	brow.add_child(bexp)
+	var bimp := Button.new()
+	bimp.text = "导入基因"
+	_font(bimp, 17)
+	bimp.pressed.connect(_on_import_genome)
+	brow.add_child(bimp)
 	var resume := Button.new()
 	resume.text = "继续"
 	_font(resume, 20)
@@ -167,6 +177,14 @@ func _on_mutate() -> void:
 	close()
 	if main_ref != null and main_ref.has_method("open_mutation"):
 		main_ref.open_mutation()
+
+func _on_export_genome() -> void:
+	if main_ref != null and main_ref.has_method("export_genome"):
+		main_ref.export_genome()
+
+func _on_import_genome() -> void:
+	if main_ref != null and main_ref.has_method("import_genome"):
+		main_ref.import_genome()
 
 func _on_filter_mode(i: int) -> void:
 	GameConfig.swing_filter_mode = i
