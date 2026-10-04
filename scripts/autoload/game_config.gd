@@ -268,6 +268,7 @@ var ai_stuck_velocity: float = 30.0     ## 想动却低于此速度视为"卡住
 var ai_unstick_frames: int = 14         ## 连续卡住这么多帧 -> 触发脱困侧移
 var ai_unstick_gain: float = 1.6        ## 脱困侧移权重
 var ai_shot_depth_jitter: float = 0.12  ## 击球落点深度抖动 (±比例); 0=完全精确
+var ai_shot_band_frac: float = 0.30     ## 高手/大师落点"稳定带": 桌面深度内缩此比例 (避免贴边)
 var ai_feint_switch_dist: float = 200.0  ## 假动作: 球近至此距离内才切换成真实朝向
 
 ## ---- AI 强度 / 等级 (ESC 菜单选择) ----
