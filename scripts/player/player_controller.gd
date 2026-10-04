@@ -104,9 +104,10 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 		# AI: 判定点收到中心, 每帧像甩鼠标一样设好"挥动速度"; 命中走同一 HitSystem。
 		var sw2: Vector2 = _ai_desired_swing()
 		# "手臂": 判定点朝球方向伸出 (最多 ai_arm_len), 让 AI 能越桌够球
-		# 1) 计算"想要的"伸手: 朝球方向, 最多 ai_arm_len; (时机门: 球升到位或已过顶点才伸)
+		# 1) 计算"想要的"伸手: 朝球方向, 最多 ai_arm_len。
+		#    时机门: 必须"本方可击(returnable)且球已过顶点(vz<=0)"才伸 -> 球要先升到顶点再落下, 才有合理滞空。
 		var want: Vector2 = Vector2.ZERO
-		if ball != null and (ball.vz <= 0.0 or ball.z >= GameConfig.ai_ready_height):
+		if ball != null and ball.returnable and ball.z >= GameConfig.ai_min_hit_height:
 			want = (ball.global_position - global_position).rotated(-rotation).limit_length(GameConfig.ai_arm_len)
 		# 2) 施加速度/加速度上限 (和身体移动同一套), 让手臂连续伸出/缩回, 而不是瞬移
 		var tv: Vector2 = (want - _ai_arm_cur).limit_length(GameConfig.ai_arm_speed)
