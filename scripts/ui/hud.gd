@@ -76,7 +76,8 @@ func update_debug_menu() -> void:
 		+ " 7  阻挡/救球提示: %s\n" % _mark(GameConfig.debug_show_block_hud) \
 		+ " 8  AI扣杀: %s\n" % _mark(GameConfig.debug_ai_smash) \
 		+ " 9  AI多样化: %s\n" % _mark(GameConfig.ai_diverse) \
-		+ " 0  AI救球: %s" % _mark(GameConfig.ai_save_enabled)
+		+ " 0  AI救球: %s\n" % _mark(GameConfig.ai_save_enabled) \
+		+ " P  落点预测线: %s" % _mark(GameConfig.debug_show_preview)
 
 func _mark(b: bool) -> String:
 	return "开" if b else "关"

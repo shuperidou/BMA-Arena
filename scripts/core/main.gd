@@ -111,6 +111,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_0:
 			if debug_layer.enabled:
 				_toggle_flag("ai_save_enabled")
+		KEY_P:
+			if debug_layer.enabled:
+				_toggle_flag("debug_show_preview")
 		KEY_R:
 			match_ref.restart()
 		KEY_1:

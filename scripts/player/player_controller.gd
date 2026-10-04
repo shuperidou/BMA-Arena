@@ -65,6 +65,9 @@ var _prev_drag: Vector2 = Vector2.ZERO
 var _prev_drag_valid: bool = false
 var _body_color: Color = Color(0.31, 0.82, 0.77)
 var _shape_poly: CollisionPolygon2D = null  ## 形状碰撞体 (与显示完全同步)
+var _preview_pts: PackedVector2Array = PackedVector2Array()  ## 击球落点预测折线 (世界坐标)
+var _preview_land: Vector2 = Vector2.ZERO                   ## 预测落点
+var _preview_has: bool = false                              ## 是否有有效预测可画
 var _circle_body: bool = false              ## 圆身模式 (AI vs AI 里让 P1 与 P2 一样是圆)
 var _circle_shape: CollisionShape2D = null  ## 圆身模式的碰撞体 (半径与圆形 AI 相同)
 
@@ -287,6 +290,7 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 		drag_rad = clampf(dx * GameConfig.drag_rot_sensitivity,
 			-GameConfig.drag_rot_max, GameConfig.drag_rot_max)
 	_recenter_body(state, step, GameConfig.table_center, drag_rad)
+	_compute_preview()
 
 ## 强回正: 快速转向"面向桌中心" (drag_rad = 鼠标拖动带来的小偏角; AI 传 0)。
 func _recenter_body(state: PhysicsDirectBodyState2D, step: float, aim_point: Vector2, drag_rad: float) -> void:
@@ -308,6 +312,57 @@ func _update_hit_points() -> void:
 	var l: float = _shape_half()
 	hit_points[0].position = Vector2(0.0, -l) + hit_zone_offset_local  # 前端 A
 	hit_points[1].position = Vector2(0.0, l) - hit_zone_offset_local   # 后端 B
+
+## 击球落点预测: 用当前挥速(与 HitSystem 同公式)算出球被击后的水平折线(含一次墙反射) + 落点。
+## 仅供玩家"看得见会打向哪、多用力", 不改任何状态。
+func _compute_preview() -> void:
+	_preview_has = false
+	if not GameConfig.debug_show_preview or ai_enabled or input_scheme == null or hit_points.is_empty():
+		return
+	if ball == null or ball.state != GameTypes.BallState.LIVE or not input_scheme.is_dragging():
+		return
+	var zone: HitPoint = hit_points[0]
+	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
+	var perp: Vector2 = facing.rotated(PI * 0.5)
+	var ref: float = maxf(GameConfig.hit_zone_speed_ref, 1.0)
+	var zv: Vector2 = zone.swing_velocity
+	var v_along: float = zv.dot(facing)
+	var v_perp: float = zv.dot(perp)
+	var t: float = clampf(absf(v_along) / ref, 0.0, 1.0)
+	var strength: float = pow(t, maxf(GameConfig.hit_speed_curve, 0.05))
+	var speed: float = lerpf(GameConfig.hit_speed_min, GameConfig.hit_speed_max, strength)
+	var zspeed: float = zv.length()
+	var swing: Vector2 = zv / zspeed if zspeed > 1.0 else Vector2.ZERO
+	var outward: Vector2 = zone.global_position - global_position
+	outward = outward.normalized() if outward.length() > 1.0 else facing
+	var bias: Vector2 = outward * GameConfig.position_bias_weight + swing
+	var raw_dir: Vector2 = (facing + bias * GameConfig.hit_direction_strength).normalized()
+	var perp_t: float = clampf(v_perp / ref, -1.0, 1.0)
+	var vz: float = clampf(GameConfig.hit_vz_v0 + perp_t * GameConfig.hit_vz_perp_gain,
+		GameConfig.hit_vz_min, GameConfig.hit_vz_max)
+	var from: Vector2 = zone.global_position
+	var z0: float = maxf(ball.z, GameConfig.table_z)
+	var g: float = maxf(GameConfig.ball_gravity, 1.0)
+	var dsc: float = vz * vz + 2.0 * g * (z0 - GameConfig.table_z)
+	var t_land: float = (vz + sqrt(maxf(dsc, 0.0))) / g
+	if t_land <= 0.001:
+		return
+	var wall_y: float = GameConfig.wall_inner_y()
+	var pts := PackedVector2Array()
+	pts.append(from)
+	var land: Vector2 = from + raw_dir * speed * t_land
+	if raw_dir.y < -0.0001:
+		var tw: float = (wall_y - from.y) / raw_dir.y
+		if tw > 0.0 and tw < t_land:
+			var wp: Vector2 = from + raw_dir * speed * tw
+			pts.append(wp)
+			var rdir := Vector2(raw_dir.x, -raw_dir.y)
+			land = wp + rdir * speed * (t_land - tw)
+	pts.append(land)
+	_preview_pts = pts
+	_preview_land = land
+	_preview_has = true
+	queue_redraw()
 
 ## 期望的世界移动方向 (默认来自输入; ai_enabled 时由 AI 决定)。
 func _desired_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
@@ -385,6 +440,13 @@ func _now() -> float:
 	return float(Time.get_ticks_msec()) / 1000.0
 
 func _draw() -> void:
+	if _preview_has:
+		var lp := PackedVector2Array()
+		for w in _preview_pts:
+			lp.append(to_local(w))
+		if lp.size() >= 2:
+			draw_polyline(lp, Color(1, 1, 0.5, 0.45), 2.0)
+		draw_arc(to_local(_preview_land), 9.0, 0.0, TAU, 20, Color(1, 1, 0.5, 0.85), 2.0)
 	if _circle_body:
 		draw_circle(Vector2.ZERO, 20.0, _body_color)
 		draw_arc(Vector2.ZERO, 20.0, 0.0, TAU, 32, Color(1, 1, 1, 0.5), 2.0)
