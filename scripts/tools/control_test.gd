@@ -175,8 +175,9 @@ func _run() -> void:
 	# T7: AI 追击目标点会投影到"可达区域" (桌/边界外), 避免怼桌卡死
 	var inside: Vector2 = GameConfig.table_center
 	var out: Vector2 = p1._clamp_reachable(inside)
-	_check("T7 目标点被推出桌外", not GameConfig.table_rect().grow(GameConfig.ai_body_clearance).has_point(out),
-		"in=%s out=%s" % [str(inside.round()), str(out.round())])
+	_check("T7 目标点被推出(缩过的)桌外",
+		not GameConfig.table_block_rect().grow(GameConfig.ai_body_clearance).has_point(out),
+		"in=%s out=%s margin=%.0f" % [str(inside.round()), str(out.round()), GameConfig.table_player_margin])
 
 func _same_pts(a: PackedVector2Array, b: PackedVector2Array) -> bool:
 	if a.size() != b.size():

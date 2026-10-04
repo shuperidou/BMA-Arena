@@ -23,6 +23,8 @@ var wall_thickness: float = 16.0
 ## [TUNED] 桌面远边 y=-178, 近边 y=-28, 与墙之间的缝隙 34px。
 var table_size: Vector2 = Vector2(380.0, 150.0)
 var table_center: Vector2 = Vector2(0.0, -103.0)
+## 角色本体允许"越过桌面"这么多像素 (桌子对玩家的碰撞体向内缩这么多; 球弹跳仍按 table_rect)。
+var table_player_margin: float = 14.0
 
 # ============================================================
 #  B. 球 (俯视 XY + 独立高度 Z)
@@ -253,8 +255,11 @@ var ai_error_power_max: float = 1.5    ## 失误表现-太重: 力度缩放
 ## 桌/墙是实体碰撞, 但球的可接点在桌正上方 -> 追击目标要投影到桌外(贴桌沿伸判定区够球),
 ## 否则 AI 会直线怼进桌子卡死。
 var ai_hit_reach: float = 44.0          ## 判定区触球半径 (AI 用; = 玩家 hit_reach, 保持平等)
-var ai_body_clearance: float = 26.0     ## 目标点必须离桌/边界这么多 (机身半径 + 余量)
+var ai_body_clearance: float = 22.0     ## 目标点必须离(缩过的)桌/边界这么多 (机身半径 + 余量)
+var ai_arm_len: float = 72.0            ## AI"手臂": 判定点朝球方向可伸出的最大长度 (能越桌够球)
 var ai_personal_space: float = 78.0     ## 与对手保持的"个人空间"; 太近就侧向绕开
+var ai_arrive_dist: float = 16.0        ## 到达目标的判定距离 (越大越稳, 减少来回抖)
+var ai_target_smooth: float = 0.30      ## 目标平滑系数 (每帧向新目标插值; 1=不平滑)
 var ai_avoid_gain: float = 1.2          ## 绕对手的侧向权重
 var ai_stuck_velocity: float = 30.0     ## 想动却低于此速度视为"卡住"
 var ai_unstick_frames: int = 14         ## 连续卡住这么多帧 -> 触发脱困侧移
@@ -355,3 +360,7 @@ func wall_inner_y() -> float:
 
 func table_rect() -> Rect2:
 	return Rect2(table_center - table_size * 0.5, table_size)
+
+## 桌子对"角色本体"的碰撞矩形 (向内缩 table_player_margin, 让角色可越桌一点)。球弹跳仍用 table_rect。
+func table_block_rect() -> Rect2:
+	return table_rect().grow(-table_player_margin)

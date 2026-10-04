@@ -28,7 +28,7 @@ func wall_rect() -> Rect2:
 func _build_static_bodies() -> void:
 	var t := 40.0
 	_add_box("Wall", _wall_rect)
-	_add_box("Table", _table_rect)
+	_add_box("Table", GameConfig.table_block_rect())
 	# 三条边界 (左/右/下)，把玩家关在活动区域内
 	_add_box("BoundLeft", Rect2(_arena_rect.position.x - t, _arena_rect.position.y - t,
 		t, _arena_rect.size.y + 2.0 * t))

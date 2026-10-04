@@ -22,6 +22,8 @@ var _ai_stuck_frames: int = 0       ## AI 连续"想动却动不了"的帧数 (�
 var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
 var _ai_bait_x: float = 0.0         ## 假动作诱饵 x (与真实落点相反侧)
 var _ai_last_hitter_seen: Node = null
+var _ai_smooth_target: Vector2 = Vector2.ZERO   ## 平滑后的走位目标 (抗抖)
+var _ai_smooth_ready: bool = false
 
 var hit_points: Array[HitPoint] = []
 ## 击球区在角色局部坐标系中的位移 (2D)。
@@ -97,8 +99,12 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 				_ai_pick_aim()
 		# AI: 判定点收到中心, 每帧像甩鼠标一样设好"挥动速度"; 命中走同一 HitSystem。
 		var sw2: Vector2 = _ai_desired_swing()
+		# "手臂": 判定点朝球方向伸出 (最多 ai_arm_len), 让 AI 能越桌够球
+		var arm: Vector2 = Vector2.ZERO
+		if ball != null:
+			arm = (ball.global_position - global_position).rotated(-rotation).limit_length(GameConfig.ai_arm_len)
 		for hp in hit_points:
-			hp.position = Vector2.ZERO
+			hp.position = arm
 			hp.reach = GameConfig.ai_hit_reach
 			hp.swing_velocity = sw2
 		_recenter_body(state, step, _ai_face_point(), 0.0)
@@ -204,9 +210,16 @@ func _desired_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
 ## AI 走位: 趋目标 + 躲对手碰撞箱 + 卡住脱困。
 func _ai_move_dir(state: PhysicsDirectBodyState2D) -> Vector2:
 	var from: Vector2 = state.transform.origin
-	var target: Vector2 = _target_point()
+	var raw_target: Vector2 = _target_point()
+	# 目标平滑 (抗抖): 每帧向真实目标插值, 避免目标逐帧跳动导致"来回跑"
+	if not _ai_smooth_ready:
+		_ai_smooth_target = raw_target
+		_ai_smooth_ready = true
+	else:
+		_ai_smooth_target = _ai_smooth_target.lerp(raw_target, GameConfig.ai_target_smooth)
+	var target: Vector2 = _ai_smooth_target
 	var to: Vector2 = target - from
-	if to.length() < 6.0:
+	if to.length() < GameConfig.ai_arrive_dist:
 		_ai_stuck_frames = 0
 		return Vector2.ZERO
 	var dir: Vector2 = to.normalized()
@@ -294,7 +307,7 @@ func _clamp_reachable(p: Vector2) -> Vector2:
 	var clr: float = GameConfig.ai_body_clearance
 	var ar: Rect2 = GameConfig.arena_rect().grow(-clr)
 	var q := Vector2(clampf(p.x, ar.position.x, ar.end.x), clampf(p.y, ar.position.y, ar.end.y))
-	var tr: Rect2 = GameConfig.table_rect().grow(clr)
+	var tr: Rect2 = GameConfig.table_block_rect().grow(clr)
 	if tr.has_point(q):
 		var d_l: float = q.x - tr.position.x
 		var d_r: float = tr.end.x - q.x
@@ -314,7 +327,7 @@ func _clamp_reachable(p: Vector2) -> Vector2:
 ## 桌子避让: 若贴着桌子(阈值内)且方向指向桌内, 去掉法向分量 -> 沿桌边滑(朝目标侧)。
 ## 玩家进不去桌子, 只能沿它的边绕 —— 这是"不怼桌卡死"的核心。
 func _slide_along_table(dir: Vector2, to: Vector2, from: Vector2) -> Vector2:
-	var tr: Rect2 = GameConfig.table_rect().grow(GameConfig.ai_body_clearance)
+	var tr: Rect2 = GameConfig.table_block_rect().grow(GameConfig.ai_body_clearance)
 	var closest := Vector2(clampf(from.x, tr.position.x, tr.end.x), clampf(from.y, tr.position.y, tr.end.y))
 	var n: Vector2 = from - closest
 	if n.length() > 90.0:
@@ -349,7 +362,7 @@ func _seg_hits_rect(a: Vector2, b: Vector2, r: Rect2) -> bool:
 
 ## 若直线路径被桌子挡住, 绕到"最省路"的桌角 (只处理这一格桌子, 足够)。
 func _route_around_table(dir: Vector2, from: Vector2, target: Vector2) -> Vector2:
-	var tr: Rect2 = GameConfig.table_rect().grow(GameConfig.ai_body_clearance)
+	var tr: Rect2 = GameConfig.table_block_rect().grow(GameConfig.ai_body_clearance)
 	# 仅当"路径中点落在桌内"才认为真的被挡 (避免目标恰在桌边时的误触发)
 	if not tr.has_point((from + target) * 0.5):
 		return dir
