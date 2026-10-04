@@ -16,14 +16,9 @@ var mutation_panel: MutationPanel
 var players: Array[PlayerController] = []
 var cam: Camera2D = null
 
-# --- 视听反馈 [TEMP]: 命中停顿(hitstop) + 震屏 + 程序化音效 ---
+# --- 反馈 [TEMP]: 命中停顿(hitstop) + 震屏 ---
 var _shake: float = 0.0
 var _hitstop_until_ms: int = 0
-var _audio: AudioStreamPlayer = null
-var _sfx_hit: AudioStreamWAV = null
-var _sfx_smash: AudioStreamWAV = null
-var _sfx_save: AudioStreamWAV = null
-var _sfx_score: AudioStreamWAV = null
 var _juice_enabled: bool = true
 
 func _ready() -> void:
@@ -38,7 +33,6 @@ func _ready() -> void:
 	cam.position = GameConfig.arena_center
 	add_child(cam)
 	cam.make_current()
-	_setup_audio()
 
 	ball = Ball.new()
 	ball.name = "Ball"
@@ -58,7 +52,6 @@ func _ready() -> void:
 	ai.global_position = Vector2(300.0, 140.0)
 	add_child(ai)
 	players.append(ai)
-	EventBus.score_changed.connect(func(_s: Dictionary) -> void: _play(_sfx_score, 1.0))
 
 	block_system = BlockSystem.new()
 	block_system.name = "BlockSystem"
@@ -254,49 +247,12 @@ func _on_ball_touched(pl: PlayerController, _hp: HitPoint) -> void:
 		_shake = 9.0
 		_hitstop_until_ms = Time.get_ticks_msec() + 70
 		Engine.time_scale = 0.05
-		_play(_sfx_smash, 1.05)
 	elif save == 1:
 		_shake = 5.0
-		_play(_sfx_save, 1.0)
 	elif smash == 2:
 		_shake = 3.0
-		_play(_sfx_hit, 0.8)
 	else:
 		_shake = 2.0 + 5.0 * clampf(strength, 0.0, 1.0)
-		_play(_sfx_hit, 0.9 + 0.4 * clampf(strength, 0.0, 1.0))
-
-func _play(stream: AudioStreamWAV, pitch: float) -> void:
-	if _audio == null or stream == null:
-		return
-	_audio.stream = stream
-	_audio.pitch_scale = pitch
-	_audio.play()
-
-## 程序化短音: 一段快速衰减的正弦 = "啪" 的一下 (不需要任何音频素材)。
-func _make_click(ms: int, freq: float, decay: float) -> AudioStreamWAV:
-	var sr: int = 22050
-	var n: int = int(sr * ms / 1000.0)
-	var data := PackedByteArray()
-	data.resize(n * 2)
-	for i in n:
-		var t: float = float(i) / float(sr)
-		var env: float = exp(-t * decay)
-		var s: float = sin(TAU * freq * t) * env
-		data.encode_s16(i * 2, int(clampf(s, -1.0, 1.0) * 30000.0))
-	var w := AudioStreamWAV.new()
-	w.format = AudioStreamWAV.FORMAT_16_BITS
-	w.mix_rate = sr
-	w.data = data
-	return w
-
-func _setup_audio() -> void:
-	_audio = AudioStreamPlayer.new()
-	_audio.name = "Sfx"
-	add_child(_audio)
-	_sfx_hit = _make_click(60, 520.0, 70.0)
-	_sfx_smash = _make_click(90, 220.0, 45.0)
-	_sfx_save = _make_click(70, 700.0, 60.0)
-	_sfx_score = _make_click(140, 880.0, 22.0)
 
 func _apply_debug_mode() -> void:
 	var solo: bool = debug_mode == 1
