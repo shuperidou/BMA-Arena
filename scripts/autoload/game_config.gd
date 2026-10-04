@@ -260,6 +260,31 @@ var ai_stuck_velocity: float = 30.0     ## 想动却低于此速度视为"卡住
 var ai_unstick_frames: int = 14         ## 连续卡住这么多帧 -> 触发脱困侧移
 var ai_unstick_gain: float = 1.6        ## 脱困侧移权重
 var ai_shot_depth_jitter: float = 0.12  ## 击球落点深度抖动 (±比例); 0=完全精确
+var ai_feint_switch_dist: float = 150.0  ## 假动作: 球近至此距离内才切换成真实朝向
+
+## ---- AI 强度 / 等级 (ESC 菜单选择) ----
+## 等级 = 一组"能力与技巧": 失误率 / 挑对手对侧落点 / 假动作 / 扣杀。
+var ai_level: int = 2
+
+func ai_level_count() -> int:
+	return 5
+
+func ai_level_name(i: int = -1) -> String:
+	var k: int = ai_level if i < 0 else i
+	var names: Array[String] = ["新手", "入门", "普通", "高手", "大师"]
+	return names[clampi(k, 0, names.size() - 1)]
+
+## 应用等级 (写入 ai_error_chance)。换档后调用。
+func ai_apply_level() -> void:
+	var errs: Array[float] = [0.30, 0.15, 0.05, 0.02, 0.0]
+	ai_error_chance = errs[clampi(ai_level, 0, errs.size() - 1)]
+
+func ai_smart_aim() -> bool:
+	return ai_level >= 2   ## 会挑"对手对侧"落点
+func ai_feint() -> bool:
+	return ai_level >= 3   ## 会做假动作
+func ai_level_smash() -> bool:
+	return ai_level >= 3   ## 会用扣杀 (与 F1 8 手动开关取或)
 
 # ============================================================
 #  I. 阻挡判定 (全部临时阈值) [TEMP]

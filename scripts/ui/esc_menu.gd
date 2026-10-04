@@ -5,6 +5,7 @@ extends CanvasLayer
 
 var main_ref: Node = null
 var _shape_opt: OptionButton
+var _ai_opt: OptionButton
 var _size_slider: HSlider
 var _size_label: Label
 
@@ -41,13 +42,13 @@ func _build() -> void:
 	add_child(dim)
 
 	var panel := Panel.new()
-	panel.position = Vector2(430, 140)
-	panel.size = Vector2(420, 360)
+	panel.position = Vector2(430, 120)
+	panel.size = Vector2(420, 420)
 	add_child(panel)
 
 	var vb := VBoxContainer.new()
 	vb.position = Vector2(28, 22)
-	vb.size = Vector2(364, 316)
+	vb.size = Vector2(364, 376)
 	vb.add_theme_constant_override("separation", 18)
 	panel.add_child(vb)
 
@@ -73,6 +74,24 @@ func _build() -> void:
 	_shape_opt.get_popup().add_theme_font_size_override("font_size", 20)
 	_shape_opt.item_selected.connect(_on_shape)
 	srow.add_child(_shape_opt)
+
+	# AI 强度
+	var arow := HBoxContainer.new()
+	arow.add_theme_constant_override("separation", 10)
+	vb.add_child(arow)
+	var alab := Label.new()
+	alab.text = "AI 强度:"
+	_font(alab, 20)
+	arow.add_child(alab)
+	_ai_opt = OptionButton.new()
+	_font(_ai_opt, 20)
+	for i in GameConfig.ai_level_count():
+		_ai_opt.add_item(GameConfig.ai_level_name(i), i)
+	_ai_opt.selected = GameConfig.ai_level
+	_ai_opt.get_popup().add_theme_font_override("font", GameConfig.ui_font())
+	_ai_opt.get_popup().add_theme_font_size_override("font_size", 20)
+	_ai_opt.item_selected.connect(_on_ai_level)
+	arow.add_child(_ai_opt)
 
 	# 大小拖动条
 	var zrow := HBoxContainer.new()
@@ -118,6 +137,10 @@ func _font(c: Control, sz: int) -> void:
 func _on_shape(i: int) -> void:
 	GameConfig.player_shape_index = i
 	_apply()
+
+func _on_ai_level(i: int) -> void:
+	GameConfig.ai_level = i
+	GameConfig.ai_apply_level()
 
 func _on_size(v: float) -> void:
 	GameConfig.player_size_scale = v

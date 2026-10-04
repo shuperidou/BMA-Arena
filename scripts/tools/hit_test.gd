@@ -403,6 +403,40 @@ func _run() -> void:
 	_check("T16 AI 落点可控 (左右明显不同)", absf(xl - xr) > 60.0,
 		"left=%.0f right=%.0f" % [xl, xr])
 
+	# T17: AI 等级 —— 挑对手对侧落点 / 假动作 / 失误率随等级变化
+	var ai4: AiPlayer = main_node.players[1]
+	ai4.rival = p1
+	ai4.global_position = Vector2(0.0, 30.0)
+	GameConfig.ai_level = 2
+	p1.global_position = Vector2(-120.0, 30.0)
+	ai4._ai_pick_aim()
+	var aim_r: float = ai4._ai_aim_x
+	p1.global_position = Vector2(120.0, 30.0)
+	ai4._ai_pick_aim()
+	var aim_l: float = ai4._ai_aim_x
+	_check("T17 挑对手对侧落点", aim_r > 0.0 and aim_l < 0.0,
+		"对手左->落点%.0f  对手右->落点%.0f" % [aim_r, aim_l])
+	GameConfig.ai_level = 3
+	ai4._ai_aim_x = 120.0
+	ai4._ai_bait_x = -120.0
+	ball.global_position = Vector2(0.0, -200.0)   # 球远 -> 朝向诱饵
+	var far_x: float = ai4._ai_face_point().x
+	ball.global_position = Vector2(0.0, 20.0)     # 球近 -> 朝向真实
+	var near_x: float = ai4._ai_face_point().x
+	_check("T17 假动作 (远=诱饵, 近=真实)",
+		absf(far_x + 120.0) < 1.0 and absf(near_x - 120.0) < 1.0,
+		"far=%.0f near=%.0f" % [far_x, near_x])
+	GameConfig.ai_level = 0
+	GameConfig.ai_apply_level()
+	var e_new: float = GameConfig.ai_error_chance
+	GameConfig.ai_level = 4
+	GameConfig.ai_apply_level()
+	var e_master: float = GameConfig.ai_error_chance
+	_check("T17 失误率随等级下降", e_new > e_master, "新手=%.2f 大师=%.2f" % [e_new, e_master])
+	GameConfig.ai_level = 2
+	GameConfig.ai_apply_level()
+	ball.global_position = Vector2(0.0, -90.0)
+
 ## 给定落点 x, 算出 AI 经 HitSystem 后的实际落点 x。
 func _ai_landing_x(ai: AiPlayer, aim_x: float) -> float:
 	ai._ai_aim_x = aim_x

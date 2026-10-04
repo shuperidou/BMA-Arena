@@ -20,6 +20,7 @@ var omniscient: bool = false        ## 万能模式: 接到球必落桌
 var debug_last_error: String = ""   ## 最近一次 AI 失误表现 (Debug 用)
 var _ai_stuck_frames: int = 0       ## AI 连续"想动却动不了"的帧数 (脱困用)
 var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
+var _ai_bait_x: float = 0.0         ## 假动作诱饵 x (与真实落点相反侧)
 var _ai_last_hitter_seen: Node = null
 
 var hit_points: Array[HitPoint] = []
@@ -305,15 +306,28 @@ func _clamp_reachable(p: Vector2) -> Vector2:
 			q.x = tr.end.x
 	return q
 
-## 换一次进攻落点 (在"好区"内随机 x, 让落点有变化; 走它自己的方向 -> 不受辅助拉回中心)。
+## 换一次进攻落点 (好区内)。达到"普通"以上会挑对手对侧 (逼他跑); 并备一个反侧诱饵做假动作。
 func _ai_pick_aim() -> void:
 	var tr := GameConfig.table_rect()
 	var m: float = maxf(GameConfig.assist_good_margin, 20.0)
-	_ai_aim_x = randf_range(tr.position.x + m, tr.end.x - m)
+	var lo: float = tr.position.x + m
+	var hi: float = tr.end.x - m
+	if GameConfig.ai_smart_aim() and rival != null:
+		var opp_x: float = rival.global_position.x
+		var far: float = hi if opp_x < 0.0 else lo        # 挑对手的反侧
+		_ai_aim_x = clampf(far + randf_range(-m, m), lo, hi)
+	else:
+		_ai_aim_x = randf_range(lo, hi)
+	_ai_bait_x = (lo + hi) - _ai_aim_x                    # 诱饵 = 真实落点的反侧
 
-## AI 朝向点 = 本次落点关于墙的镜像。朝向它 -> raw_dir 指向镜像 -> 撞墙后落点 = 目标 x。
+## AI 朝向点 = 落点关于墙的镜像。朝向它 -> raw_dir 指向镜像 -> 撞墙后落点 = 目标 x。
+## 假动作: 球还远时先朝向"诱饵"(反侧), 球近到阈值内再切真实落点 (骗对手先动)。
 func _ai_face_point() -> Vector2:
-	return Vector2(_ai_aim_x, 2.0 * GameConfig.wall_inner_y() - GameConfig.table_center.y)
+	var x: float = _ai_aim_x
+	if GameConfig.ai_feint() and ball != null \
+			and global_position.distance_to(ball.global_position) > GameConfig.ai_feint_switch_dist:
+		x = _ai_bait_x
+	return Vector2(x, 2.0 * GameConfig.wall_inner_y() - GameConfig.table_center.y)
 
 ## AI 的"挥动": 反推出能打到桌上目标的判定区速度 (world) —— 走与玩家相同的 HitSystem 判定。
 ## 目标 = 本次落点 _ai_aim_x 的墙镜像; 由 vz 反推所需球速 -> 反推 strength -> v_along。
@@ -355,7 +369,7 @@ func _ai_desired_swing() -> Vector2:
 	var strength: float = clampf((want_speed - GameConfig.hit_speed_min) \
 		/ maxf(GameConfig.hit_speed_max - GameConfig.hit_speed_min, 1.0), 0.0, 1.0)
 	# AI 扣杀开关(关): 高球时压低力度, 避免无意触发扣杀
-	if not GameConfig.debug_ai_smash and ball.z >= GameConfig.smash_height_min:
+	if not (GameConfig.debug_ai_smash or GameConfig.ai_level_smash()) and ball.z >= GameConfig.smash_height_min:
 		strength = minf(strength, maxf(GameConfig.smash_power_min - 0.05, 0.0))
 	var v_along: float = ref * pow(strength, 1.0 / curve)
 	var sw: Vector2 = facing * v_along + perp * v_perp
@@ -416,7 +430,7 @@ func _smart_shot(from: Vector2) -> Dictionary:
 		speed = clampf(speed, GameConfig.hit_speed_min, GameConfig.hit_speed_max)
 	# 扣杀 (仅当 F1 开关打开): 球够高 + 概率成功 -> vz 向下、速度由它反推(很快)
 	debug_last_error = ""
-	var ai_smash: bool = GameConfig.debug_ai_smash and ball != null \
+	var ai_smash: bool = (GameConfig.debug_ai_smash or GameConfig.ai_level_smash()) and ball != null \
 		and ball.z >= GameConfig.ai_smash_height_min \
 		and randf() < GameConfig.smash_success_chance
 	if ai_smash:

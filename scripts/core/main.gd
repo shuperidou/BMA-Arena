@@ -15,6 +15,7 @@ var esc_menu: EscMenu
 var players: Array[PlayerController] = []
 
 func _ready() -> void:
+	GameConfig.ai_apply_level()
 	arena = Arena.new()
 	arena.name = "Arena"
 	add_child(arena)
