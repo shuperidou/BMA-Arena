@@ -17,6 +17,7 @@ var players: Array[PlayerController] = []
 
 func _ready() -> void:
 	GameConfig.ai_apply_level()
+	_migrate_legacy_genome()
 	arena = Arena.new()
 	arena.name = "Arena"
 	add_child(arena)
@@ -138,18 +139,32 @@ func rebuild_shapes() -> void:
 func open_mutation() -> void:
 	mutation_panel.open()
 
-## ② 导出/导入 P1 的 AI 基因 (存成熟体 / 续训)。
-const GENOME_PATH := "user://ai_genome.json"
+## ② 导出/导入 P1 的 AI 基因。多槽位: 每槽一个文件, 互不覆盖 (存成熟体 / 续训)。
+const GENOME_SLOTS: int = 6
+const GENOME_PATH_LEGACY := "user://ai_genome.json"   ## 旧单文件 (迁移用)
+var genome_slot: int = 1
+
+func genome_path(slot: int) -> String:
+	return "user://ai_genome_%d.json" % slot
+
+func genome_slot_has(slot: int) -> bool:
+	return FileAccess.file_exists(genome_path(slot))
+
+## 把旧的单文件基因迁到 槽1 (若存在且 槽1 还是空的)。启动时调一次。
+func _migrate_legacy_genome() -> void:
+	if FileAccess.file_exists(GENOME_PATH_LEGACY) and not genome_slot_has(1):
+		var g: AiGenome = AiGenome.load_from(GENOME_PATH_LEGACY)
+		g.save_to(genome_path(1))
 
 func export_genome() -> void:
 	if players[0].genome == null:
 		players[0].genome = AiGenome.make_default()
-	var ok: bool = players[0].genome.save_to(GENOME_PATH)
-	EventBus.notify("AI 基因已导出: %s  [%s]" % ["OK" if ok else "失败", players[0].genome.style_name()], 2.0)
+	var ok: bool = players[0].genome.save_to(genome_path(genome_slot))
+	EventBus.notify("AI 基因已导出到 槽%d: %s  [%s]" % [genome_slot, "OK" if ok else "失败", players[0].genome.style_name()], 2.0)
 
 func import_genome() -> void:
-	players[0].genome = AiGenome.load_from(GENOME_PATH)
-	EventBus.notify("AI 基因已导入: 风格[%s]" % players[0].genome.style_name(), 2.0)
+	players[0].genome = AiGenome.load_from(genome_path(genome_slot))
+	EventBus.notify("AI 基因已从 槽%d 导入: 风格[%s]" % [genome_slot, players[0].genome.style_name()], 2.0)
 
 # --- P4 试战: 应用候选, 双方 AI 打一小段给玩家"看球风" (不评分), 之后回面板 ---
 var _testing: bool = false
@@ -201,7 +216,7 @@ func _apply_debug_mode() -> void:
 		players[1].genome = AiGenome.make_random()
 	elif debug_mode == 0:
 		players[0].genome = null
-		players[1].genome = AiGenome.load_from(GENOME_PATH)
+		players[1].genome = AiGenome.load_from(genome_path(genome_slot))
 	else:
 		players[0].genome = null
 		players[1].genome = null

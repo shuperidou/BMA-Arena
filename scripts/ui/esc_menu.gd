@@ -9,6 +9,7 @@ var _filter_opt: OptionButton
 var _smooth_slider: HSlider
 var _size_slider: HSlider
 var _size_label: Label
+var _slot_opt: OptionButton
 
 func _ready() -> void:
 	layer = 20
@@ -30,6 +31,7 @@ func toggle() -> void:
 
 func open() -> void:
 	visible = true
+	_refresh_slots()
 	get_tree().paused = true
 
 func close() -> void:
@@ -135,6 +137,22 @@ func _build() -> void:
 	zrow.add_child(_size_label)
 	_update_size_label()
 
+	# 基因槽位 (多槽: 导出/导入到当前槽, 互不覆盖)
+	var grow := HBoxContainer.new()
+	grow.add_theme_constant_override("separation", 10)
+	vb.add_child(grow)
+	var glab := Label.new()
+	glab.text = "基因槽位:"
+	_font(glab, 20)
+	grow.add_child(glab)
+	_slot_opt = OptionButton.new()
+	_font(_slot_opt, 18)
+	for i in 6:
+		_slot_opt.add_item("槽%d" % (i + 1), i)
+	_slot_opt.selected = 0
+	_slot_opt.item_selected.connect(_on_slot)
+	grow.add_child(_slot_opt)
+
 	# 按钮
 	var brow := HBoxContainer.new()
 	brow.add_theme_constant_override("separation", 16)
@@ -181,10 +199,29 @@ func _on_mutate() -> void:
 func _on_export_genome() -> void:
 	if main_ref != null and main_ref.has_method("export_genome"):
 		main_ref.export_genome()
+	_refresh_slots()
 
 func _on_import_genome() -> void:
 	if main_ref != null and main_ref.has_method("import_genome"):
 		main_ref.import_genome()
+
+func _on_slot(i: int) -> void:
+	if main_ref != null:
+		main_ref.genome_slot = i + 1
+
+## 刷新每个槽位的"空/已存"文字, 并高亮当前槽。
+func _refresh_slots() -> void:
+	if _slot_opt == null:
+		return
+	var cur: int = 1
+	if main_ref != null:
+		cur = main_ref.genome_slot
+	for i in _slot_opt.item_count:
+		var slot: int = i + 1
+		var has: bool = main_ref != null and main_ref.genome_slot_has(slot)
+		_slot_opt.set_item_text(i, "槽%d %s" % [slot, "●已存" if has else "○空"])
+		if slot == cur:
+			_slot_opt.selected = i
 
 func _on_filter_mode(i: int) -> void:
 	GameConfig.swing_filter_mode = i
