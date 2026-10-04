@@ -11,6 +11,8 @@ var _size_slider: HSlider
 var _size_label: Label
 var _mut_slider: HSlider
 var _mut_label: Label
+var _cross_slider: HSlider
+var _cross_label: Label
 var _slot_opt: OptionButton
 
 func _ready() -> void:
@@ -48,12 +50,12 @@ func _build() -> void:
 
 	var panel := Panel.new()
 	panel.position = Vector2(430, 120)
-	panel.size = Vector2(420, 476)
+	panel.size = Vector2(420, 536)
 	add_child(panel)
 
 	var vb := VBoxContainer.new()
 	vb.position = Vector2(28, 22)
-	vb.size = Vector2(364, 432)
+	vb.size = Vector2(364, 492)
 	vb.add_theme_constant_override("separation", 18)
 	panel.add_child(vb)
 
@@ -138,6 +140,28 @@ func _build() -> void:
 	_mut_label.text = "%.2f" % GameConfig.ai_mutation_rate
 	_font(_mut_label, 16)
 	erow.add_child(_mut_label)
+
+	# ② AI 吸收率 (锦标赛赢家吸收对手基因的比例)
+	var crow := HBoxContainer.new()
+	crow.add_theme_constant_override("separation", 10)
+	vb.add_child(crow)
+	var clab := Label.new()
+	clab.text = "吸收率:"
+	_font(clab, 20)
+	crow.add_child(clab)
+	_cross_slider = HSlider.new()
+	_cross_slider.min_value = 0.0
+	_cross_slider.max_value = 0.5
+	_cross_slider.step = 0.01
+	_cross_slider.value = GameConfig.ai_crossover_amount
+	_cross_slider.custom_minimum_size = Vector2(190, 26)
+	_cross_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_cross_slider.value_changed.connect(_on_cross_rate)
+	crow.add_child(_cross_slider)
+	_cross_label = Label.new()
+	_cross_label.text = "%.2f" % GameConfig.ai_crossover_amount
+	_font(_cross_label, 16)
+	crow.add_child(_cross_label)
 
 	# 大小拖动条
 	var zrow := HBoxContainer.new()
@@ -262,6 +286,11 @@ func _on_mut_rate(v: float) -> void:
 	GameConfig.ai_mutation_rate = v
 	if _mut_label != null:
 		_mut_label.text = "%.2f" % v
+
+func _on_cross_rate(v: float) -> void:
+	GameConfig.ai_crossover_amount = v
+	if _cross_label != null:
+		_cross_label.text = "%.2f" % v
 
 func _update_size_label() -> void:
 	_size_label.text = "%.2f" % GameConfig.player_size_scale
