@@ -188,8 +188,8 @@ var hit_zone_return_speed: float = 300.0     ## 松开后的回位速度 (单位
 # ============================================================
 ## 力度：由"击球区在世界空间中的实际速度"决定，经过曲线映射到球速区间。
 var hit_speed_min: float = 500.0       ## 判定区基本没动时的球速 (要"不大")
-var hit_speed_max: float = 800.0       ## 挥到参考速度时的球速
-var hit_speed_curve: float = 0.5       ## 力度响应曲线指数 (<1 会更快接近满力)
+var hit_speed_max: float = 700.0       ## 挥到参考速度时的球速
+var hit_speed_curve: float = 0.95       ## 力度响应曲线指数 (<1 会更快接近满力)
 var hit_zone_speed_ref: float = 300.0   ## 挥动速度(px/s)达到此值 = 满力 (越小越容易到顶)
 ## vy/弧线 = hit_vz_v0 + (垂直于朝向的分速度 / hit_zone_speed_ref) * 此增益。
 ## 鼠标向下 -> 垂直分速度为正 -> vy 增大; 鼠标向上 -> vy 减小。结果夹在 [hit_vz_min, hit_vz_max]。
@@ -220,7 +220,7 @@ var defense_save_speed_mult: float = 1.0    ## 反推水平初速的微调倍数
 ## 扣杀 (smash): 球够高 + 力量够 -> vz 向下(大)、水平速度很大; 仍走"先撞墙再落桌"的正常弹射顺序。
 ## 因为 z0 高、vz 向下单调下降, 撞墙点早于落桌点 -> 自然先撞墙。
 var smash_height_min: float = 180.0      ## 触发扣杀的最低球高
-var smash_power_min: float = 0.7         ## 触发扣杀的最低力量 (strength 0..1)
+var smash_power_min: float = 0.6         ## 触发扣杀的最低力量 (strength 0..1)
 var smash_success_chance: float = 0.9    ## 扣杀成功概率 0~1
 var smash_vz: float = -900.0             ## 扣杀的向下竖直速度 (负值, 越大越快)
 var smash_speed_mult: float = 0.8        ## 扣杀水平速度微调 (>1 更凶, 可能过桌)
@@ -272,7 +272,7 @@ var ai_feint_switch_dist: float = 200.0  ## 假动作: 球近至此距离内才�
 
 ## ---- AI 强度 / 等级 (ESC 菜单选择) ----
 ## 等级 = 一组"能力与技巧": 失误率 / 挑对手对侧落点 / 假动作 / 扣杀。
-var ai_level: int = 2
+var ai_level: int = 3
 
 func ai_level_count() -> int:
 	return 5
