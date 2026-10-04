@@ -226,14 +226,18 @@ func _award_point(winner_index: int, reason: int) -> void:
 		return
 	scores[winner_index] += 1
 	_evolve_if_enabled(winner_index)
+	# 先算好发球轮换 + 胜负判定, 再广播比分 (否则发球标记会过期)
+	var total: int = scores[1] + scores[2]
+	_match_over_pending = scores[winner_index] >= GameConfig.score_to_win \
+		and scores[winner_index] - scores[3 - winner_index] >= GameConfig.match_win_by
+	if GameConfig.serve_change_every > 0 and total % GameConfig.serve_change_every == 0:
+		server_index = 3 - server_index
 	EventBus.score_changed.emit(scores)
 	EventBus.notify("玩家%d 得分  (%s)" % [winner_index, _reason_text(reason)], GameConfig.point_pause)
 	state = GameTypes.MatchState.POINT_PAUSE
 	_timer = GameConfig.point_pause
 	block_system.active = false
 	ball.state = GameTypes.BallState.INACTIVE
-	_match_over_pending = scores[winner_index] >= GameConfig.score_to_win
-	server_index = 3 - server_index  # TEMP: 暂时一直交替发球
 	EventBus.match_state_changed.emit(state)
 	state_changed.emit(state)
 

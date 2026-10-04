@@ -233,9 +233,11 @@ var ai_smash_height_min: float = 160.0   ## AI 触发扣杀的最低球高 (必�
 var smash_hint_enabled: bool = true      ## 球够高且可接时, 在球周围显示"可扣杀"提示
 
 # ============================================================
-#  G. 比赛 (计分/轮换均为临时方案) [TEMP]
+#  G. 比赛 (计分 / 发球轮换 / 胜负)
 # ============================================================
-var score_to_win: int = 10e7
+var score_to_win: int = 5               ## 先到这么多分 (且满足 match_win_by 的领先) 获胜
+var match_win_by: int = 2               ## 需领先的分数 (净胜2=deuce); 设 1 = 无 deuce (先到即胜)
+var serve_change_every: int = 2         ## 每打出这么多分, 发球权轮换一次 (1=每分换)
 ## 墙后接球方侧允许的桌弹次数。设计文档: "球在桌上第二次弹起 -> 接球方输"，
 ## 所以设为 1：允许第一次落桌，第 2 次连续落桌即判接球方输 (击球方得分)。
 var receiver_bounce_limit: int = 1

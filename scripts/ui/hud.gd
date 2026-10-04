@@ -166,7 +166,10 @@ func _on_message(text: String, duration: float) -> void:
 	_msg_timer = duration
 
 func _on_score(scores: Dictionary) -> void:
-	_score_label.text = "玩家1   %d : %d   玩家2" % [scores[1], scores[2]]
+	var serve: int = match_ref.server_index if match_ref != null else 0
+	var m1: String = "●" if serve == 1 else "　"
+	var m2: String = "●" if serve == 2 else "　"
+	_score_label.text = "玩家1 %s %d : %d %s 玩家2" % [m1, scores[1], scores[2], m2]
 
 func _on_state(_s: int) -> void:
 	if match_ref != null:
