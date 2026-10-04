@@ -26,6 +26,8 @@ var _ai_smooth_target: Vector2 = Vector2.ZERO   ## 平滑后的走位目标 (抗
 var _ai_smooth_ready: bool = false
 var _ai_post_target: Vector2 = Vector2.ZERO     ## 打完球后的"防阻挡"目标 (每拍只算一次)
 var _ai_post_ready: bool = false
+var _ai_arm_cur: Vector2 = Vector2.ZERO          ## 手臂当前伸出量 (局部), 受速度/加速度上限约束
+var _ai_arm_vel: Vector2 = Vector2.ZERO          ## 手臂伸出速度
 
 var hit_points: Array[HitPoint] = []
 ## 击球区在角色局部坐标系中的位移 (2D)。
@@ -102,12 +104,17 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 		# AI: 判定点收到中心, 每帧像甩鼠标一样设好"挥动速度"; 命中走同一 HitSystem。
 		var sw2: Vector2 = _ai_desired_swing()
 		# "手臂": 判定点朝球方向伸出 (最多 ai_arm_len), 让 AI 能越桌够球
-		var arm: Vector2 = Vector2.ZERO
-		# 击球时机: 球升到位(或已过顶点)手臂才伸出 -> 让球有正常滞空, 而不是一弹起就秒打
+		# 1) 计算"想要的"伸手: 朝球方向, 最多 ai_arm_len; (时机门: 球升到位或已过顶点才伸)
+		var want: Vector2 = Vector2.ZERO
 		if ball != null and (ball.vz <= 0.0 or ball.z >= GameConfig.ai_ready_height):
-			arm = (ball.global_position - global_position).rotated(-rotation).limit_length(GameConfig.ai_arm_len)
+			want = (ball.global_position - global_position).rotated(-rotation).limit_length(GameConfig.ai_arm_len)
+		# 2) 施加速度/加速度上限 (和身体移动同一套), 让手臂连续伸出/缩回, 而不是瞬移
+		var tv: Vector2 = (want - _ai_arm_cur).limit_length(GameConfig.ai_arm_speed)
+		var arm_dv: Vector2 = tv - _ai_arm_vel
+		_ai_arm_vel += arm_dv.limit_length(GameConfig.ai_arm_accel * step)
+		_ai_arm_cur = (_ai_arm_cur + _ai_arm_vel * step).limit_length(GameConfig.ai_arm_len)
 		for hp in hit_points:
-			hp.position = arm
+			hp.position = _ai_arm_cur
 			hp.reach = GameConfig.ai_hit_reach
 			hp.swing_velocity = sw2
 		_recenter_body(state, step, _ai_face_point(), 0.0)
@@ -271,6 +278,10 @@ func reset_to(pos: Vector2, rot: float) -> void:
 	angular_velocity = 0.0
 	global_position = pos
 	rotation = rot
+	_ai_arm_cur = Vector2.ZERO
+	_ai_arm_vel = Vector2.ZERO
+	_ai_smooth_ready = false
+	_ai_post_ready = false
 
 func _now() -> float:
 	return float(Time.get_ticks_msec()) / 1000.0

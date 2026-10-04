@@ -258,6 +258,8 @@ var ai_hit_reach: float = 44.0          ## 判定区触球半径 (AI 用; = 玩�
 var ai_body_clearance: float = 22.0     ## 目标点必须离(缩过的)桌/边界这么多 (机身半径 + 余量)
 var ai_arm_len: float = 36.0            ## AI"手臂": 判定点朝球方向可伸出的最大长度 (能越桌够球)
 var ai_ready_height: float = 110.0      ## 击球时机: 球升到此高度或已过顶点(vz<=0)手臂才伸出 (别一弹起就秒打)
+var ai_arm_speed: float = 500.0         ## 手臂伸/缩的速度上限 (px/s) -> 有连续性, 不瞬伸
+var ai_arm_accel: float = 2500.0        ## 手臂伸/缩的加速度上限 (px/s^2)
 var ai_personal_space: float = 78.0     ## 与对手保持的"个人空间"; 太近就侧向绕开
 var ai_arrive_dist: float = 16.0        ## 到达目标的判定距离 (越大越稳, 减少来回抖)
 var ai_target_smooth: float = 0.30      ## 目标平滑系数 (每帧向新目标插值; 1=不平滑)
