@@ -120,7 +120,7 @@ func _filter_swing(raw: Vector2, step: float) -> Vector2:
 func _swing_power01(sw: Vector2) -> float:
 	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
 	var ref: float = maxf(GameConfig.hit_zone_speed_ref, 1.0)
-	var t: float = clampf(maxf(sw.dot(facing), 0.0) / ref, 0.0, 1.0)
+	var t: float = clampf(absf(sw.dot(facing)) / ref, 0.0, 1.0)
 	return pow(t, maxf(GameConfig.hit_speed_curve, 0.05))
 
 ## P4 体型代价: 移动速度倍率 (越大越慢)。只作用玩家(索引1), AI 不继承玩家变异。

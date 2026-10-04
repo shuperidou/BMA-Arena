@@ -450,6 +450,18 @@ func _run() -> void:
 	_check("T18 目标点落在可达区(允许压桌)", tgt_y > -178.0,
 		"tgt_y=%.0f (table bottom=-28, block bottom=%.0f)" % [tgt_y, GameConfig.table_block_rect().end.y])
 
+	# T19: 力度左右对称 (沿朝向/反朝向甩都能发力; 回归: 旧代码 maxf(v_along,0) 把反向夹成 0)
+	p1.rotation = -PI / 2.0
+	var f19: Vector2 = Vector2.RIGHT.rotated(p1.rotation)
+	var ref19: float = GameConfig.hit_zone_speed_ref
+	ball.global_position = Vector2(0.0, -60.0)
+	_setv(f19 * (ref19 * 0.8))
+	var r_right: Dictionary = HitSystem.compute(p1, zone, ball)
+	_setv(f19 * (-ref19 * 0.8))
+	var r_left: Dictionary = HitSystem.compute(p1, zone, ball)
+	_check("T19 左右甩力度对称", absf(float(r_right.ball_speed) - float(r_left.ball_speed)) < 0.5,
+		"顺=%.0f 反=%.0f" % [float(r_right.ball_speed), float(r_left.ball_speed)])
+
 ## 给定落点 x, 算出 AI 经 HitSystem 后的实际落点 x。
 func _ai_landing_x(ai: AiPlayer, aim_x: float) -> float:
 	ai._ai_aim_x = aim_x

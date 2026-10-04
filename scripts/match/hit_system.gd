@@ -26,8 +26,8 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	var v_along: float = zone_vel.dot(facing)
 	var v_perp: float = zone_vel.dot(perp)
 
-	# --- 力度：沿朝向的分速度 -> 曲线 -> 球速 ---
-	var t: float = clampf(maxf(v_along, 0.0) / ref, 0.0, 1.0)
+	# --- 力度：沿朝向的分速度 -> 曲线 -> 球速 (用绝对值: 左右任一向甩都能发力, 不再只有单向) ---
+	var t: float = clampf(absf(v_along) / ref, 0.0, 1.0)
 	var strength: float = pow(t, maxf(GameConfig.hit_speed_curve, 0.05))
 	var ball_speed: float = lerpf(GameConfig.hit_speed_min, GameConfig.hit_speed_max, strength)
 
