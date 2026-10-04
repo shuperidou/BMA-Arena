@@ -290,7 +290,7 @@ func _finish_match() -> void:
 	state = GameTypes.MatchState.MATCH_OVER
 	var winner: int = 1 if scores[1] >= scores[2] else 2
 	EventBus.match_finished.emit(winner, scores)
-	EventBus.notify("比赛结束！玩家%d 获胜 (R 重开)" % winner, 6.0)
+	EventBus.notify("比赛结束！玩家%d 获胜  %d : %d   (R 重开)" % [winner, scores[winner], scores[3 - winner]], 6.0)
 	EventBus.match_state_changed.emit(state)
 	state_changed.emit(state)
 

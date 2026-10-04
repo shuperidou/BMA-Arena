@@ -169,7 +169,18 @@ func _on_score(scores: Dictionary) -> void:
 	var serve: int = match_ref.server_index if match_ref != null else 0
 	var m1: String = "●" if serve == 1 else "　"
 	var m2: String = "●" if serve == 2 else "　"
-	_score_label.text = "玩家1 %s %d : %d %s 玩家2" % [m1, scores[1], scores[2], m2]
+	var s1: int = scores[1]
+	var s2: int = scores[2]
+	var need: int = GameConfig.score_to_win
+	var lead: int = maxi(GameConfig.match_win_by, 1)
+	var tail: String = ""
+	if s1 >= need - 1 and s1 - s2 >= lead - 1:
+		tail = "    赛点 — 玩家1"
+	elif s2 >= need - 1 and s2 - s1 >= lead - 1:
+		tail = "    赛点 — 玩家2"
+	elif s1 >= need - 1 and s2 >= need - 1 and absi(s1 - s2) < lead:
+		tail = "    平分 (deuce)"
+	_score_label.text = "玩家1 %s %d : %d %s 玩家2%s" % [m1, s1, s2, m2, tail]
 
 func _on_state(_s: int) -> void:
 	if match_ref != null:
