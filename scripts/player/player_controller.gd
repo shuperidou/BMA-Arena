@@ -78,12 +78,16 @@ func _ready() -> void:
 func _shape_half() -> float:
 	return GameConfig.player_shape_half()
 
-## P4 体型代价: 移动速度倍率 (越大越慢)。
+## P4 体型代价: 移动速度倍率 (越大越慢)。只作用玩家(索引1), AI 不继承玩家变异。
 func _size_speed_mult() -> float:
+	if player_index != 1:
+		return 1.0
 	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_move_exponent)
 
-## P4 体型代价: 转身速度倍率 (越大越难转)。
+## P4 体型代价: 转身速度倍率 (越大越难转)。只作用玩家(索引1)。
 func _size_turn_mult() -> float:
+	if player_index != 1:
+		return 1.0
 	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_turn_exponent)
 
 ## 重建碰撞多边形 + 判定区间距 (换形状时调用)。

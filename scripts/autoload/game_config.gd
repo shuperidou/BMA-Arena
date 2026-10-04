@@ -99,6 +99,7 @@ var mutation_size_min: float = 0.85     ## 变异后大小下限
 var mutation_size_max: float = 1.25     ## 变异后大小上限
 var size_move_exponent: float = 0.55    ## 体型→移动速度代价: speed ∝ size^(-此指数)
 var size_turn_exponent: float = 0.45    ## 体型→转身速度代价: turn  ∝ size^(-此指数)
+var ai_test_seconds: float = 5.0        ## P4"试战"时长(秒): 应用候选后双方AI对打一小段给玩家看
 
 func player_shape_count() -> int:
 	return 4
@@ -227,8 +228,8 @@ var defense_save_speed_mult: float = 1.0    ## 反推水平初速的微调倍数
 
 ## 扣杀 (smash): 球够高 + 力量够 -> vz 向下(大)、水平速度很大; 仍走"先撞墙再落桌"的正常弹射顺序。
 ## 因为 z0 高、vz 向下单调下降, 撞墙点早于落桌点 -> 自然先撞墙。
-var smash_height_min: float = 180.0      ## 触发扣杀的最低球高
-var smash_power_min: float = 0.6         ## 触发扣杀的最低力量 (strength 0..1)
+var smash_height_min: float = 130.0      ## 触发扣杀的最低球高
+var smash_power_min: float = 0.5         ## 触发扣杀的最低力量 (strength 0..1)
 var smash_success_chance: float = 0.9    ## 扣杀成功概率 0~1
 var smash_vz: float = -900.0             ## 扣杀的向下竖直速度 (负值, 越大越快)
 var smash_speed_mult: float = 0.8        ## 扣杀水平速度微调 (>1 更凶, 可能过桌)

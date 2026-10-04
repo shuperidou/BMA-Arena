@@ -192,6 +192,11 @@ func _run() -> void:
 			ok_range = false
 	_check("T8a 候选数 + 含'保留当前'", ok_cnt and ok_keep, "n=%d" % cands.size())
 	_check("T8b 候选大小在范围内", ok_range, "[%.2f,%.2f]" % [GameConfig.mutation_size_min, GameConfig.mutation_size_max])
+	var n_change: int = 0
+	for i in range(1, cands.size()):
+		if int(cands[i].shape_index) != GameConfig.player_shape_index:
+			n_change += 1
+	_check("T8e 换形状类别 <=1", n_change <= 1, "change=%d" % n_change)
 	MutationSystem.apply(MutationSystem.make(0, 1.2, "t"))
 	_check("T8c 应用候选后当前身体更新",
 		GameConfig.player_shape_index == 0 and absf(GameConfig.player_size_scale - 1.2) < 0.001,

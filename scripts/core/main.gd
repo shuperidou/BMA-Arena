@@ -135,6 +135,30 @@ func rebuild_shapes() -> void:
 func open_mutation() -> void:
 	mutation_panel.open()
 
+# --- P4 试战: 应用候选, 双方 AI 打一小段给玩家"看球风" (不评分), 之后回面板 ---
+var _testing: bool = false
+var _test_timer: float = 0.0
+
+func start_test(c: Dictionary) -> void:
+	MutationSystem.apply(c)
+	rebuild_shapes()
+	mutation_panel.close()
+	players[0].ai_enabled = true
+	match_ref.set_solo(false)
+	match_ref.restart()
+	_testing = true
+	_test_timer = GameConfig.ai_test_seconds
+	get_tree().paused = false
+
+func _process(dt: float) -> void:
+	if not _testing:
+		return
+	_test_timer -= dt
+	if _test_timer <= 0.0:
+		_testing = false
+		players[0].ai_enabled = debug_mode == 3
+		mutation_panel.open()
+
 func _apply_debug_mode() -> void:
 	var solo: bool = debug_mode == 1
 	var omni: bool = debug_mode == 2

@@ -12,13 +12,29 @@ static func generate(n: int = -1) -> Array:
 	count = maxi(count, 2)
 	var out: Array = []
 	out.append(make(GameConfig.player_shape_index, GameConfig.player_size_scale, "保留当前"))
-	for i in range(1, count):
-		var si: int = randi() % maxi(GameConfig.player_shape_count(), 1)
-		var ss: float = clampf(
-			GameConfig.player_size_scale + randf_range(-GameConfig.mutation_size_delta, GameConfig.mutation_size_delta),
-			GameConfig.mutation_size_min, GameConfig.mutation_size_max)
-		out.append(make(si, ss, "候选 %d" % i))
+	# 最多 1 个"换形状类别", 其余都是"同类别·改大小" (不做一堆推倒重来的选项)
+	var n_change: int = 1 if count >= 3 else 0
+	var n_same: int = count - 1 - n_change
+	for i in n_same:
+		out.append(make(GameConfig.player_shape_index, _rand_size(), "同形·变异"))
+	for i in n_change:
+		out.append(make(_rand_other_shape(), _rand_size(), "换形"))
 	return out
+
+static func _rand_size() -> float:
+	return clampf(
+		GameConfig.player_size_scale + randf_range(-GameConfig.mutation_size_delta, GameConfig.mutation_size_delta),
+		GameConfig.mutation_size_min, GameConfig.mutation_size_max)
+
+## 换一个"别的"形状类别 (排除当前)。
+static func _rand_other_shape() -> int:
+	var n: int = GameConfig.player_shape_count()
+	if n <= 1:
+		return 0
+	var si: int = randi() % (n - 1)
+	if si >= GameConfig.player_shape_index:
+		si += 1
+	return si
 
 static func make(shape_index: int, size_scale: float, label: String) -> Dictionary:
 	return {"shape_index": shape_index, "size_scale": size_scale, "name": label}

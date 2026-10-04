@@ -77,12 +77,32 @@ func _refresh() -> void:
 	_cands = MutationSystem.generate()
 	for i in _cands.size():
 		var c: Dictionary = _cands[i]
-		var btn := Button.new()
-		btn.text = "  [%d]  %s" % [i + 1, MutationSystem.describe(c)]
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		_font(btn, 20)
-		btn.pressed.connect(_pick.bind(c))
-		_list.add_child(btn)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var prev := ShapePreview.new()
+		prev.setup(int(c.shape_index), float(c.size_scale))
+		row.add_child(prev)
+		var lab := Label.new()
+		lab.text = "[%d] %s · %s" % [i + 1, str(c.get("name", "")), MutationSystem.describe(c)]
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_font(lab, 19)
+		row.add_child(lab)
+		var pick := Button.new()
+		pick.text = "选"
+		_font(pick, 18)
+		pick.pressed.connect(_pick.bind(c))
+		row.add_child(pick)
+		var test := Button.new()
+		test.text = "试战"
+		_font(test, 18)
+		test.pressed.connect(_test.bind(c))
+		row.add_child(test)
+		_list.add_child(row)
+
+func _test(c: Dictionary) -> void:
+	if main_ref != null and main_ref.has_method("start_test"):
+		main_ref.start_test(c)
 
 func _pick(c: Dictionary) -> void:
 	MutationSystem.apply(c)
