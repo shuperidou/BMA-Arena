@@ -36,6 +36,7 @@ func toggle() -> void:
 func open() -> void:
 	visible = true
 	_refresh_slots()
+	Engine.time_scale = 1.0     # 保险: 别把 hitstop 的慢速带进暂停
 	get_tree().paused = true
 
 func close() -> void:

@@ -14,6 +14,17 @@ var debug_layer: DebugLayer
 var esc_menu: EscMenu
 var mutation_panel: MutationPanel
 var players: Array[PlayerController] = []
+var cam: Camera2D = null
+
+# --- 视听反馈 [TEMP]: 命中停顿(hitstop) + 震屏 + 程序化音效 ---
+var _shake: float = 0.0
+var _hitstop_until_ms: int = 0
+var _audio: AudioStreamPlayer = null
+var _sfx_hit: AudioStreamWAV = null
+var _sfx_smash: AudioStreamWAV = null
+var _sfx_save: AudioStreamWAV = null
+var _sfx_score: AudioStreamWAV = null
+var _juice_enabled: bool = true
 
 func _ready() -> void:
 	GameConfig.ai_apply_level()
@@ -22,11 +33,12 @@ func _ready() -> void:
 	arena.name = "Arena"
 	add_child(arena)
 
-	var cam := Camera2D.new()
+	cam = Camera2D.new()
 	cam.name = "Camera2D"
 	cam.position = GameConfig.arena_center
 	add_child(cam)
 	cam.make_current()
+	_setup_audio()
 
 	ball = Ball.new()
 	ball.name = "Ball"
@@ -46,6 +58,9 @@ func _ready() -> void:
 	ai.global_position = Vector2(300.0, 140.0)
 	add_child(ai)
 	players.append(ai)
+	for p in players:
+		p.ball_touched.connect(_on_ball_touched)
+	EventBus.score_changed.connect(func(_s: Dictionary) -> void: _play(_sfx_score, 1.0))
 
 	block_system = BlockSystem.new()
 	block_system.name = "BlockSystem"
@@ -199,6 +214,7 @@ func start_test(c: Dictionary) -> void:
 	get_tree().paused = false
 
 func _process(dt: float) -> void:
+	_update_juice(dt)
 	if not _testing:
 		return
 	_test_timer -= dt
@@ -206,6 +222,73 @@ func _process(dt: float) -> void:
 		_testing = false
 		players[0].ai_enabled = debug_mode == 3
 		mutation_panel.open()
+
+# ------------------------------------------------------------
+#  视听反馈 [TEMP]: hitstop / 震屏 / 程序化音效
+# ------------------------------------------------------------
+func _update_juice(dt: float) -> void:
+	if Engine.time_scale < 0.999 and Time.get_ticks_msec() >= _hitstop_until_ms:
+		Engine.time_scale = 1.0
+	if cam != null:
+		if _shake > 0.0:
+			cam.offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _shake
+			_shake = maxf(0.0, _shake - 60.0 * dt)
+		else:
+			cam.offset = Vector2.ZERO
+
+func _on_ball_touched(_pl: PlayerController, _hp: HitPoint) -> void:
+	if not _juice_enabled or ball == null:
+		return
+	var smash: int = ball.last_smash_state
+	var save: int = ball.last_save_state
+	var strength: float = ball.last_strength
+	if smash == 1:
+		_shake = 9.0
+		_hitstop_until_ms = Time.get_ticks_msec() + 70
+		Engine.time_scale = 0.05
+		_play(_sfx_smash, 1.05)
+	elif save == 1:
+		_shake = 5.0
+		_play(_sfx_save, 1.0)
+	elif smash == 2:
+		_shake = 3.0
+		_play(_sfx_hit, 0.8)
+	else:
+		_shake = 2.0 + 5.0 * clampf(strength, 0.0, 1.0)
+		_play(_sfx_hit, 0.9 + 0.4 * clampf(strength, 0.0, 1.0))
+
+func _play(stream: AudioStreamWAV, pitch: float) -> void:
+	if _audio == null or stream == null:
+		return
+	_audio.stream = stream
+	_audio.pitch_scale = pitch
+	_audio.play()
+
+## 程序化短音: 一段快速衰减的正弦 = "啪" 的一下 (不需要任何音频素材)。
+func _make_click(ms: int, freq: float, decay: float) -> AudioStreamWAV:
+	var sr: int = 22050
+	var n: int = int(sr * ms / 1000.0)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	for i in n:
+		var t: float = float(i) / float(sr)
+		var env: float = exp(-t * decay)
+		var s: float = sin(TAU * freq * t) * env
+		data.encode_s16(i * 2, int(clampf(s, -1.0, 1.0) * 30000.0))
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = sr
+	w.data = data
+	return w
+
+func _setup_audio() -> void:
+	_audio = AudioStreamPlayer.new()
+	_audio.name = "Sfx"
+	add_child(_audio)
+	_sfx_hit = _make_click(60, 520.0, 70.0)
+	_sfx_smash = _make_click(90, 220.0, 45.0)
+	_sfx_save = _make_click(70, 700.0, 60.0)
+	_sfx_score = _make_click(140, 880.0, 22.0)
 
 func _apply_debug_mode() -> void:
 	var solo: bool = debug_mode == 1
