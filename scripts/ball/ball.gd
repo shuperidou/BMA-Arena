@@ -43,6 +43,7 @@ var hit_flash: float = 0.0        ## 1->0 的击球闪一下
 var last_strength: float = 0.0    ## 上次击球力度 (0..1)
 var last_save_state: int = 0      ## 上次击球: 救球 0=无/1=成功/2=失败
 var last_smash_state: int = 0     ## 上次击球: 扣杀 0=无/1=成功/2=失败
+var smash_invincible: bool = false ## 本次扣杀是否"无敌"(对方接不住)
 var last_hit_info: Dictionary = {} ## 上次击球调试信息
 var _trail: Array[Vector2] = []   ## 拖尾 (存视觉位置，含高度偏移)
 var _last_surface: int = 0        ## 最近一次弹跳的面 (0=无 1=桌 2=墙) —— 同面连弹即结算
@@ -60,6 +61,7 @@ func reset_shot() -> void:
 	wall_since_hit = false
 	returnable = false
 	_last_surface = 0
+	smash_invincible = false
 
 ## 从当前位置以给定 xy 速度发射 (高度/垂直速度由调用方设置)。
 func launch_velocity(v: Vector2, vz0: float) -> void:
@@ -79,6 +81,7 @@ func register_hit(info: Dictionary) -> void:
 	last_smash_state = 0
 	if bool(info.get("smash_attempt", false)):
 		last_smash_state = 1 if bool(info.get("is_smash", false)) else 2
+	smash_invincible = bool(info.get("smash_invincible", false))
 	hit_flash = 1.0
 
 ## 弹道发射：让球第一次落桌点尽量落在 target (xy)。高度从桌面起。
@@ -315,6 +318,10 @@ func _draw() -> void:
 			var b: Vector2 = p + dir_v * base_r - tang * (r * 0.28)
 			var c: Vector2 = p + dir_v * tip_r
 			draw_colored_polygon(PackedVector2Array([a, b, c]), col)
+	# 无敌扣杀: 额外亮金环 (一眼看出"对方接不住")
+	if hit_flash > 0.05 and last_smash_state == 1 and smash_invincible:
+		var rr2: float = r * (2.6 + (1.0 - hit_flash) * 6.0)
+		draw_arc(p, rr2, 0.0, TAU, 36, Color(1.0, 0.95, 0.5, hit_flash * 0.9), 4.0)
 	# 扣杀提示: 球够高且可接 -> 脉动环 + 向下箭头, 提示"现在可以扣杀"
 	if GameConfig.smash_hint_enabled and state == GameTypes.BallState.LIVE \
 			and returnable and z >= GameConfig.smash_height_min and z <= GameConfig.hit_height_max:

@@ -212,7 +212,8 @@ var defense_save_speed_mult: float = 1.0    ## 反推水平初速的微调倍数
 ## 因为 z0 高、vz 向下单调下降, 撞墙点早于落桌点 -> 自然先撞墙。
 var smash_height_min: float = 130.0      ## 触发扣杀的最低球高
 var smash_power_min: float = 0.6         ## 触发扣杀的最低力量 (strength 0..1)
-var smash_success_chance: float = 1.0    ## 扣杀成功概率 0~1
+var smash_success_chance: float = 1.0    ## 扣杀成功概率 0~1 (满足条件后能"完整走完墙桌循环"的概率)
+var smash_invincible_chance: float = 0.3 ## 扣杀无敌概率 0~1 (成功前提下"对方接不住"的概率)
 var smash_vz: float = -900.0             ## 扣杀的向下竖直速度 (负值, 越大越快)
 var smash_speed_mult: float = 0.8        ## 扣杀水平速度微调 (>1 更凶, 可能过桌)
 var ai_smash_height_min: float = 300.0   ## AI 触发扣杀的最低球高 (单独设, 免得它太频繁)

@@ -158,6 +158,8 @@ func _on_ball_touched(player: PlayerController, hit_point: HitPoint) -> void:
 		return
 	if not ball.returnable:
 		return
+	if ball.smash_invincible:
+		return   # 无敌扣杀: 对方接不住
 	if ball.z < GameConfig.hit_height_min or ball.z > GameConfig.hit_height_max:
 		return
 	if player != expected_receiver:

@@ -55,13 +55,15 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	# 触发判定。优先级: 扣杀 > 救球 > 其它 (互斥, 先到先得)。
 	var is_defense: bool = v_perp > GameConfig.defense_perp_threshold \
 		and absf(v_along) < v_perp * GameConfig.defense_max_along_ratio
-	# 扣杀: "尝试"=条件成立; "成功"=再过概率 (用 attempt 区分视觉上的失败/成功)
+	# 扣杀三级: 尝试(条件) / 成功(能走完墙桌循环, 过概率) / 无敌(成功后不被接住, 再过概率)
 	var smash_attempt: bool = ball.z >= GameConfig.smash_height_min \
 		and strength >= GameConfig.smash_power_min
 	var is_smash: bool = smash_attempt and randf() < GameConfig.smash_success_chance
+	var smash_invincible: bool = false
 	var defense_saved: bool = false
 	if is_smash:
 		is_defense = false
+		smash_invincible = randf() < GameConfig.smash_invincible_chance
 	elif is_defense:
 		vz = clampf(vz * GameConfig.defense_vz_mult, GameConfig.hit_vz_min, GameConfig.hit_vz_max)
 		defense_saved = randf() < GameConfig.defense_save_chance   # 救球成功概率 0~1
@@ -97,6 +99,12 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 			fw = clampf((p.y - wall_y) / (p.y - M.y), 0.0, 1.0)
 		var tfs_eff: float = maxf(tfs * (1.0 - (1.0 - wbf) * fw), 0.0001)
 		final_speed = clampf(dist_m / tfs_eff, GameConfig.hit_speed_min, GameConfig.hit_speed_max * 4.0)
+		assist_angle = 0.0
+	elif smash_attempt:
+		# 扣杀失败: 没能完整走完墙桌循环 -> 打飞(出界), 由击球方失误
+		vz = -absf(GameConfig.smash_vz)
+		assisted_dir = recov_dir
+		final_speed = GameConfig.hit_speed_max * 4.0
 		assist_angle = 0.0
 	elif is_defense and defense_saved:
 		# 救球成功: vz 固定, 由它反推水平初速, 让球正好"够到"墙后镜像(桌中心)附近。
@@ -140,6 +148,7 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 		"defense_saved": defense_saved,
 		"smash_attempt": smash_attempt,
 		"is_smash": is_smash,
+		"smash_invincible": smash_invincible,
 	}
 
 ## 救球目标点: 墙后镜像 + 在 defense_save_offset 半径内的随机偏移 (0=正中)。
