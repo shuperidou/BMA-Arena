@@ -427,6 +427,7 @@ func _run() -> void:
 	GameConfig.ai_level = 3
 	ai4._ai_aim_x = 120.0
 	ai4._ai_bait_x = -120.0
+	ai4._ai_want_feint = true                      # 本拍已决定假动作 (feint 基因掷中)
 	ball.global_position = Vector2(0.0, -200.0)   # 球远 -> 朝向诱饵
 	var far_x: float = ai4._ai_face_point().x
 	ball.global_position = Vector2(0.0, 20.0)     # 球近 -> 朝向真实

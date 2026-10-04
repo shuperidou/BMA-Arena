@@ -12,6 +12,7 @@ var _message_label: Label
 var _block_label: Label
 var _save_label: Label
 var _debug_menu_label: Label
+var _ai_genome_label: Label
 var _debug_menu_visible: bool = false
 var _msg_timer: float = 0.0
 
@@ -46,6 +47,10 @@ func _ready() -> void:
 	_debug_menu_label = _make_label(Vector2(24, 96), 18, Color(0.6, 0.95, 1.0))
 	_debug_menu_label.size = Vector2(560, 220)
 	_debug_menu_label.visible = false
+
+	_ai_genome_label = _make_label(Vector2(24, 320), 17, Color(0.85, 1.0, 0.7))
+	_ai_genome_label.size = Vector2(600, 210)
+	_ai_genome_label.visible = false
 
 	EventBus.message.connect(_on_message)
 	EventBus.score_changed.connect(_on_score)
@@ -94,6 +99,31 @@ func _process(dt: float) -> void:
 			_message_label.visible = false
 	_update_block_label()
 	_update_hud_prompts()
+	_update_ai_genome()
+
+## ② 可视化: F1 展开时显示 P2 的 AI 基因 (风格/代数/各基因条), 让"越打越强"看得见。
+func _update_ai_genome() -> void:
+	if _ai_genome_label == null:
+		return
+	_ai_genome_label.visible = _debug_menu_visible
+	if not _debug_menu_visible or match_ref == null or match_ref.players.size() < 2:
+		return
+	var g: AiGenome = match_ref.players[1].genome
+	if g == null:
+		_ai_genome_label.text = "AI(玩家2) 基因: 无 (用 GameConfig 默认/段位)"
+		return
+	_ai_genome_label.text = "AI(玩家2) 风格: %s    第%d代\n" % [g.style_name(), match_ref.generation] \
+		+ " 失误 %s\n" % _gene_bar(g.error_chance) \
+		+ " 冒进 %s\n" % _gene_bar(g.aggression) \
+		+ " 救球 %s\n" % _gene_bar(g.save_willingness) \
+		+ " 扣杀 %s\n" % _gene_bar(g.smash_tendency) \
+		+ " 抖动 %s\n" % _gene_bar(g.aim_jitter) \
+		+ " 深浅 %s\n" % _gene_bar(g.depth_pref) \
+		+ " 假动作 %s" % _gene_bar(g.feint)
+
+func _gene_bar(v: float) -> String:
+	var n: int = clampi(int(round(clampf(v, 0.0, 1.0) * 10.0)), 0, 10)
+	return "[%s%s] %.2f" % ["=".repeat(n), ".".repeat(10 - n), clampf(v, 0.0, 1.0)]
 
 func _update_hud_prompts() -> void:
 	# 阻挡 / 救球 文字提示：只在 F1 打开且该分类开启时显示

@@ -25,6 +25,7 @@ var _ai_save_cd: float = 0.0               ## AI 救球冷却剩余时间
 var genome: AiGenome = null                ## AI 行为基因 (②自进化; null = 用 GameConfig 默认)
 var _ai_want_smash: bool = false           ## 本拍是否已决定扣杀 (锁定到真正触球才执行)
 var _ai_want_save: bool = false            ## 本拍是否已决定救球 (锁定到真正触球才执行)
+var _ai_want_feint: bool = false           ## 本拍是否做假动作 (每拍掷一次, 由 feint 基因决定)
 
 # --- ② 基因取值器 (无基因组则回落到 GameConfig, 保证行为不因缺基因而变) ---
 func _g_err() -> float:
@@ -39,6 +40,8 @@ func _g_jitter() -> float:
 	return genome.aim_jitter if genome != null else 0.12
 func _g_feint() -> float:
 	return genome.feint if genome != null else 0.5
+func _g_aggression() -> float:
+	return genome.aggression if genome != null else 0.5
 var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
 var _ai_aim_y: float = 0.0          ## AI 本次进攻落点 y (深度; 高手会据 hit_speed 区间自动换算)
 var _ai_face_dir: Vector2 = Vector2.ZERO  ## 高手/大师: 解析求得的出球方向 (供朝向跟随)
@@ -184,6 +187,7 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 			if ball.last_hitter == self:
 				_ai_want_smash = false        # 自己刚打完, 清掉本拍意图
 				_ai_want_save = false
+				_ai_want_feint = false
 			else:
 				_ai_pick_aim()                # 对手来球: 选落点
 				_ai_roll_intent()             # 并决定这一拍要不要扣杀/救球
@@ -472,7 +476,8 @@ func _route_around_table(dir: Vector2, from: Vector2, target: Vector2) -> Vector
 ## 换一次进攻落点 (好区内)。达到"普通"以上会挑对手对侧 (逼他跑); 并备一个反侧诱饵做假动作。
 func _ai_pick_aim() -> void:
 	var tr := GameConfig.table_rect()
-	var m: float = maxf(GameConfig.assist_good_margin, 20.0)
+	# ② 冒进基因: 越冒进 -> 目标越贴边 (风险大, 但更难接)
+	var m: float = maxf(GameConfig.assist_good_margin, 20.0) * lerpf(1.8, 1.0, clampf(_g_aggression(), 0.0, 1.0))
 	var lo: float = tr.position.x + m
 	var hi: float = tr.end.x - m
 	# 深度"稳定带" (不贴边)
@@ -500,6 +505,8 @@ func _ai_pick_aim() -> void:
 	else:
 		_ai_aim_x = randf_range(lo, hi)
 		_ai_aim_y = GameConfig.table_center.y
+	# ② 深浅基因: 把落点往"偏短/偏深"方向拉 (0=短/靠墙, 1=深/靠玩家)
+	_ai_aim_y = lerpf(_ai_aim_y, lerpf(d_lo, d_hi, clampf(_g_depth(), 0.0, 1.0)), 0.5)
 	_ai_aim_x = clampf(_ai_aim_x, lo, hi)
 	_ai_aim_y = clampf(_ai_aim_y, d_lo, d_hi)
 	_ai_bait_x = (lo + hi) - _ai_aim_x                    # 诱饵 = 真实落点的反侧
@@ -508,6 +515,7 @@ func _ai_pick_aim() -> void:
 func _ai_roll_intent() -> void:
 	_ai_want_smash = false
 	_ai_want_save = false
+	_ai_want_feint = false
 	if ball == null:
 		return
 	if GameConfig.debug_ai_smash or GameConfig.ai_level_smash():
@@ -516,6 +524,7 @@ func _ai_roll_intent() -> void:
 	if GameConfig.ai_save_enabled and _ai_save_cd <= 0.0 and randf() < _g_save():
 		_ai_want_save = true
 		_ai_save_cd = GameConfig.ai_save_cooldown
+	_ai_want_feint = GameConfig.ai_feint() and randf() < _g_feint()
 
 ## AI 朝向点 = 落点关于墙的镜像。朝向它 -> raw_dir 指向镜像 -> 撞墙后落点 = 目标 x。
 ## 假动作: 球还远时先朝向"诱饵"(反侧), 球近到阈值内再切真实落点 (骗对手先动)。
@@ -524,7 +533,7 @@ func _ai_face_point() -> Vector2:
 	if GameConfig.ai_level >= 3 and _ai_face_dir.length() > 0.1:
 		return global_position + _ai_face_dir * 240.0
 	var x: float = _ai_aim_x
-	if GameConfig.ai_feint() and ball != null \
+	if GameConfig.ai_feint() and _ai_want_feint and ball != null \
 			and global_position.distance_to(ball.global_position) > GameConfig.ai_feint_switch_dist:
 		x = _ai_bait_x
 	return Vector2(x, 2.0 * GameConfig.wall_inner_y() - _ai_aim_y)
