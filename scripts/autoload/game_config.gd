@@ -87,6 +87,8 @@ var shape_diamond_half_len: float = 82.0  ## 菱形: 长轴半长
 var shape_diamond_half_wid: float = 34.0  ## 菱形: 短轴半宽
 var shape_ellipse_half_len: float = 82.0  ## 椭圆: 长轴半长
 var shape_ellipse_half_wid: float = 42.0  ## 椭圆: 短轴半宽
+## 角色大小倍率 (ESC 菜单拖动条调节): 同时缩放 形状多边形 + 碰撞箱 + 判定区间距。
+var player_size_scale: float = 1.0
 
 func player_shape_count() -> int:
 	return 4
@@ -99,16 +101,17 @@ func player_shape_name(idx: int = -1) -> String:
 ## 形状长轴(局部y = 判定区连线方向)半长 -> 判定区间距随形状同步。
 func player_shape_half(idx: int = -1) -> float:
 	var i: int = player_shape_index if idx < 0 else idx
+	var h: float = player_half_length
 	match i:
 		0:
-			return player_half_length
+			h = player_half_length
 		1:
-			return shape_circle_radius
+			h = shape_circle_radius
 		2:
-			return shape_diamond_half_len
+			h = shape_diamond_half_len
 		3:
-			return shape_ellipse_half_len
-	return player_half_length
+			h = shape_ellipse_half_len
+	return h * player_size_scale
 
 ## 采样形状边界点 (角色局部坐标, 未旋转), 凸多边形, 顺序绕行。
 func player_shape_points(idx: int = -1) -> PackedVector2Array:
@@ -148,6 +151,9 @@ func player_shape_points(idx: int = -1) -> PackedVector2Array:
 		for k in seg:
 			var t: float = TAU * float(k) / float(seg)
 			pts.append(Vector2(w * cos(t), L * sin(t)))
+	if player_size_scale != 1.0:
+		for k in pts.size():
+			pts[k] = pts[k] * player_size_scale
 	return pts
 
 var move_speed: float = 720.0
@@ -246,7 +252,7 @@ var ai_error_power_max: float = 1.5    ## 失误表现-太重: 力度缩放
 ## ---- AI 走位 / 防卡死 ----
 ## 桌/墙是实体碰撞, 但球的可接点在桌正上方 -> 追击目标要投影到桌外(贴桌沿伸判定区够球),
 ## 否则 AI 会直线怼进桌子卡死。
-var ai_hit_reach: float = 72.0          ## 判定区触球半径 (AI 用; 决定要贴多近)
+var ai_hit_reach: float = 44.0          ## 判定区触球半径 (AI 用; = 玩家 hit_reach, 保持平等)
 var ai_body_clearance: float = 26.0     ## 目标点必须离桌/边界这么多 (机身半径 + 余量)
 var ai_personal_space: float = 78.0     ## 与对手保持的"个人空间"; 太近就侧向绕开
 var ai_avoid_gain: float = 1.2          ## 绕对手的侧向权重

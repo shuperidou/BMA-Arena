@@ -41,7 +41,7 @@ func _ready() -> void:
 	_controls_label.size = Vector2(900, 110)
 	_controls_label.text = "玩家1  WASD 世界移动 / 鼠标 朝向 / 空格 发球\n" \
 		+ "玩家2  (圆形 AI, 自动跑动/发球/击球)\n" \
-		+ "F1 调试菜单   R 重开   Esc 退出"
+		+ "F1 调试菜单   R 重开   Esc 菜单(形状/大小)"
 
 	_debug_menu_label = _make_label(Vector2(24, 96), 18, Color(0.6, 0.95, 1.0))
 	_debug_menu_label.size = Vector2(560, 220)
@@ -69,8 +69,7 @@ func update_debug_menu() -> void:
 		+ " 5  碰撞体/速度: %s\n" % _mark(GameConfig.debug_show_shapes) \
 		+ " 6  场地/桌/墙: %s\n" % _mark(GameConfig.debug_show_zones) \
 		+ " 7  阻挡/救球提示: %s\n" % _mark(GameConfig.debug_show_block_hud) \
-		+ " 8  AI扣杀: %s\n" % _mark(GameConfig.debug_ai_smash) \
-		+ " 9/0 形状: %s" % GameConfig.player_shape_name()
+		+ " 8  AI扣杀: %s" % _mark(GameConfig.debug_ai_smash)
 
 func _mark(b: bool) -> String:
 	return "开" if b else "关"

@@ -6,7 +6,7 @@ extends PlayerController
 ## 由 ai_enabled 开关驱动。这里只提供"圆形身体 + 中心一个击球判定点"。
 
 var ai_radius: float = 20.0
-var ai_hit_radius: float = 72.0
+var ai_hit_radius: float = 44.0
 var _home: Vector2 = Vector2(0.0, 40.0)
 
 func _ready() -> void:
