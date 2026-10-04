@@ -119,6 +119,11 @@ func _build() -> void:
 	var brow := HBoxContainer.new()
 	brow.add_theme_constant_override("separation", 16)
 	vb.add_child(brow)
+	var mutate := Button.new()
+	mutate.text = "变异"
+	_font(mutate, 20)
+	mutate.pressed.connect(_on_mutate)
+	brow.add_child(mutate)
 	var resume := Button.new()
 	resume.text = "继续"
 	_font(resume, 20)
@@ -141,6 +146,11 @@ func _on_shape(i: int) -> void:
 func _on_ai_level(i: int) -> void:
 	GameConfig.ai_level = i
 	GameConfig.ai_apply_level()
+
+func _on_mutate() -> void:
+	close()
+	if main_ref != null and main_ref.has_method("open_mutation"):
+		main_ref.open_mutation()
 
 func _on_size(v: float) -> void:
 	GameConfig.player_size_scale = v

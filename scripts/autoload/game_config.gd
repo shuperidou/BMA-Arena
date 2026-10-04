@@ -50,8 +50,8 @@ var wall_return_assist: bool = false
 var wall_return_depth_frac: float = 0.8  ## 0=远边, 1=近边。落点=远边+深度*frac [TUNED]
 
 ## 视觉：高度 -> 大小 + 阴影 (游戏化提示，非真实透视)
-var base_ball_scale: float = 1.0
-var height_scale_factor: float = 0.9   ## 高度对显示大小的贡献
+var base_ball_scale: float = 0.8
+var height_scale_factor: float = 1.2   ## 高度对显示大小的贡献
 var min_visual_scale: float = 0.8
 var max_visual_scale: float = 50.6
 var shadow_offset_factor: float = 0.35 ## 每单位高度，球相对影子向上偏移的像素数
@@ -91,6 +91,14 @@ var shape_ellipse_half_len: float = 82.0  ## 椭圆: 长轴半长
 var shape_ellipse_half_wid: float = 42.0  ## 椭圆: 短轴半宽
 ## 角色大小倍率 (ESC 菜单拖动条调节): 同时缩放 形状多边形 + 碰撞箱 + 判定区间距。
 var player_size_scale: float = 1.0
+
+## ---- P4 变异 v1 (最小可验证)：只变异"形状类别 + 大小"; 代价=大→移动慢/转身难 ----
+var mutation_candidates: int = 4        ## 每次生成的候选数 (含"保留当前")
+var mutation_size_delta: float = 0.15   ## 大小相对当前的抖动量
+var mutation_size_min: float = 0.85     ## 变异后大小下限
+var mutation_size_max: float = 1.25     ## 变异后大小上限
+var size_move_exponent: float = 0.55    ## 体型→移动速度代价: speed ∝ size^(-此指数)
+var size_turn_exponent: float = 0.45    ## 体型→转身速度代价: turn  ∝ size^(-此指数)
 
 func player_shape_count() -> int:
 	return 4

@@ -12,6 +12,7 @@ var match_ref: Match
 var hud: Hud
 var debug_layer: DebugLayer
 var esc_menu: EscMenu
+var mutation_panel: MutationPanel
 var players: Array[PlayerController] = []
 
 func _ready() -> void:
@@ -61,6 +62,11 @@ func _ready() -> void:
 	esc_menu.name = "EscMenu"
 	esc_menu.main_ref = self
 	add_child(esc_menu)
+
+	mutation_panel = MutationPanel.new()
+	mutation_panel.name = "MutationPanel"
+	mutation_panel.main_ref = self
+	add_child(mutation_panel)
 
 	match_ref = Match.new()
 	match_ref.name = "Match"
@@ -124,6 +130,10 @@ func _cycle_debug_mode() -> void:
 func rebuild_shapes() -> void:
 	for p in players:
 		p.rebuild_shape()
+
+## 打开 P4 变异面板 (ESC 菜单「变异」按钮调用)。
+func open_mutation() -> void:
+	mutation_panel.open()
 
 func _apply_debug_mode() -> void:
 	var solo: bool = debug_mode == 1

@@ -78,6 +78,14 @@ func _ready() -> void:
 func _shape_half() -> float:
 	return GameConfig.player_shape_half()
 
+## P4 体型代价: 移动速度倍率 (越大越慢)。
+func _size_speed_mult() -> float:
+	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_move_exponent)
+
+## P4 体型代价: 转身速度倍率 (越大越难转)。
+func _size_turn_mult() -> float:
+	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_turn_exponent)
+
 ## 重建碰撞多边形 + 判定区间距 (换形状时调用)。
 func rebuild_shape() -> void:
 	if _shape_poly != null:
@@ -92,7 +100,8 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 	var step: float = state.step
 	# --- 平移：世界坐标。WASD 永远对应世界方向，与 rotation 无关 ---
 	var dir: Vector2 = _desired_move_dir(state)
-	var target_v: Vector2 = dir * GameConfig.move_speed
+	# P4 体型代价: 越大 -> 移动越慢 (speed ∝ size^(-exponent))
+	var target_v: Vector2 = dir * GameConfig.move_speed * _size_speed_mult()
 	var dv: Vector2 = target_v - state.linear_velocity
 	state.linear_velocity += dv.limit_length(GameConfig.move_accel * step)
 
@@ -201,9 +210,11 @@ func _recenter_body(state: PhysicsDirectBodyState2D, step: float, aim_point: Vec
 		return
 	var base: float = (aim_point - state.transform.origin).angle() + drag_rad
 	var err: float = wrapf(base - state.transform.get_rotation(), -PI, PI)
+	# P4 体型代价: 越大 -> 转身越难 (turn ∝ size^(-exponent))
+	var tmult: float = _size_turn_mult()
 	var desired_w: float = clampf(err * GameConfig.base_face_response,
-		-GameConfig.base_face_max_angular_velocity, GameConfig.base_face_max_angular_velocity)
-	var face_accel: float = GameConfig.base_face_acceleration * step
+		-GameConfig.base_face_max_angular_velocity, GameConfig.base_face_max_angular_velocity) * tmult
+	var face_accel: float = GameConfig.base_face_acceleration * step * tmult
 	state.angular_velocity += clampf(desired_w - state.angular_velocity, -face_accel, face_accel)
 
 ## 两个击球区在角色局部坐标系中反向位移 (A=+delta, B=-delta)，再经 Transform 转世界。
