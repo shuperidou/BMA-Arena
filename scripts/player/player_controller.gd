@@ -23,6 +23,8 @@ var _swing_smooth: Vector2 = Vector2.ZERO  ## 挥拍滤波 A: 平滑后的挥速
 var _swing_charge: float = 0.0             ## 挥拍滤波 B: 蓄力 (0..1)
 var _ai_save_cd: float = 0.0               ## AI 救球冷却剩余时间
 var genome: AiGenome = null                ## AI 行为基因 (②自进化; null = 用 GameConfig 默认)
+var _ai_want_smash: bool = false           ## 本拍是否已决定扣杀 (锁定到真正触球才执行)
+var _ai_want_save: bool = false            ## 本拍是否已决定救球 (锁定到真正触球才执行)
 
 # --- ② 基因取值器 (无基因组则回落到 GameConfig, 保证行为不因缺基因而变) ---
 func _g_err() -> float:
@@ -156,8 +158,12 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 		# 对手换了击球 -> 重新选本次落点 (方向由朝向决定, 见 _ai_face_point)
 		if ball != null and ball.last_hitter != _ai_last_hitter_seen:
 			_ai_last_hitter_seen = ball.last_hitter
-			if ball.last_hitter != self:
-				_ai_pick_aim()
+			if ball.last_hitter == self:
+				_ai_want_smash = false        # 自己刚打完, 清掉本拍意图
+				_ai_want_save = false
+			else:
+				_ai_pick_aim()                # 对手来球: 选落点
+				_ai_roll_intent()             # 并决定这一拍要不要扣杀/救球
 		# AI: 判定点收到中心, 每帧像甩鼠标一样设好"挥动速度"; 命中走同一 HitSystem。
 		var sw2: Vector2 = _filter_swing(_ai_desired_swing(), step)
 		# "手臂": 判定点朝球方向伸出 (最多 ai_arm_len), 让 AI 能越桌够球
@@ -469,6 +475,19 @@ func _ai_pick_aim() -> void:
 	_ai_aim_y = clampf(_ai_aim_y, d_lo, d_hi)
 	_ai_bait_x = (lo + hi) - _ai_aim_x                    # 诱饵 = 真实落点的反侧
 
+## ② 本拍意图: 对手来球时掷一次骰子, 决定这一拍要不要扣杀/救球 (锁定到真正触球那一刻才执行)。
+func _ai_roll_intent() -> void:
+	_ai_want_smash = false
+	_ai_want_save = false
+	if ball == null:
+		return
+	if GameConfig.debug_ai_smash or GameConfig.ai_level_smash():
+		if randf() < clampf(GameConfig.smash_success_chance * (0.3 + 1.4 * _g_smash()), 0.0, 1.0):
+			_ai_want_smash = true
+	if GameConfig.ai_save_enabled and _ai_save_cd <= 0.0 and randf() < _g_save():
+		_ai_want_save = true
+		_ai_save_cd = GameConfig.ai_save_cooldown
+
 ## AI 朝向点 = 落点关于墙的镜像。朝向它 -> raw_dir 指向镜像 -> 撞墙后落点 = 目标 x。
 ## 假动作: 球还远时先朝向"诱饵"(反侧), 球近到阈值内再切真实落点 (骗对手先动)。
 func _ai_face_point() -> Vector2:
@@ -488,10 +507,8 @@ func _ai_desired_swing() -> Vector2:
 		return Vector2.ZERO
 	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
 	var perp: Vector2 = facing.rotated(PI * 0.5)
-	# AI 救球 (搏命 A + 冷却 B): "够呛"(球很高)且冷却好 -> 用防守姿态救球 (产出高球, 可被扣杀惩罚)
-	if GameConfig.ai_save_enabled and _ai_save_cd <= 0.0 and ball.returnable \
-			and ball.z >= GameConfig.ai_save_height_min and randf() < _g_save():
-		_ai_save_cd = GameConfig.ai_save_cooldown
+	# AI 救球: 本拍已决定救球 -> 用防守姿态出球 (产出高球, 可被扣杀惩罚); 意图保持到触球。
+	if _ai_want_save and ball.returnable:
 		debug_last_error = "救球"
 		return perp * (GameConfig.defense_perp_threshold * 2.0)
 	var ref: float = maxf(GameConfig.hit_zone_speed_ref, 1.0)
@@ -557,14 +574,18 @@ func _ai_desired_swing() -> Vector2:
 		v_perp = (vzb - GameConfig.hit_vz_v0) / gain * ref
 	# v_perp 不越救球阈值 (避免误触防守姿态)
 	v_perp = clampf(v_perp, -GameConfig.defense_perp_threshold * 0.8, GameConfig.defense_perp_threshold * 0.8)
-	# AI 扣杀开关(关): 高球时压低力度, 避免无意触发扣杀
-	if not (GameConfig.debug_ai_smash or GameConfig.ai_level_smash()) and ball.z >= GameConfig.smash_height_min:
+	# AI 扣杀: 本拍已决定扣杀 -> 触球时抬重力度, 让 HitSystem 判 is_smash (球向下砸)
+	var smashing_now: bool = _ai_want_smash and ball.z >= GameConfig.smash_height_min
+	if smashing_now:
+		strength = clampf(maxf(strength, GameConfig.smash_power_min + 0.25), 0.0, 1.0)
+	elif ball.z >= GameConfig.smash_height_min:
+		# 不扣杀: 高球压低力度, 避免无意触发扣杀
 		strength = minf(strength, maxf(GameConfig.smash_power_min - 0.05, 0.0))
 	var v_along: float = ref * pow(strength, 1.0 / curve)
 	var sw: Vector2 = facing * v_along + perp * v_perp
 	# 失误表现: omniscient 不失误; 其余按 ai_error_chance
 	debug_last_error = ""
-	if not omniscient and randf() < _g_err() + _g_jitter() * 0.5:
+	if not omniscient and not smashing_now and randf() < _g_err() + _g_jitter() * 0.5:
 		match randi() % 4:
 			0:
 				sw = sw.rotated(deg_to_rad(randf_range(-GameConfig.ai_error_aim_deg, GameConfig.ai_error_aim_deg)))
@@ -578,6 +599,8 @@ func _ai_desired_swing() -> Vector2:
 			3:
 				sw = -sw
 				debug_last_error = "打反"
+	if smashing_now:
+		debug_last_error = "扣杀"
 	return sw
 
 ## 防阻挡：绕到"对手 -> 预计接球点"这条走廊的侧面去。

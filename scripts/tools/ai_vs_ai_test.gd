@@ -27,8 +27,18 @@ func _ready() -> void:
 
 	# 跑 ~20 秒模拟; 统计"卡住"帧 (想动却几乎不动 且 离目标还远)
 	var stuck: int = 0
+	var smashes: int = 0
+	var saves: int = 0
+	var prev_sm: int = 0
+	var prev_sv: int = 0
 	for i in 1200:
 		await get_tree().physics_frame
+		if ball.last_smash_state != 0 and ball.last_smash_state != prev_sm:
+			smashes += 1
+		prev_sm = ball.last_smash_state
+		if ball.last_save_state != 0 and ball.last_save_state != prev_sv:
+			saves += 1
+		prev_sv = ball.last_save_state
 		if ball.state == GameTypes.BallState.LIVE:
 			for p in main_node.players:
 				if p.linear_velocity.length() < 20.0 \
@@ -38,7 +48,7 @@ func _ready() -> void:
 	var p0: PlayerController = main_node.players[0]
 	var p1: PlayerController = main_node.players[1]
 	print("AIVSAI p0.ai=", p0.ai_enabled, " p1.ai=", p1.ai_enabled)
-	print("AIVSAI hits=", hits, " bounces=", bounces, " deaths=", deaths, " stuck=", stuck, " score=", match_ref.scores)
+	print("AIVSAI hits=", hits, " bounces=", bounces, " deaths=", deaths, " stuck=", stuck, " smashes=", smashes, " saves=", saves, " score=", match_ref.scores)
 	if p0.ai_enabled and p1.ai_enabled and hits >= 3 and bounces >= 3:
 		print("AIVSAI PASS")
 	else:

@@ -108,7 +108,7 @@ var ai_test_seconds: float = 5.0          ## P4"试战"时长(秒): 应用候选
 
 ## ---- AI 救球 (F1 菜单 0 开关): 搏命(A) + 冷却(B) ----
 ## AI 只在"够呛"(球很高)且冷却好时, 用一次防守姿态救球 -> 救出的球很高, 正好可被扣杀惩罚。
-var ai_save_enabled: bool = false
+var ai_save_enabled: bool = true          ## 默认开: AI 会救球 (F1 菜单 0 可关)
 var ai_save_cooldown: float = 4.0         ## 冷却(秒): 一次救球后这么久内不再救
 var ai_save_height_min: float = 120.0     ## "够呛"判定: 球高 ≥ 此值才考虑救球
 
@@ -268,7 +268,7 @@ var ai_unstick_frames: int = 14         ## 连续卡住这么多帧 -> 触发脱
 var ai_unstick_gain: float = 1.6        ## 脱困侧移权重
 var ai_shot_depth_jitter: float = 0.12  ## 击球落点深度抖动 (±比例); 0=完全精确
 var ai_shot_band_frac: float = 0.30     ## 高手/大师落点"稳定带": 桌面深度内缩此比例 (避免贴边)
-var ai_diverse: bool = false            ## 多样化打法 (F1 菜单 9 开关): 每拍随机选"对角/直线/中路 + 深/浅"
+var ai_diverse: bool = true             ## 多样化打法 (F1 菜单 9 开关): 每拍随机选"对角/直线/中路 + 深/浅" (默认开)
 var ai_feint_switch_dist: float = 200.0  ## 假动作: 球近至此距离内才切换成真实朝向
 
 ## ---- AI 强度 / 等级 (ESC 菜单选择) ----
@@ -320,7 +320,7 @@ var debug_show_ball: bool = true     ## 4: 球状态
 var debug_show_shapes: bool = true   ## 5: 碰撞体 / 速度
 var debug_show_zones: bool = true    ## 6: 场地 / 桌 / 墙
 var debug_show_block_hud: bool = true ## 7: 屏幕上方 阻挡/救球 文字提示
-var debug_ai_smash: bool = false      ## 8: AI 也使用扣杀
+var debug_ai_smash: bool = true       ## 8: AI 也使用扣杀 (默认开, F1 可关)
 
 # ============================================================
 #  K. 输入 (physical keycodes)

@@ -413,6 +413,8 @@ func _run() -> void:
 	ai4.rival = p1
 	ai4.global_position = Vector2(0.0, 30.0)
 	GameConfig.ai_level = 2
+	var _diverse_bak: bool = GameConfig.ai_diverse
+	GameConfig.ai_diverse = false                  # 多样化会随机选"直线/中路", 这里单测"挑对侧"这条路径
 	p1.global_position = Vector2(-120.0, 30.0)
 	ai4._ai_pick_aim()
 	var aim_r: float = ai4._ai_aim_x
@@ -421,6 +423,7 @@ func _run() -> void:
 	var aim_l: float = ai4._ai_aim_x
 	_check("T17 挑对手对侧落点", aim_r > 0.0 and aim_l < 0.0,
 		"对手左->落点%.0f  对手右->落点%.0f" % [aim_r, aim_l])
+	GameConfig.ai_diverse = _diverse_bak
 	GameConfig.ai_level = 3
 	ai4._ai_aim_x = 120.0
 	ai4._ai_bait_x = -120.0
