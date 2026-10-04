@@ -17,6 +17,9 @@ const GENE_DEFS := {
 	"aim_jitter":       {"def": 0.12, "lo": 0.0, "hi": 0.5, "invert": true,  "label": "抖动"},
 	"depth_pref":       {"def": 0.50, "lo": 0.0, "hi": 1.0, "invert": false, "label": "深浅"},
 	"feint":            {"def": 0.50, "lo": 0.0, "hi": 1.0, "invert": false, "label": "假动作"},
+	"aim_bias":         {"def": 0.50, "lo": 0.0, "hi": 1.0, "invert": false, "label": "偏侧"},
+	"avoid":            {"def": 0.50, "lo": 0.0, "hi": 1.0, "invert": false, "label": "避让"},
+	"net_rush":         {"def": 0.50, "lo": 0.0, "hi": 1.0, "invert": false, "label": "上网"},
 }
 
 var genes: Dictionary = {}

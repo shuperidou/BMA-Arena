@@ -42,6 +42,12 @@ func _g_feint() -> float:
 	return genome.get_gene("feint") if genome != null else 0.5
 func _g_aggression() -> float:
 	return genome.get_gene("aggression") if genome != null else 0.5
+func _g_aim_bias() -> float:
+	return genome.get_gene("aim_bias") if genome != null else 0.5
+func _g_avoid() -> float:
+	return genome.get_gene("avoid") if genome != null else 0.5
+func _g_net_rush() -> float:
+	return genome.get_gene("net_rush") if genome != null else 0.5
 var _ai_aim_x: float = 0.0          ## AI 本次进攻落点 x (换对手击球时重选) -> 决定方向
 var _ai_aim_y: float = 0.0          ## AI 本次进攻落点 y (深度; 高手会据 hit_speed 区间自动换算)
 var _ai_face_dir: Vector2 = Vector2.ZERO  ## 高手/大师: 解析求得的出球方向 (供朝向跟随)
@@ -495,6 +501,11 @@ func _clamp_reachable(p: Vector2) -> Vector2:
 	if tr.has_point(q):
 		# 推出到"AI 所在的纵向一侧"(玩家通常在桌下方): 只调 y, 保留 x -> 站到桌前、与球对齐, 手臂上够。
 		q.y = tr.end.y if global_position.y > GameConfig.table_center.y else tr.position.y
+	# ② 上网基因: 越"上网"越贴桌沿站 (接球更快, 身后空档更大)
+	var nr: float = _g_net_rush() - 0.5
+	if nr > 0.0:
+		var to_table: float = -1.0 if global_position.y > GameConfig.table_center.y else 1.0
+		q.y += to_table * nr * 2.0 * 40.0
 	return q
 
 ## (已移除 _slide_along_table: 它把"朝桌分量"删掉, 会让 AI 永远靠近不了桌子 -> 来回跑够不到。)
@@ -571,6 +582,8 @@ func _ai_pick_aim() -> void:
 		_ai_aim_y = GameConfig.table_center.y
 	# ② 深浅基因: 把落点往"偏短/偏深"方向拉 (0=短/靠墙, 1=深/靠玩家)
 	_ai_aim_y = lerpf(_ai_aim_y, lerpf(d_lo, d_hi, clampf(_g_depth(), 0.0, 1.0)), 0.5)
+	# ② 偏侧基因: 长期往左/右偏 (0.5=中性) —— 形成"惯用侧"
+	_ai_aim_x += (_g_aim_bias() - 0.5) * 2.0 * (hi - lo) * 0.25
 	_ai_aim_x = clampf(_ai_aim_x, lo, hi)
 	_ai_aim_y = clampf(_ai_aim_y, d_lo, d_hi)
 	_ai_bait_x = (lo + hi) - _ai_aim_x                    # 诱饵 = 真实落点的反侧
@@ -717,7 +730,7 @@ func _anti_block_target() -> Vector2:
 	var perp: Vector2 = Vector2(-seg.y, seg.x).normalized() if seg.length() > 1.0 else Vector2(0.0, 1.0)
 	if (global_position - mid).dot(perp) < 0.0:
 		perp = -perp
-	var target: Vector2 = mid + perp * GameConfig.ai_avoid_distance
+	var target: Vector2 = mid + perp * GameConfig.ai_avoid_distance * (0.4 + 1.2 * _g_avoid())
 	var ar: Rect2 = GameConfig.arena_rect().grow(-40.0)
 	# 必须也投影到桌外, 否则这个"避让点"落进/穿过桌子会让 AI 顶桌卡死
 	return _clamp_reachable(Vector2(clampf(target.x, ar.position.x, ar.end.x),
