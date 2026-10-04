@@ -103,25 +103,35 @@ func _build_body() -> void:
 		_circle_shape.queue_free()
 		_circle_shape = null
 	_body_kind = GameConfig.player_body_kind
-	if _body_kind == "circle":
-		_circle_shape = CollisionShape2D.new()
-		_circle_shape.name = "CircleShape"
-		add_child(_circle_shape)
-		var hi := HitPoint.new()
-		hi.name = "HitPointCenter"
-		add_child(hi)
-		hit_points.append(hi)
-	else:
-		_shape_poly = CollisionPolygon2D.new()
-		_shape_poly.name = "ShapePoly"
-		add_child(_shape_poly)
-		for i in 2:
-			var hp := HitPoint.new()
-			hp.name = "HitPoint%s" % ("Front" if i == 0 else "Back")
-			add_child(hp)
-			hit_points.append(hp)
+	# 每种身体 = 一套(碰撞 + 判定布点)规则。加新身体: 写一个 _build_xxx() + 在 rebuild_shape/draw 加分支。
+	match _body_kind:
+		"circle":
+			_build_circle_body()
+		_:
+			_build_spindle_body()
 	rebuild_shape()
 	queue_redraw()
+
+## 纺锤: 胶囊多边形碰撞 + 两端两个击球点 (点对点, 要瞄准)。
+func _build_spindle_body() -> void:
+	_shape_poly = CollisionPolygon2D.new()
+	_shape_poly.name = "ShapePoly"
+	add_child(_shape_poly)
+	for i in 2:
+		var hp := HitPoint.new()
+		hp.name = "HitPoint%s" % ("Front" if i == 0 else "Back")
+		add_child(hp)
+		hit_points.append(hp)
+
+## 圆: 圆形碰撞 + 中心一个判定点 (全向覆盖, 方向只靠挥拍)。
+func _build_circle_body() -> void:
+	_circle_shape = CollisionShape2D.new()
+	_circle_shape.name = "CircleShape"
+	add_child(_circle_shape)
+	var hi := HitPoint.new()
+	hi.name = "HitPointCenter"
+	add_child(hi)
+	hit_points.append(hi)
 
 ## 切换身体种类 (设置 + 重建)。P4: 验证"每个身体一套判定"的可插拔架构。
 func set_body_kind(kind: String) -> void:

@@ -84,6 +84,15 @@ var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [
 ## 只有"纺锤"实现了击球判定; 其它身体(圆/菱/椭/未来)以后各自设计"判定方式", 不共用判定区。
 ## "判定方式"做成每身体可插拔 (player_body_kind); 现在只有 "spindle"。
 var player_body_kind: String = "spindle"  ## 身体种类 (决定用哪套击球判定): "spindle" 纺锤 / "circle" 圆
+## 已实现的身体族 (每种 = 一套 碰撞 + 判定布点 规则)。顺序 = ESC 菜单顺序。
+## 加新身体: 往这里加 key + 在 body_kind_label 加名字 + 在 PlayerController 写 _build_xxx()。
+const BODY_KINDS: Array[String] = ["spindle", "circle"]
+func body_kind_label(k: String) -> String:
+	match k:
+		"circle":
+			return "圆 (中心全向)"
+		_:
+			return "纺锤 (两端两点)"
 var circle_body_radius: float = 20.0      ## "圆"身体的碰撞半径
 var circle_hit_reach: float = 40.0        ## "圆"身体的中心判定半径 (全向覆盖; 圆靠挥拍定方向, 不靠判定点位)
 var player_shape_index: int = 0           ## 当前身体显示形状 (只有 0 纺锤是已设计的)

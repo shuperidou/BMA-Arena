@@ -75,9 +75,9 @@ func _build() -> void:
 	krow.add_child(klab)
 	var body_opt := OptionButton.new()
 	_font(body_opt, 18)
-	body_opt.add_item("纺锤 (两端两点)", 0)
-	body_opt.add_item("圆 (中心全向)", 1)
-	body_opt.selected = 0 if GameConfig.player_body_kind == "spindle" else 1
+	for i in GameConfig.BODY_KINDS.size():
+		body_opt.add_item(GameConfig.body_kind_label(GameConfig.BODY_KINDS[i]), i)
+	body_opt.selected = maxi(GameConfig.BODY_KINDS.find(GameConfig.player_body_kind), 0)
 	body_opt.item_selected.connect(_on_body_kind)
 	krow.add_child(body_opt)
 
@@ -255,9 +255,10 @@ func _on_mutate() -> void:
 		main_ref.open_mutation()
 
 func _on_body_kind(i: int) -> void:
-	var kind: String = "circle" if i == 1 else "spindle"
+	if i < 0 or i >= GameConfig.BODY_KINDS.size():
+		return
 	if main_ref != null and main_ref.players.size() > 0:
-		main_ref.players[0].set_body_kind(kind)
+		main_ref.players[0].set_body_kind(GameConfig.BODY_KINDS[i])
 
 func _on_export_genome() -> void:
 	if main_ref != null and main_ref.has_method("export_genome"):
