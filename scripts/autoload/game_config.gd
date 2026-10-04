@@ -223,7 +223,7 @@ var smash_invincible_chance: float = 0.3 ## 扣杀无敌概率 0~1 (成功前提
 var smash_fail_skew_deg: float = 65.0    ## 扣杀失败时方向打歪的最大角度(度) -> 更像"失误"
 var smash_vz: float = -600.0             ## 扣杀的向下竖直速度 (负值, 越大越快)
 var smash_speed_mult: float = 0.8        ## 扣杀水平速度微调 (>1 更凶, 可能过桌)
-var ai_smash_height_min: float = 300.0   ## AI 触发扣杀的最低球高 (单独设, 免得它太频繁)
+var ai_smash_height_min: float = 160.0   ## AI 触发扣杀的最低球高 (必须 ≤ hit_height_max=250, 否则永远扣不到)
 var smash_hint_enabled: bool = true      ## 球够高且可接时, 在球周围显示"可扣杀"提示
 
 # ============================================================
