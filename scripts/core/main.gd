@@ -58,8 +58,6 @@ func _ready() -> void:
 	ai.global_position = Vector2(300.0, 140.0)
 	add_child(ai)
 	players.append(ai)
-	for p in players:
-		p.ball_touched.connect(_on_ball_touched)
 	EventBus.score_changed.connect(func(_s: Dictionary) -> void: _play(_sfx_score, 1.0))
 
 	block_system = BlockSystem.new()
@@ -91,6 +89,9 @@ func _ready() -> void:
 
 	hud.match_ref = match_ref
 	debug_layer.match_ref = match_ref
+	# 反馈信号放在 Match 之后连接 -> 触球时先由 Match 结算, 再读 last_smash_state
+	for p in players:
+		p.ball_touched.connect(_on_ball_touched)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.echo:
@@ -236,8 +237,15 @@ func _update_juice(dt: float) -> void:
 		else:
 			cam.offset = Vector2.ZERO
 
-func _on_ball_touched(_pl: PlayerController, _hp: HitPoint) -> void:
+func _on_ball_touched(pl: PlayerController, _hp: HitPoint) -> void:
 	if not _juice_enabled or ball == null:
+		return
+	# 只有"真正该这一方接、且合法"的触球才给反馈 (球飞过非接球方判定区不算)
+	if not ball.returnable or ball.smash_invincible:
+		return
+	if match_ref != null and match_ref.expected_receiver != pl:
+		return
+	if ball.z < GameConfig.hit_height_min or ball.z > GameConfig.hit_height_max:
 		return
 	var smash: int = ball.last_smash_state
 	var save: int = ball.last_save_state
