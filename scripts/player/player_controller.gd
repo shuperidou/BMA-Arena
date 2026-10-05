@@ -671,7 +671,9 @@ func _ai_desired_swing() -> Vector2:
 	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
 	var perp: Vector2 = facing.rotated(PI * 0.5)
 	# AI 救球: 本拍已决定救球 -> 用防守姿态出球 (产出高球, 可被扣杀惩罚); 意图保持到触球。
-	if _ai_want_save and ball.returnable:
+	# "够呛"=球够低(贴可击带下缘)才救; 球不够低 -> 这拍正常回击
+	if _ai_want_save and ball.returnable \
+			and ball.z <= GameConfig.hit_height_min + GameConfig.ai_save_low_band:
 		debug_last_error = "救球"
 		return perp * (GameConfig.defense_perp_threshold * 2.0)
 	var ref: float = maxf(GameConfig.hit_zone_speed_ref, 1.0)

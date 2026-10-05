@@ -148,7 +148,7 @@ var ai_crossover_amount: float = 0.12     ## 赢家吸收对手基因的比例 (
 ## AI 只在"够呛"(球很高)且冷却好时, 用一次防守姿态救球 -> 救出的球很高, 正好可被扣杀惩罚。
 var ai_save_enabled: bool = true          ## 默认开: AI 会救球 (F1 菜单 0 可关)
 var ai_save_cooldown: float = 4.0         ## 冷却(秒): 一次救球后这么久内不再救
-var ai_save_height_min: float = 120.0     ## "够呛"判定: 球高 ≥ 此值才考虑救球
+var ai_save_low_band: float = 60.0        ## "够呛"=球够低: z ≤ hit_height_min + 此带宽, 才考虑救球 (不再是"球很高")
 
 ## ---- 挥拍滤波 (玩家/AI 共享): 力量不看"瞬时", 看"前一段" ----
 ##   0=瞬时(原) 1=A平滑(短窗低通) 2=B蓄力(累积位移, 衰减) 3=A+B
