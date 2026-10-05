@@ -114,8 +114,11 @@ var sf_n2: float = 0.6
 var sf_n3: float = 0.6
 var sf_a: float = 1.0
 var sf_b: float = 1.0
-var sf_radius: float = 30.0               ## 整体半径缩放 (公式 r 多在 ~1 附近)
-var sf_pips: int = 5                      ## 判定点数量 (均匀绕心布点)
+var sf_radius: float = 30.0               ## 整体半径缩放 = 大小系数 (公式 r 多在 ~1 附近)
+## 判定点数量由 m 决定: m 奇数 -> m 个, m 偶数 -> m/2 个 (和花瓣一样, 位置+控制也沿用花瓣那套)
+func sf_pip_count(m: float) -> int:
+	var mi: int = maxi(int(round(m)), 1)
+	return mi if (mi % 2) == 1 else maxi(mi / 2, 1)
 var player_shape_index: int = 0           ## 当前身体显示形状 (只有 0 纺锤是已设计的)
 var shape_segments: int = 28              ## 曲边采样段数
 ## 纺锤(唯一已设计): 形状=胶囊; 方程参数 = player_half_length(长半) + player_radius(宽半);
@@ -148,7 +151,7 @@ var ai_crossover_amount: float = 0.12     ## 赢家吸收对手基因的比例 (
 ## AI 只在"够呛"(球很高)且冷却好时, 用一次防守姿态救球 -> 救出的球很高, 正好可被扣杀惩罚。
 var ai_save_enabled: bool = true          ## 默认开: AI 会救球 (F1 菜单 0 可关)
 var ai_save_cooldown: float = 4.0         ## 冷却(秒): 一次救球后这么久内不再救
-var ai_save_low_band: float = 60.0        ## "够呛"=球够低: z ≤ hit_height_min + 此带宽, 才考虑救球 (不再是"球很高")
+var ai_save_low_band: float = 110.0        ## "够呛"=球够低: z ≤ hit_height_min + 此带宽, 才考虑救球 (不再是"球很高")
 
 ## ---- 挥拍滤波 (玩家/AI 共享): 力量不看"瞬时", 看"前一段" ----
 ##   0=瞬时(原) 1=A平滑(短窗低通) 2=B蓄力(累积位移, 衰减) 3=A+B
@@ -197,18 +200,21 @@ func polar_points(r0: float, lobes: int, amp: float, seg: int = 64) -> PackedVec
 		pts.append(Vector2(r * cos(th), r * sin(th)))
 	return pts
 
-## 超公式 (superformula) 边界点: 一大类封闭曲线 (花/星/圆角多边形)。
+## 超公式 (superformula) 半径: r(θ)。一大类封闭曲线 (花/星/圆角多边形)。
+func superformula_r(th: float, m: float, n1: float, n2: float, n3: float, a: float, b: float) -> float:
+	var t1: float = pow(absf(cos(m * th / 4.0) / maxf(absf(a), 0.05)), n2)   # a 可取负, 取绝对值; 防 0
+	var t2: float = pow(absf(sin(m * th / 4.0) / maxf(absf(b), 0.05)), n3)
+	return clampf(pow(maxf(t1 + t2, 1e-6), -1.0 / maxf(n1, 0.001)), 0.0, 4.0)   # 防发散
+
+## 超公式边界点 (radius = 整体大小系数)。
 func superformula_points(m: float, n1: float, n2: float, n3: float, a: float, b: float,
 		radius: float, seg: int = 72) -> PackedVector2Array:
 	var n: int = maxi(seg, 16)
 	var pts := PackedVector2Array()
 	for k in n:
 		var th: float = TAU * float(k) / float(n)
-		var t1: float = pow(absf(cos(m * th / 4.0) / maxf(absf(a), 0.05)), n2)   # a 可取负, 取绝对值; 防 0
-		var t2: float = pow(absf(sin(m * th / 4.0) / maxf(absf(b), 0.05)), n3)
-		var r: float = pow(maxf(t1 + t2, 1e-6), -1.0 / maxf(n1, 0.001))
-		r = clampf(r, 0.0, 4.0)   # 防发散 (某些参数会趋于无穷)
-		pts.append(Vector2(r * cos(th), r * sin(th)) * radius)   # radius = 整体大小系数
+		var r: float = superformula_r(th, m, n1, n2, n3, a, b)
+		pts.append(Vector2(r * cos(th), r * sin(th)) * radius)
 	return pts
 
 ## 采样身体边界点 (角色局部坐标, 未旋转)。按 player_body_kind 分派。
@@ -277,11 +283,11 @@ var assist_good_margin: float = 50.0    ## 好区=桌面内缩这么多像素。
 
 ## 防守姿态：鼠标向下猛拉(垂直分量 > 阈值) -> vy 很大但水平初速常常不够。
 ## 此时按 probability "救球"：成功则完全瞄准墙镜像落桌, 失败则用原始方向(大概率丢分)。
-var defense_perp_threshold: float = 100.0   ## 触发防守的垂直分量阈值 (px/s)
+var defense_perp_threshold: float = 1000.0   ## 触发防守的垂直分量阈值 (px/s)
 ## 还必须"垂直分量明显大于水平分量"才算防守: |v_along| < v_perp * 此比例。
 ## 否则横向力度太大 -> 当作普通横向挥动, 不算防守。
 var defense_max_along_ratio: float = 1.2
-var defense_save_chance: float = 1.0        ## 防守救球成功概率 0~1
+var defense_save_chance: float = 0.8        ## 防守救球成功概率 0~1
 var defense_vz_mult: float = 1.8            ## 防守时 vy 的额外倍数
 ## 救球成功时: 由 vz 反推水平初速, 让球够到"墙后桌中心的镜像"附近并落桌。
 var defense_save_offset: float = 0.1        ## 目标(镜像点)周围的随机偏移半径 (0=正中)

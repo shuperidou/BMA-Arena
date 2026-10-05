@@ -28,6 +28,11 @@ func _draw() -> void:
 		base = GameConfig.polar_points(float(cand.get("polar_r0", 26.0)),
 			int(cand.get("polar_lobes", 4)), float(cand.get("polar_amp", 0.45)))
 		ref = 44.0 * 1.85 * GameConfig.mutation_size_max
+	elif kind == "superformula":
+		base = GameConfig.superformula_points(float(cand.get("sf_m", 6.0)), float(cand.get("sf_n1", 0.6)),
+			float(cand.get("sf_n2", 0.6)), float(cand.get("sf_n3", 0.6)), float(cand.get("sf_a", 1.0)),
+			float(cand.get("sf_b", 1.0)), float(cand.get("sf_radius", 30.0)))
+		ref = 48.0 * 1.85 * GameConfig.mutation_size_max
 	else:
 		base = GameConfig.spindle_points(float(cand.get("half_len", 90.0)), float(cand.get("radius", 14.0)))
 	if base.size() < 3:

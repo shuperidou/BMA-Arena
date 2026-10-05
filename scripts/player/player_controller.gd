@@ -155,26 +155,16 @@ func _build_polar_body() -> void:
 		add_child(hp)
 		hit_points.append(hp)
 
-## 超公式: 多边形碰撞 (superformula) + 均匀绕心布 n 个判定点。
+## 超公式: 多边形碰撞 (superformula) + 均匀绕心布 n 个判定点 (n = m 或 m/2)。
 func _build_superformula_body() -> void:
 	_shape_poly = CollisionPolygon2D.new()
 	_shape_poly.name = "ShapePoly"
 	add_child(_shape_poly)
-	for i in maxi(GameConfig.sf_pips, 1):
+	for i in GameConfig.sf_pip_count(GameConfig.sf_m):
 		var hp := HitPoint.new()
 		hp.name = "HitPointPip%d" % i
 		add_child(hp)
 		hit_points.append(hp)
-
-## 超公式判定点: 均匀绕心布点, 判定点随拖动整体平移 (通用控制)。
-func _place_sf_points(sc: float) -> void:
-	var n: int = maxi(GameConfig.sf_pips, 1)
-	var rm: float = GameConfig.sf_radius * sc
-	var reach_i: float = GameConfig.hit_reach * sc
-	for i in mini(hit_points.size(), n):
-		var th: float = TAU * float(i) / float(n)
-		hit_points[i].position = Vector2(rm * cos(th), rm * sin(th)) + hit_zone_offset_local
-		hit_points[i].reach = reach_i
 
 ## 切换身体种类 (设置 + 重建)。P4: 验证"每个身体一套判定"的可插拔架构。
 func set_body_kind(kind: String) -> void:
@@ -387,12 +377,11 @@ func _recenter_body(state: PhysicsDirectBodyState2D, step: float, aim_point: Vec
 	var face_accel: float = GameConfig.base_face_acceleration * step * tmult
 	state.angular_velocity += clampf(desired_w - state.angular_velocity, -face_accel, face_accel)
 
-## 旋转体(花瓣)判定点布点 + 专属控制 (只用于花瓣):
+## 旋转体(花瓣/超公式)通用判定点布点 + 专属控制:
 ##   上下拖动 -> 径向缩放 (向内缩进); 左右拖动 -> 绕形状中心旋转;
 ##   判定点越多, 每个半径越小 (2/sqrt(n) 归一, n=4 时=1x)。
-func _place_polar_points(sc: float) -> void:
-	var n: int = maxi(GameConfig.polar_lobes, 1)
-	var rm: float = GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc
+func _place_radial_points(sc: float, n: int, rm: float) -> void:
+	n = maxi(n, 1)
 	var rot: float = hit_zone_offset_local.x * GameConfig.polar_rot_per_px
 	var radial: float = hit_zone_offset_local.y * GameConfig.polar_radial_per_px
 	var reach_i: float = GameConfig.hit_reach * sc * GameConfig.polar_reach_scale * (2.0 / sqrt(float(n)))
@@ -401,6 +390,15 @@ func _place_polar_points(sc: float) -> void:
 		var rr: float = maxf(rm - radial, 4.0 * sc)
 		hit_points[i].position = Vector2(rr * cos(th), rr * sin(th))
 		hit_points[i].reach = reach_i
+
+## 花瓣: 布点 = 花瓣数个, 半径 = r_max·size。
+func _place_polar_points(sc: float) -> void:
+	_place_radial_points(sc, maxi(GameConfig.polar_lobes, 1),
+		GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc)
+
+## 超公式: 布点 = m(奇)或 m/2(偶) 个, 半径 = sf_radius·size (与花瓣同一套控制)。
+func _place_sf_points(sc: float) -> void:
+	_place_radial_points(sc, GameConfig.sf_pip_count(GameConfig.sf_m), GameConfig.sf_radius * sc)
 
 ## 判定点随拖动位移 (纺锤: 两端反向; 花瓣: 专属极坐标控制; 圆: 固定中心)。
 func _update_hit_points() -> void:
