@@ -131,6 +131,7 @@ var player_size_scale: float = 1.0
 ## ---- P4 变异 v1 (最小可验证)：只变异"纺锤"的大小 + 形状方程参数(长/宽); 代价=大→移动慢/转身难 ----
 var mutation_candidates: int = 4          ## 每次生成的候选数 (含"保留当前")
 var mutation_kind_chance: float = 0.35    ## 变异时"换身体种类"的概率 (0=只调参, 1=总换)
+var force_mutate_on_match_end: bool = true ## P5: 一局结束后自动弹出变异面板 (强制变异循环)
 var mutation_size_delta: float = 0.15     ## 大小抖动量
 var mutation_size_min: float = 0.85
 var mutation_size_max: float = 1.25

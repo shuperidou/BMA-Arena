@@ -106,6 +106,9 @@ func _test(c: Dictionary) -> void:
 
 func _pick(c: Dictionary) -> void:
 	MutationSystem.apply(c)
-	if main_ref != null and main_ref.has_method("rebuild_shapes"):
-		main_ref.rebuild_shapes()
+	if main_ref != null:
+		if main_ref.has_method("record_choice"):
+			main_ref.record_choice(c, _cands)   # P5: 记入家谱
+		if main_ref.has_method("rebuild_shapes"):
+			main_ref.rebuild_shapes()
 	close()

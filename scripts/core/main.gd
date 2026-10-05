@@ -15,6 +15,7 @@ var esc_menu: EscMenu
 var mutation_panel: MutationPanel
 var players: Array[PlayerController] = []
 var cam: Camera2D = null
+var character_tree: CharacterTree = null    ## P5 角色家谱/进化树
 
 # --- 反馈 [TEMP]: 命中停顿(hitstop) + 震屏 ---
 var _shake: float = 0.0
@@ -86,6 +87,12 @@ func _ready() -> void:
 	for p in players:
 		p.ball_touched.connect(_on_ball_touched)
 
+	# P5 角色家谱: 读档续用, 否则以当前身体建根; 比赛结束 -> 强制变异
+	character_tree = CharacterTree.new()
+	if not character_tree.load_tree():
+		character_tree.reset_root(MutationSystem.current())
+	EventBus.match_finished.connect(func(_w: int, _s: Dictionary) -> void: _on_match_finished())
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey) or not event.pressed or event.echo:
 		return
@@ -148,9 +155,25 @@ func rebuild_shapes() -> void:
 		else:
 			p.rebuild_shape()
 
-## 打开 P4 变异面板 (ESC 菜单「变异」按钮调用)。
+## 打开 P4 变异面板 (ESC 菜单「变异」按钮调用; 也用于 P5 强制变异)。
 func open_mutation() -> void:
 	mutation_panel.open()
+
+## P5: 玩家选定一个候选 -> 记入家谱 (子代 = 选中, 其余 = 被淘汰分支), 并落盘。
+func record_choice(c: Dictionary, cands: Array) -> void:
+	if character_tree == null:
+		return
+	var eliminated: Array = []
+	for x in cands:
+		if x != c:
+			eliminated.append(x)
+	character_tree.choose(c, eliminated)
+	character_tree.save()
+
+## P5 强制变异: 一局结束后强制玩家看一眼变异 (可继续加"周期性")。
+func _on_match_finished() -> void:
+	if GameConfig.force_mutate_on_match_end:
+		open_mutation()
 
 ## ② 导出/导入 P1 的 AI 基因。多槽位: 每槽一个文件, 互不覆盖 (存成熟体 / 续训)。
 const GENOME_SLOTS: int = 6

@@ -17,6 +17,10 @@ static func generate(n: int = -1) -> Array:
 		out.append(_mutated_candidate(i))
 	return out
 
+## 当前身体的公开快照 (供家谱/进化树用)。
+static func current() -> Dictionary:
+	return _current("当前")
+
 ## 当前身体的快照 (作为候选基准)。
 static func _current(label: String) -> Dictionary:
 	return {
