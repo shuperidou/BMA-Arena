@@ -395,7 +395,7 @@ func _place_polar_points(sc: float) -> void:
 	var rm: float = GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc
 	var rot: float = hit_zone_offset_local.x * GameConfig.polar_rot_per_px
 	var radial: float = hit_zone_offset_local.y * GameConfig.polar_radial_per_px
-	var reach_i: float = GameConfig.hit_reach * sc * (2.0 / sqrt(float(n)))
+	var reach_i: float = GameConfig.hit_reach * sc * GameConfig.polar_reach_scale * (2.0 / sqrt(float(n)))
 	for i in mini(hit_points.size(), n):
 		var th: float = TAU * float(i) / float(n) + rot
 		var rr: float = maxf(rm - radial, 4.0 * sc)

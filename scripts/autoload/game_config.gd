@@ -106,6 +106,7 @@ var polar_amp: float = 0.45               ## 花瓣深浅 0~0.9 (0=圆, 越大�
 ## 旋转体(花瓣/超公式)专属控制: 拖动上下=判定点径向缩放(向内缩进), 左右=绕形状中心旋转。
 var polar_radial_per_px: float = 0.6      ## 拖动 y 每像素 -> 径向位移 (正=向内缩)
 var polar_rot_per_px: float = 0.012       ## 拖动 x 每像素 -> 绕心旋转弧度
+var polar_reach_scale: float = 0.5        ## 花瓣判定点半径的整体缩放 (判定区偏大 -> 调小)
 ## "超公式"身体: r(θ) = (|cos(mθ/4)/a|^n2 + |sin(mθ/4)/b|^n3)^(-1/n1)。一大类封闭花/星/圆角多边形。
 var sf_m: float = 6.0                     ## 边/花瓣数 (整数更好看)
 var sf_n1: float = 0.6
@@ -203,11 +204,11 @@ func superformula_points(m: float, n1: float, n2: float, n3: float, a: float, b:
 	var pts := PackedVector2Array()
 	for k in n:
 		var th: float = TAU * float(k) / float(n)
-		var t1: float = pow(absf(cos(m * th / 4.0) / maxf(a, 0.001)), n2)
-		var t2: float = pow(absf(sin(m * th / 4.0) / maxf(b, 0.001)), n3)
+		var t1: float = pow(absf(cos(m * th / 4.0) / maxf(absf(a), 0.05)), n2)   # a 可取负, 取绝对值; 防 0
+		var t2: float = pow(absf(sin(m * th / 4.0) / maxf(absf(b), 0.05)), n3)
 		var r: float = pow(maxf(t1 + t2, 1e-6), -1.0 / maxf(n1, 0.001))
 		r = clampf(r, 0.0, 4.0)   # 防发散 (某些参数会趋于无穷)
-		pts.append(Vector2(r * cos(th), r * sin(th)) * radius)
+		pts.append(Vector2(r * cos(th), r * sin(th)) * radius)   # radius = 整体大小系数
 	return pts
 
 ## 采样身体边界点 (角色局部坐标, 未旋转)。按 player_body_kind 分派。
@@ -291,7 +292,7 @@ var defense_save_speed_mult: float = 1.0    ## 反推水平初速的微调倍数
 var smash_height_min: float = 130.0      ## 触发扣杀的最低球高
 var smash_power_min: float = 0.6         ## 触发扣杀的最低力量 (strength 0..1)
 var smash_success_chance: float = 1.0    ## 扣杀成功概率 0~1 (满足条件后能"完整走完墙桌循环"的概率)
-var smash_invincible_chance: float = 0.3 ## 扣杀无敌概率 0~1 (成功前提下"对方接不住"的概率)
+var smash_invincible_chance: float = 0.05 ## 扣杀无敌概率 0~1 (成功前提下"对方接不住"的概率)
 var smash_fail_skew_deg: float = 65.0    ## 扣杀失败时方向打歪的最大角度(度) -> 更像"失误"
 var smash_vz: float = -600.0             ## 扣杀的向下竖直速度 (负值, 越大越快)
 var smash_speed_mult: float = 0.8        ## 扣杀水平速度微调 (>1 更凶, 可能过桌)

@@ -28,6 +28,13 @@ static func _current(label: String) -> Dictionary:
 		"polar_r0": GameConfig.polar_r0,
 		"polar_lobes": GameConfig.polar_lobes,
 		"polar_amp": GameConfig.polar_amp,
+		"sf_m": GameConfig.sf_m,
+		"sf_n1": GameConfig.sf_n1,
+		"sf_n2": GameConfig.sf_n2,
+		"sf_n3": GameConfig.sf_n3,
+		"sf_a": GameConfig.sf_a,
+		"sf_b": GameConfig.sf_b,
+		"sf_radius": GameConfig.sf_radius,
 		"name": label,
 	}
 
@@ -47,6 +54,15 @@ static func _mutated_candidate(i: int) -> Dictionary:
 			c["polar_r0"] = clampf(GameConfig.polar_r0 + randf_range(-7.0, 7.0), 14.0, 44.0)
 			c["polar_lobes"] = clampi(GameConfig.polar_lobes + randi_range(-1, 1), 2, 8)
 			c["polar_amp"] = clampf(GameConfig.polar_amp + randf_range(-0.15, 0.15), 0.0, 0.85)
+		"superformula":
+			# m 必须偶数; a,b∈[-1,1] (非0); n1,n2,n3>0; radius=大小系数
+			c["sf_m"] = clampf(GameConfig.sf_m + float(randi_range(-2, 2)) * 2.0, 2.0, 16.0)
+			c["sf_n1"] = clampf(GameConfig.sf_n1 + randf_range(-0.4, 0.4), 0.05, 4.0)
+			c["sf_n2"] = clampf(GameConfig.sf_n2 + randf_range(-0.4, 0.4), 0.05, 4.0)
+			c["sf_n3"] = clampf(GameConfig.sf_n3 + randf_range(-0.4, 0.4), 0.05, 4.0)
+			c["sf_a"] = clampf(GameConfig.sf_a + randf_range(-0.25, 0.25), -1.0, 1.0)
+			c["sf_b"] = clampf(GameConfig.sf_b + randf_range(-0.25, 0.25), -1.0, 1.0)
+			c["sf_radius"] = clampf(GameConfig.sf_radius + randf_range(-6.0, 6.0), 14.0, 48.0)
 		_:
 			c["half_len"] = clampf(
 				GameConfig.player_half_length + randf_range(-GameConfig.mutation_len_delta, GameConfig.mutation_len_delta),
@@ -66,6 +82,11 @@ static func describe(c: Dictionary) -> String:
 		"polar":
 			s += " · r%.0f 花%d 深%.2f" % [
 				float(c.get("polar_r0", 26.0)), int(c.get("polar_lobes", 4)), float(c.get("polar_amp", 0.45))]
+		"superformula":
+			s += " · m%.0f n%.1f/%.1f/%.1f a%.2f b%.2f 大小系数%.1f" % [
+				float(c.get("sf_m", 6.0)), float(c.get("sf_n1", 0.6)), float(c.get("sf_n2", 0.6)),
+				float(c.get("sf_n3", 0.6)), float(c.get("sf_a", 1.0)), float(c.get("sf_b", 1.0)),
+				float(c.get("sf_radius", 30.0))]
 		_:
 			s += " · 长%.0f 宽%.0f" % [float(c.get("half_len", 90.0)), float(c.get("radius", 14.0))]
 	return s
@@ -86,3 +107,17 @@ static func apply(c: Dictionary) -> void:
 		GameConfig.polar_lobes = int(c["polar_lobes"])
 	if c.has("polar_amp"):
 		GameConfig.polar_amp = float(c["polar_amp"])
+	if c.has("sf_m"):
+		GameConfig.sf_m = float(c["sf_m"])
+	if c.has("sf_n1"):
+		GameConfig.sf_n1 = float(c["sf_n1"])
+	if c.has("sf_n2"):
+		GameConfig.sf_n2 = float(c["sf_n2"])
+	if c.has("sf_n3"):
+		GameConfig.sf_n3 = float(c["sf_n3"])
+	if c.has("sf_a"):
+		GameConfig.sf_a = float(c["sf_a"])
+	if c.has("sf_b"):
+		GameConfig.sf_b = float(c["sf_b"])
+	if c.has("sf_radius"):
+		GameConfig.sf_radius = float(c["sf_radius"])
