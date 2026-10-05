@@ -55,8 +55,8 @@ static func _mutated_candidate(i: int) -> Dictionary:
 			c["polar_lobes"] = clampi(GameConfig.polar_lobes + randi_range(-1, 1), 2, 8)
 			c["polar_amp"] = clampf(GameConfig.polar_amp + randf_range(-0.15, 0.15), 0.0, 0.85)
 		"superformula":
-			# m 必须偶数; a,b∈[-1,1] (非0); n1,n2,n3>0; radius=大小系数
-			c["sf_m"] = clampf(GameConfig.sf_m + float(randi_range(-2, 2)) * 2.0, 2.0, 16.0)
+			# m 为任意正整数; a,b∈[-1,1] (非0); n1,n2,n3>0; radius=大小系数
+			c["sf_m"] = clampf(GameConfig.sf_m + float(randi_range(-2, 2)), 1.0, 16.0)
 			c["sf_n1"] = clampf(GameConfig.sf_n1 + randf_range(-0.4, 0.4), 0.05, 4.0)
 			c["sf_n2"] = clampf(GameConfig.sf_n2 + randf_range(-0.4, 0.4), 0.05, 4.0)
 			c["sf_n3"] = clampf(GameConfig.sf_n3 + randf_range(-0.4, 0.4), 0.05, 4.0)
