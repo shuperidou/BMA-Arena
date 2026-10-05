@@ -72,7 +72,8 @@ var _prev_drag_valid: bool = false
 var _body_color: Color = Color(0.31, 0.82, 0.77)
 var _shape_poly: CollisionPolygon2D = null  ## 纺锤: 形状碰撞体 (与显示完全同步)
 var _circle_shape: CollisionShape2D = null  ## 圆: 圆形碰撞体
-var _body_kind: String = "spindle"          ## 当前身体种类: spindle / circle
+var _body_kind: String = "spindle"          ## 当前身体种类
+var _defensing: bool = false                ## 本次挥拍是否防守姿态 (防守时接触判定改用身体形状)
 
 func setup(index: int, scheme: InputScheme) -> void:
 	player_index = index
@@ -175,6 +176,8 @@ func _build_sf2_body() -> void:
 	add_child(_shape_poly)
 	var hp := HitPoint.new()
 	hp.name = "HitPointPip0"
+	hp.visible = false              # 轴对称形: 判定区隐藏 (接球用整个身体轮廓判定)
+	hp.reach = 0.0
 	add_child(hp)
 	hit_points.append(hp)
 
@@ -210,17 +213,26 @@ func _swing_power01(sw: Vector2) -> float:
 func _size_speed_mult() -> float:
 	if player_index != 1:
 		return 1.0
-	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_move_exponent)
+	# 用"面积"(size^2): speed ∝ size^(-2·move_exp)。比线性尺寸更明显。
+	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_move_exponent * 2.0)
 
 ## P4 体型代价: 转身速度倍率 (越大越难转)。只作用玩家(索引1)。
 func _size_turn_mult() -> float:
 	if player_index != 1:
 		return 1.0
-	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_turn_exponent)
+	# 转身同样按面积; 另外质量随面积增大 -> 转动惯量自然变大 (更难转) 见 _apply_size_cost。
+	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_turn_exponent * 2.0)
+
+## 体型质量代价: 质量 ∝ 面积(size^2) -> 惯性/撞击/转身惯量都随体型增大。只作用玩家。
+func _apply_size_cost() -> void:
+	if player_index != 1:
+		return
+	mass = GameConfig.player_mass * pow(maxf(GameConfig.player_size_scale, 0.05), 2.0)
 
 ## 重建碰撞体 + 判定区间距 (换形状/大小/身体时调用)。
 func rebuild_shape() -> void:
 	var sc: float = maxf(GameConfig.player_size_scale, 0.05)
+	_apply_size_cost()
 	if _body_kind == "circle":
 		if _circle_shape != null:
 			var circ := CircleShape2D.new()
@@ -315,11 +327,36 @@ func _physics_process(_dt: float) -> void:
 	var now: float = _now()
 	if now - _last_touch_time < TOUCH_COOLDOWN:
 		return
+	# 身体形状判定: 防守姿态时, 或本身体(轴对称形)没有判定点 -> 球落在身体轮廓内即触球
+	if _body_shape_catch():
+		if _ball_in_body():
+			_last_touch_time = now
+			ball_touched.emit(self, _swing_anchor())
+		return
 	for hp in hit_points:
 		if hp.touches(ball):
 			_last_touch_time = now
 			ball_touched.emit(self, hp)
 			return
+
+## 是否用"身体形状"判定触球: 防守姿态 或 本身体没有判定点(轴对称形)。
+func _body_shape_catch() -> bool:
+	return _defensing or _body_kind == "sf2"
+
+## 球(俯视 XY)是否落在身体轮廓内 (多边形用点在多边形内; 圆用半径)。
+func _ball_in_body() -> bool:
+	if ball == null:
+		return false
+	var lp: Vector2 = to_local(ball.global_position)
+	if _body_kind == "circle":
+		return lp.length() <= GameConfig.circle_body_radius * maxf(GameConfig.player_size_scale, 0.05)
+	if _shape_poly != null and _shape_poly.polygon.size() >= 3:
+		return Geometry2D.is_point_in_polygon(lp, _shape_poly.polygon)
+	return false
+
+## 身体判定时给 HitSystem 用的挥拍锚点 (取第一个判定点; 轴对称形保留一个隐藏锚点)。
+func _swing_anchor() -> HitPoint:
+	return hit_points[0] if not hit_points.is_empty() else null
 
 ## 控制击球区位置 (玩家1) / (玩家2 临时) 键盘旋转。玩家1 的 rotation 完全交给物理。
 func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
@@ -369,6 +406,7 @@ func _update_controls(state: PhysicsDirectBodyState2D, step: float) -> void:
 		var is_def: bool = GameConfig.defense_perp_threshold > 0.0 \
 			and swing_local.y > GameConfig.defense_perp_threshold \
 			and absf(swing_local.x) < swing_local.y * GameConfig.defense_max_along_ratio
+		_defensing = is_def
 		for hp in hit_points:
 			hp.swing_velocity = sw
 			hp.power01 = p01
@@ -692,6 +730,7 @@ func _ai_face_point() -> Vector2:
 func _ai_desired_swing() -> Vector2:
 	if ball == null or ball.state != GameTypes.BallState.LIVE:
 		return Vector2.ZERO
+	_defensing = false
 	var facing: Vector2 = Vector2.RIGHT.rotated(rotation)
 	var perp: Vector2 = facing.rotated(PI * 0.5)
 	# AI 救球: 本拍已决定救球 -> 用防守姿态出球 (产出高球, 可被扣杀惩罚); 意图保持到触球。
@@ -699,6 +738,7 @@ func _ai_desired_swing() -> Vector2:
 	if _ai_want_save and ball.returnable \
 			and ball.z <= GameConfig.hit_height_min + GameConfig.ai_save_low_band:
 		debug_last_error = "救球"
+		_defensing = true
 		return perp * (GameConfig.defense_perp_threshold * 2.0)
 	var ref: float = maxf(GameConfig.hit_zone_speed_ref, 1.0)
 	var curve: float = maxf(GameConfig.hit_speed_curve, 0.05)
