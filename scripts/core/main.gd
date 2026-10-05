@@ -16,6 +16,7 @@ var mutation_panel: MutationPanel
 var players: Array[PlayerController] = []
 var cam: Camera2D = null
 var character_tree: CharacterTree = null    ## P5 角色家谱/进化树
+var tree_panel: TreePanel = null            ## P5 家谱查看面板
 
 # --- 反馈 [TEMP]: 命中停顿(hitstop) + 震屏 ---
 var _shake: float = 0.0
@@ -75,6 +76,11 @@ func _ready() -> void:
 	mutation_panel.name = "MutationPanel"
 	mutation_panel.main_ref = self
 	add_child(mutation_panel)
+
+	tree_panel = TreePanel.new()
+	tree_panel.name = "TreePanel"
+	tree_panel.main_ref = self
+	add_child(tree_panel)
 
 	match_ref = Match.new()
 	match_ref.name = "Match"
@@ -158,6 +164,23 @@ func rebuild_shapes() -> void:
 ## 打开 P4 变异面板 (ESC 菜单「变异」按钮调用; 也用于 P5 强制变异)。
 func open_mutation() -> void:
 	mutation_panel.open()
+
+## 打开 P5 家谱面板。
+func open_tree() -> void:
+	tree_panel.open()
+
+## P5 后悔机制: 回到家谱里某一代 (启用那个旧形态) + 当前位置回退 + 落盘。
+func restore_node(id: int) -> void:
+	if character_tree == null:
+		return
+	var n: Dictionary = character_tree.get_node_by_id(id)
+	if n.is_empty():
+		return
+	MutationSystem.apply(n)
+	character_tree.current_id = id
+	character_tree.save()
+	rebuild_shapes()
+	EventBus.notify("已回到家谱节点: %s" % String(n.get("label", "")), 2.0)
 
 ## P5: 玩家选定一个候选 -> 记入家谱 (子代 = 选中, 其余 = 被淘汰分支), 并落盘。
 func record_choice(c: Dictionary, cands: Array) -> void:

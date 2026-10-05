@@ -220,6 +220,11 @@ func _build() -> void:
 	_font(mutate, 20)
 	mutate.pressed.connect(_on_mutate)
 	brow.add_child(mutate)
+	var btree := Button.new()
+	btree.text = "家谱"
+	_font(btree, 20)
+	btree.pressed.connect(_on_tree)
+	brow.add_child(btree)
 	var bexp := Button.new()
 	bexp.text = "导出基因"
 	_font(bexp, 17)
@@ -253,6 +258,11 @@ func _on_mutate() -> void:
 	close()
 	if main_ref != null and main_ref.has_method("open_mutation"):
 		main_ref.open_mutation()
+
+func _on_tree() -> void:
+	close()
+	if main_ref != null and main_ref.has_method("open_tree"):
+		main_ref.open_tree()
 
 func _on_body_kind(i: int) -> void:
 	if i < 0 or i >= GameConfig.BODY_KINDS.size():

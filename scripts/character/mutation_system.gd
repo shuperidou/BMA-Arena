@@ -57,8 +57,8 @@ static func _mutated_candidate(i: int) -> Dictionary:
 			c["polar_lobes"] = clampi(GameConfig.polar_lobes + randi_range(-1, 1), 2, 8)
 			c["polar_amp"] = clampf(GameConfig.polar_amp + randf_range(-0.15, 0.15), 0.0, 0.85)
 		"superformula":
-			# m 偶数 ≤10; n1/n2∈(0,5], n3∈[-10,-3]∪[3,10]; k∈[0.5,2]; 且图形须通过合法性校验
-			c["sf_m"] = clampf(GameConfig.sf_m + float(randi_range(-2, 2)) * 2.0, 2.0, GameConfig.sf_n_max)
+			# m 仅偶数 [4,10] (m=2 已单列为"轴对称形", 不在此大类); 图形须通过合法性校验
+			c["sf_m"] = clampf(GameConfig.sf_m + float(randi_range(-2, 2)) * 2.0, 4.0, GameConfig.sf_n_max)
 			var p := GameConfig.superformula_sample_valid(c["sf_m"])
 			c["sf_n1"] = p["sf_n1"]
 			c["sf_n2"] = p["sf_n2"]
