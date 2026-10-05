@@ -223,6 +223,33 @@ func _size_turn_mult() -> float:
 	# 转身同样按面积; 另外质量随面积增大 -> 转动惯量自然变大 (更难转) 见 _apply_size_cost。
 	return pow(maxf(GameConfig.player_size_scale, 0.05), -GameConfig.size_turn_exponent * 2.0)
 
+## 体型因子 (只为玩家; AI 恒 1)。用于"大=救球强 / 小=扣杀强"等体型派生效果。
+func size_factor() -> float:
+	return clampf(GameConfig.player_size_scale, 0.05, 10.0) if player_index == 1 else 1.0
+
+## 身体"尖刺"检测 (为后续"阻挡个屁"争论 / 肉搏预留): 返回凸且很尖的顶点 (局部坐标 + 尖锐度 0..1)。
+## 尖锐度 = 1 - 顶点内角/阈值 (越尖越大)。按当前点序判凸。
+func body_spikes(sharp_deg: float = 70.0) -> Array:
+	var out: Array = []
+	var poly: PackedVector2Array = GameConfig.player_shape_points()
+	var n: int = poly.size()
+	if n < 3:
+		return out
+	for i in n:
+		var p: Vector2 = poly[i]
+		var a: Vector2 = poly[(i - 1 + n) % n]
+		var b: Vector2 = poly[(i + 1) % n]
+		var ea: Vector2 = (a - p).normalized()
+		var eb: Vector2 = (b - p).normalized()
+		if ea == Vector2.ZERO or eb == Vector2.ZERO:
+			continue
+		if ea.cross(eb) > 0.0:
+			continue   # 凹点
+		var ang: float = rad_to_deg(acos(clampf(ea.dot(eb), -1.0, 1.0)))
+		if ang < sharp_deg:
+			out.append({"pos": p, "sharp": 1.0 - ang / sharp_deg})
+	return out
+
 ## 体型质量代价: 质量 ∝ 面积(size^2) -> 惯性/撞击/转身惯量都随体型增大。只作用玩家。
 func _apply_size_cost() -> void:
 	if player_index != 1:

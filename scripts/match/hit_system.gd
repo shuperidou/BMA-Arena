@@ -13,6 +13,7 @@ extends RefCounted
 ## 参数全部来自 GameConfig (hit_speed_* / hit_direction_strength / max_assist_angle ...)。
 
 static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dictionary:
+	var psize: float = player.size_factor() if player != null else 1.0   # 体型因子 (AI=1)
 	var facing: Vector2 = Vector2.RIGHT.rotated(player.rotation)  # 面向桌中心 (基准方向)
 	var perp: Vector2 = facing.rotated(PI * 0.5)                  # 垂直于朝向 (角色局部 +y)
 	var zone_world: Vector2 = zone.global_position
@@ -58,15 +59,21 @@ static func compute(player: PlayerController, zone: HitPoint, ball: Ball) -> Dic
 	# 扣杀三级: 尝试(条件) / 成功(能走完墙桌循环, 过概率) / 无敌(成功后不被接住, 再过概率)
 	var smash_attempt: bool = ball.z >= GameConfig.smash_height_min \
 		and strength >= GameConfig.smash_power_min
-	var is_smash: bool = smash_attempt and randf() < GameConfig.smash_success_chance
+	# 体型派生: 小身材扣杀成功率更高 (size^(-本指数))
+	var smash_ch: float = clampf(GameConfig.smash_success_chance * pow(psize, -GameConfig.smash_size_exponent), 0.0, 1.0)
+	var is_smash: bool = smash_attempt and randf() < smash_ch
 	var smash_invincible: bool = false
 	var defense_saved: bool = false
 	if is_smash:
 		is_defense = false
-		smash_invincible = randf() < GameConfig.smash_invincible_chance
+		# 小身材无敌扣杀率也更高
+		smash_invincible = randf() < clampf(
+			GameConfig.smash_invincible_chance * pow(psize, -GameConfig.smash_size_exponent), 0.0, 1.0)
 	elif is_defense:
 		vz = clampf(vz * GameConfig.defense_vz_mult, GameConfig.hit_vz_min, GameConfig.hit_vz_max)
-		defense_saved = randf() < GameConfig.defense_save_chance   # 救球成功概率 0~1
+		# 体型派生: 大身材救球成功率更高 (size^(本指数))
+		defense_saved = randf() < clampf(
+			GameConfig.defense_save_chance * pow(psize, GameConfig.save_size_exponent), 0.0, 1.0)
 
 	# 墙镜像恢复方向 (桌中心关于墙的镜像)
 	var tc: Vector2 = GameConfig.table_center

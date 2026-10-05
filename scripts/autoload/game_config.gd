@@ -140,8 +140,10 @@ var mutation_len_max: float = 132.0
 var mutation_wid_delta: float = 5.0       ## 宽半抖动量 (加减)
 var mutation_wid_min: float = 8.0
 var mutation_wid_max: float = 30.0
-var size_move_exponent: float = 0.55      ## 体型→移动速度代价: speed ∝ size^(-此指数)
-var size_turn_exponent: float = 0.45      ## 体型→转身速度代价: turn  ∝ size^(-此指数)
+var size_move_exponent: float = 0.55      ## 体型→移动速度代价: speed ∝ size^(-2·此指数)
+var size_turn_exponent: float = 0.45      ## 体型→转身速度代价: turn  ∝ size^(-2·此指数)
+var save_size_exponent: float = 1.2       ## 大身材救球更易: save_chance ∝ size^(此指数)
+var smash_size_exponent: float = 1.2      ## 小身材扣杀更狠: smash/invincible_chance ∝ size^(-此指数)
 var ai_test_seconds: float = 5.0          ## P4"试战"时长(秒): 应用候选后双方AI对打一小段给玩家看
 
 ## ---- ② AI 进化 [TEMP]: 变异率 / 探险度 (ESC 可调) ----
