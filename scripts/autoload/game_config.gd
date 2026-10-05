@@ -114,7 +114,7 @@ var polar_reach_scale: float = 0.5        ## 花瓣判定点半径的整体缩�
 var sf_m: float = 6.0                     ## 仅偶数, ≤10
 var sf_n1: float = 1.0                    ## ∈(0,5]
 var sf_n2: float = 1.0                    ## ∈(0,5]
-var sf_n3: float = 1.0                    ## ∈(0,5]
+var sf_n3: float = 3.0                    ## ∈[-10,-3] ∪ [3,10]
 var sf_k: float = 1.0                     ## 大小系数 ∈[0.5,2]
 var sf_px: float = 30.0                   ## k=1 时的像素半径 (与 k 相乘得实际大小)
 var sf_n_max: float = 10.0                ## m 的上限 (偶数)
@@ -207,6 +207,29 @@ func superformula_r(th: float, m: float, n1: float, n2: float, n3: float) -> flo
 	var a: float = pow(absf(cos(0.25 * m * th)), maxf(n1, 0.01))
 	var b: float = pow(absf(sin(0.25 * m * th)), maxf(n2, 0.01))
 	return pow(maxf(a + b, 1e-6), maxf(n3, 0.01))
+
+## 合法性: 生成图形需 r_max<5k 且 r_max-r_min>0.5k (核心 g 的最大<5 且 变化>0.5)。
+func superformula_valid(m: float, n1: float, n2: float, n3: float, seg: int = 48) -> bool:
+	var mx: float = -1e9
+	var mn: float = 1e9
+	for i in seg:
+		var th: float = TAU * float(i) / float(seg)
+		var g: float = superformula_r(th, m, n1, n2, n3)
+		mx = maxf(mx, g)
+		mn = minf(mn, g)
+	return mx < 5.0 and (mx - mn) > 0.5
+
+## 采样一组合法参数 (n3∈[-10,-3]∪[3,10], n1/n2∈(0,5]) 直到满足约束。
+func superformula_sample_valid(m: float) -> Dictionary:
+	for attempt in 300:
+		var n1: float = randf_range(0.2, 5.0)
+		var n2: float = randf_range(0.2, 5.0)
+		var n3: float = randf_range(3.0, 10.0)
+		if randf() < 0.5:
+			n3 = -n3
+		if superformula_valid(m, n1, n2, n3):
+			return {"sf_n1": n1, "sf_n2": n2, "sf_n3": n3}
+	return {"sf_n1": 1.0, "sf_n2": 1.0, "sf_n3": 3.0}   # 兜底 (已知合法)
 
 ## 超公式边界点 (k = 大小系数 [0.5,2]; 实际大小 = k·sf_px)。
 func superformula_points(m: float, n1: float, n2: float, n3: float, k: float, seg: int = 72) -> PackedVector2Array:

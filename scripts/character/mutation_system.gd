@@ -53,16 +53,18 @@ static func _mutated_candidate(i: int) -> Dictionary:
 			c["polar_lobes"] = clampi(GameConfig.polar_lobes + randi_range(-1, 1), 2, 8)
 			c["polar_amp"] = clampf(GameConfig.polar_amp + randf_range(-0.15, 0.15), 0.0, 0.85)
 		"superformula":
-			# m 偶数 ≤10; n1,n2,n3 ∈(0,5]; k ∈[0.5,2]
+			# m 偶数 ≤10; n1/n2∈(0,5], n3∈[-10,-3]∪[3,10]; k∈[0.5,2]; 且图形须通过合法性校验
 			c["sf_m"] = clampf(GameConfig.sf_m + float(randi_range(-2, 2)) * 2.0, 2.0, GameConfig.sf_n_max)
-			c["sf_n1"] = clampf(GameConfig.sf_n1 + randf_range(-1.0, 1.0), 0.1, 5.0)
-			c["sf_n2"] = clampf(GameConfig.sf_n2 + randf_range(-1.0, 1.0), 0.1, 5.0)
-			c["sf_n3"] = clampf(GameConfig.sf_n3 + randf_range(-1.0, 1.0), 0.1, 5.0)
+			var p := GameConfig.superformula_sample_valid(c["sf_m"])
+			c["sf_n1"] = p["sf_n1"]
+			c["sf_n2"] = p["sf_n2"]
+			c["sf_n3"] = p["sf_n3"]
 			c["sf_k"] = clampf(GameConfig.sf_k + randf_range(-0.3, 0.3), 0.5, 2.0)
 		"sf2":
-			c["sf_n1"] = clampf(GameConfig.sf_n1 + randf_range(-1.0, 1.0), 0.1, 5.0)
-			c["sf_n2"] = clampf(GameConfig.sf_n2 + randf_range(-1.0, 1.0), 0.1, 5.0)
-			c["sf_n3"] = clampf(GameConfig.sf_n3 + randf_range(-1.0, 1.0), 0.1, 5.0)
+			var p2 := GameConfig.superformula_sample_valid(2.0)
+			c["sf_n1"] = p2["sf_n1"]
+			c["sf_n2"] = p2["sf_n2"]
+			c["sf_n3"] = p2["sf_n3"]
 			c["sf_k"] = clampf(GameConfig.sf_k + randf_range(-0.3, 0.3), 0.5, 2.0)
 		_:
 			c["half_len"] = clampf(
