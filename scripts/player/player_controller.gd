@@ -117,6 +117,8 @@ func _build_body() -> void:
 			_build_polar_body()
 		"superformula":
 			_build_superformula_body()
+		"sf2":
+			_build_sf2_body()
 		_:
 			_build_spindle_body()
 	rebuild_shape()
@@ -155,7 +157,7 @@ func _build_polar_body() -> void:
 		add_child(hp)
 		hit_points.append(hp)
 
-## 超公式: 多边形碰撞 (superformula) + 均匀绕心布 n 个判定点 (n = m 或 m/2)。
+## 超公式: 多边形碰撞 (superformula) + 绕心布 m/2 个判定点。
 func _build_superformula_body() -> void:
 	_shape_poly = CollisionPolygon2D.new()
 	_shape_poly.name = "ShapePoly"
@@ -165,6 +167,16 @@ func _build_superformula_body() -> void:
 		hp.name = "HitPointPip%d" % i
 		add_child(hp)
 		hit_points.append(hp)
+
+## 轴对称形 (m=2): 多边形碰撞 + 1 个中心判定点 (m/2=1)。
+func _build_sf2_body() -> void:
+	_shape_poly = CollisionPolygon2D.new()
+	_shape_poly.name = "ShapePoly"
+	add_child(_shape_poly)
+	var hp := HitPoint.new()
+	hp.name = "HitPointPip0"
+	add_child(hp)
+	hit_points.append(hp)
 
 ## 切换身体种类 (设置 + 重建)。P4: 验证"每个身体一套判定"的可插拔架构。
 func set_body_kind(kind: String) -> void:
@@ -229,6 +241,12 @@ func rebuild_shape() -> void:
 		if _shape_poly != null:
 			_shape_poly.polygon = GameConfig.player_shape_points()
 		_place_sf_points(sc)
+		queue_redraw()
+		return
+	if _body_kind == "sf2":
+		if _shape_poly != null:
+			_shape_poly.polygon = GameConfig.player_shape_points()
+		_place_sf2_points(sc)
 		queue_redraw()
 		return
 	if _shape_poly != null:
@@ -396,9 +414,14 @@ func _place_polar_points(sc: float) -> void:
 	_place_radial_points(sc, maxi(GameConfig.polar_lobes, 1),
 		GameConfig.polar_r0 * (1.0 + absf(GameConfig.polar_amp)) * sc)
 
-## 超公式: 布点 = m(奇)或 m/2(偶) 个, 半径 = sf_radius·size (与花瓣同一套控制)。
+## 超公式: 布点 = m/2 个, 半径 = k·sf_px·size (与花瓣同一套控制)。
 func _place_sf_points(sc: float) -> void:
-	_place_radial_points(sc, GameConfig.sf_pip_count(GameConfig.sf_m), GameConfig.sf_radius * sc)
+	_place_radial_points(sc, GameConfig.sf_pip_count(GameConfig.sf_m),
+		GameConfig.sf_k * GameConfig.sf_px * sc)
+
+## 轴对称形 (m=2): 单点.
+func _place_sf2_points(sc: float) -> void:
+	_place_radial_points(sc, 1, GameConfig.sf_k * GameConfig.sf_px * sc)
 
 ## 判定点随拖动位移 (纺锤: 两端反向; 花瓣: 专属极坐标控制; 圆: 固定中心)。
 func _update_hit_points() -> void:
@@ -409,6 +432,9 @@ func _update_hit_points() -> void:
 		return
 	if _body_kind == "superformula":
 		_place_sf_points(maxf(GameConfig.player_size_scale, 0.05))
+		return
+	if _body_kind == "sf2":
+		_place_sf2_points(maxf(GameConfig.player_size_scale, 0.05))
 		return
 	if hit_points.size() < 2:
 		return

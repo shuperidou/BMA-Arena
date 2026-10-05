@@ -86,7 +86,7 @@ var hit_reach: float = 44.0            ## 击球点判定额外半径 (翻倍) [
 var player_body_kind: String = "spindle"  ## 身体种类 (决定用哪套击球判定): "spindle" 纺锤 / "circle" 圆
 ## 已实现的身体族 (每种 = 一套 碰撞 + 判定布点 规则)。顺序 = ESC 菜单顺序。
 ## 加新身体: 往这里加 key + 在 body_kind_label 加名字 + 在 PlayerController 写 _build_xxx()。
-const BODY_KINDS: Array[String] = ["spindle", "circle", "polar", "superformula"]
+const BODY_KINDS: Array[String] = ["spindle", "circle", "polar", "superformula", "sf2"]
 func body_kind_label(k: String) -> String:
 	match k:
 		"circle":
@@ -94,7 +94,9 @@ func body_kind_label(k: String) -> String:
 		"polar":
 			return "极坐标花瓣 (花瓣数=判定点)"
 		"superformula":
-			return "超公式 (封闭曲线)"
+			return "超公式 (m 偶数)"
+		"sf2":
+			return "轴对称形 (m=2)"
 		_:
 			return "纺锤 (两端两点)"
 var circle_body_radius: float = 20.0      ## "圆"身体的碰撞半径
@@ -108,17 +110,17 @@ var polar_radial_per_px: float = 0.6      ## 拖动 y 每像素 -> 径向位移 
 var polar_rot_per_px: float = 0.012       ## 拖动 x 每像素 -> 绕心旋转弧度
 var polar_reach_scale: float = 0.5        ## 花瓣判定点半径的整体缩放 (判定区偏大 -> 调小)
 ## "超公式"身体: r(θ) = (|cos(mθ/4)/a|^n2 + |sin(mθ/4)/b|^n3)^(-1/n1)。一大类封闭花/星/圆角多边形。
-var sf_m: float = 6.0                     ## 边/花瓣数 (整数更好看)
-var sf_n1: float = 0.6
-var sf_n2: float = 0.6
-var sf_n3: float = 0.6
-var sf_a: float = 1.0
-var sf_b: float = 1.0
-var sf_radius: float = 30.0               ## 整体半径缩放 = 大小系数 (公式 r 多在 ~1 附近)
-## 判定点数量由 m 决定: m 奇数 -> m 个, m 偶数 -> m/2 个 (和花瓣一样, 位置+控制也沿用花瓣那套)
+## r = k·(|cos(0.25·m·θ)|^n1 + |sin(0.25·m·θ)|^n2)^n3
+var sf_m: float = 6.0                     ## 仅偶数, ≤10
+var sf_n1: float = 1.0                    ## ∈(0,5]
+var sf_n2: float = 1.0                    ## ∈(0,5]
+var sf_n3: float = 1.0                    ## ∈(0,5]
+var sf_k: float = 1.0                     ## 大小系数 ∈[0.5,2]
+var sf_px: float = 30.0                   ## k=1 时的像素半径 (与 k 相乘得实际大小)
+var sf_n_max: float = 10.0                ## m 的上限 (偶数)
+## 判定点数量 = m/2 (m 偶数; 位置+控制+半径沿用花瓣那套)
 func sf_pip_count(m: float) -> int:
-	var mi: int = maxi(int(round(m)), 1)
-	return mi if (mi % 2) == 1 else maxi(mi / 2, 1)
+	return maxi(int(round(m)) / 2, 1)
 var player_shape_index: int = 0           ## 当前身体显示形状 (只有 0 纺锤是已设计的)
 var shape_segments: int = 28              ## 曲边采样段数
 ## 纺锤(唯一已设计): 形状=胶囊; 方程参数 = player_half_length(长半) + player_radius(宽半);
@@ -200,21 +202,21 @@ func polar_points(r0: float, lobes: int, amp: float, seg: int = 64) -> PackedVec
 		pts.append(Vector2(r * cos(th), r * sin(th)))
 	return pts
 
-## 超公式 (superformula) 半径: r(θ)。一大类封闭曲线 (花/星/圆角多边形)。
-func superformula_r(th: float, m: float, n1: float, n2: float, n3: float, a: float, b: float) -> float:
-	var t1: float = pow(absf(cos(m * th / 4.0) / maxf(absf(a), 0.05)), n2)   # a 可取负, 取绝对值; 防 0
-	var t2: float = pow(absf(sin(m * th / 4.0) / maxf(absf(b), 0.05)), n3)
-	return clampf(pow(maxf(t1 + t2, 1e-6), -1.0 / maxf(n1, 0.001)), 0.0, 4.0)   # 防发散
+## 超公式半径 (不含大小系数): r(θ) = (|cos(0.25·m·θ)|^n1 + |sin(0.25·m·θ)|^n2)^n3
+func superformula_r(th: float, m: float, n1: float, n2: float, n3: float) -> float:
+	var a: float = pow(absf(cos(0.25 * m * th)), maxf(n1, 0.01))
+	var b: float = pow(absf(sin(0.25 * m * th)), maxf(n2, 0.01))
+	return pow(maxf(a + b, 1e-6), maxf(n3, 0.01))
 
-## 超公式边界点 (radius = 整体大小系数)。
-func superformula_points(m: float, n1: float, n2: float, n3: float, a: float, b: float,
-		radius: float, seg: int = 72) -> PackedVector2Array:
+## 超公式边界点 (k = 大小系数 [0.5,2]; 实际大小 = k·sf_px)。
+func superformula_points(m: float, n1: float, n2: float, n3: float, k: float, seg: int = 72) -> PackedVector2Array:
 	var n: int = maxi(seg, 16)
+	var scale: float = clampf(k, 0.5, 2.0) * sf_px
 	var pts := PackedVector2Array()
-	for k in n:
-		var th: float = TAU * float(k) / float(n)
-		var r: float = superformula_r(th, m, n1, n2, n3, a, b)
-		pts.append(Vector2(r * cos(th), r * sin(th)) * radius)
+	for i in n:
+		var th: float = TAU * float(i) / float(n)
+		var r: float = superformula_r(th, m, n1, n2, n3)
+		pts.append(Vector2(r * cos(th), r * sin(th)) * scale)
 	return pts
 
 ## 采样身体边界点 (角色局部坐标, 未旋转)。按 player_body_kind 分派。
@@ -225,7 +227,9 @@ func player_shape_points(_idx: int = -1) -> PackedVector2Array:
 		"polar":
 			pts = polar_points(polar_r0, polar_lobes, polar_amp)
 		"superformula":
-			pts = superformula_points(sf_m, sf_n1, sf_n2, sf_n3, sf_a, sf_b, sf_radius)
+			pts = superformula_points(sf_m, sf_n1, sf_n2, sf_n3, sf_k)
+		"sf2":
+			pts = superformula_points(2.0, sf_n1, sf_n2, sf_n3, sf_k)
 		_:
 			pts = spindle_points(player_half_length, player_radius)
 	if player_size_scale != 1.0:
