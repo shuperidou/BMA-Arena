@@ -303,6 +303,14 @@ func _draw() -> void:
 				draw_arc(p, rr, a0, a0 + TAU / 6.0 * 0.5, 6, Color(core.r, core.g, core.b, hit_flash * 0.7), 3.0)
 		else:
 			draw_arc(p, rr, 0.0, TAU, 28, Color(core.r, core.g, core.b, hit_flash * 0.8), 3.0)
+		# 命中爆闪: 向外放射的短线 (只在前段出现; 纯绘制, 不加新节点)
+		if hit_flash > 0.35:
+			var fa: float = (hit_flash - 0.35) / 0.65
+			for i in 8:
+				var ang: float = float(i) / 8.0 * TAU
+				var d := Vector2(cos(ang), sin(ang))
+				draw_line(p + d * r * 1.2, p + d * (rr + r * 0.5),
+					Color(core.r, core.g, core.b, fa * 0.9), 3.0)
 	# 扣杀: 一圈尖刺 (成功=又长又亮; 失败=又短又暗的"哑火"刺)
 	if hit_flash > 0.05 and last_smash_state != 0:
 		var ok: bool = last_smash_state == 1
